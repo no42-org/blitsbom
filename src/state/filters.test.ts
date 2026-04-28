@@ -72,7 +72,9 @@ describe('applyFilters', () => {
       categories: new Set(['permissive' as const]),
     };
     const names = applyFilters(components, filters).map((c) => c.name).sort();
-    expect(names).toEqual(['jackson-core', 'okhttp', 'slf4j-api']);
+    // legacy-tool's expression "(MIT OR Apache-2.0)" classifies as permissive
+    // because OR takes the least restrictive sub-category.
+    expect(names).toEqual(['jackson-core', 'legacy-tool', 'okhttp', 'slf4j-api']);
   });
 
   it('filters by license category (strong-copyleft)', () => {
@@ -95,13 +97,21 @@ describe('applyFilters', () => {
     expect(names).toEqual(['jackson-core', 'okhttp']);
   });
 
-  it('classifies expressions as proprietary (and filters accordingly)', () => {
+  it('classifies unrecognized expressions accordingly', () => {
     const filters = {
       ...emptyFilters(),
-      categories: new Set(['proprietary' as const]),
+      categories: new Set(['unrecognized' as const]),
     };
-    expect(applyFilters(components, filters).map((c) => c.name)).toEqual([
-      'legacy-tool',
+    // legacy-tool's expression `(MIT OR Apache-2.0)` resolves to permissive
+    // (OR-min). Replace with a synthetic unrecognizable expression.
+    const withUnknown: Component[] = [
+      ...components,
+      lib('mystery-tool', {
+        licenses: [{ kind: 'name', value: 'CompletelyMadeUpLicense' }],
+      }),
+    ];
+    expect(applyFilters(withUnknown, filters).map((c) => c.name)).toEqual([
+      'mystery-tool',
     ]);
   });
 });

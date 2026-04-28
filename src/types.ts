@@ -169,4 +169,5 @@ export type LicenseCategory =
   | 'permissive'
   | 'copyleft'
   | 'strong-copyleft'
+  | 'unrecognized'
   | 'proprietary';

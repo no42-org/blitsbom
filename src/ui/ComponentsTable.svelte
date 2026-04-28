@@ -13,20 +13,21 @@
 
   let sortKey = $state<SortKey>('name');
   let sortDir = $state<SortDir>('asc');
+  // Purl column starts collapsed (just an icon per row); clicking the header
+  // toggles full text rendering for every row at once.
+  let purlExpanded = $state(false);
 
-  const PAGE_SIZE = 100;
-  let visibleCount = $state(PAGE_SIZE);
+  type PageSize = 20 | 50 | 100 | 200 | 'all';
+  const PAGE_SIZE_OPTIONS: readonly PageSize[] = [20, 50, 100, 200, 'all'];
+  let pageSize = $state<PageSize>(20);
 
   // PERF: visibleRows MUST be $state.raw populated from $effect, not $derived.
   // A $derived array passed to {#each} causes Svelte 5 to wrap each accessed
   // property in reactive proxies; for thousands of source components plus
   // {#each} reading c.name, c.version, c.licenses, etc., this freezes the
   // browser. $state.raw side-steps the proxy machinery on the array elements.
-  // Same pattern is applied to `sorted` because the sort key extraction
-  // walks the full array.
   let visibleRows = $state.raw<Component[]>([]);
   let totalCount = $state(0);
-  let hasMore = $state(false);
 
   $effect(() => {
     // Capture reactive deps explicitly, then defer the heavy sort to a
@@ -35,10 +36,10 @@
     const list = components;
     const key = sortKey;
     const dir = sortDir;
-    const cap0 = visibleCount;
+    const ps = pageSize;
 
     const handle = setTimeout(() => {
-      const cap = Math.min(cap0, list.length);
+      const cap = ps === 'all' ? list.length : Math.min(ps, list.length);
       const keys = new Array<string>(list.length);
       for (let i = 0; i < list.length; i++) {
         keys[i] = sortValue(list[i]!, key);
@@ -56,7 +57,6 @@
 
       visibleRows = sortedArr.slice(0, cap);
       totalCount = list.length;
-      hasMore = list.length > cap;
     }, 0);
 
     return () => clearTimeout(handle);
@@ -115,7 +115,21 @@
             </button>
           </th>
         {/each}
-        <th scope="col">purl</th>
+        <th scope="col">
+          <button
+            type="button"
+            class="sort"
+            onclick={() => (purlExpanded = !purlExpanded)}
+            aria-expanded={purlExpanded}
+            aria-controls="purl-cells"
+            title={purlExpanded ? 'Collapse purls' : 'Expand purls'}
+          >
+            purl
+            <span class="sort__arrow" aria-hidden="true">
+              {purlExpanded ? '▾' : '▸'}
+            </span>
+          </button>
+        </th>
       </tr>
     </thead>
     <tbody>
@@ -164,31 +178,59 @@
             <td>
               <span class="badge badge--neutral">{c.type}</span>
             </td>
-            <td class="mono purl" title={c.purl ?? ''}>{c.purl ?? '—'}</td>
+            <td
+              class="purl"
+              class:purl--collapsed={!purlExpanded}
+              title={c.purl ?? ''}
+            >
+              {#if !c.purl}
+                <span class="muted">—</span>
+              {:else if purlExpanded}
+                <span class="mono purl__text">{c.purl}</span>
+              {:else}
+                <span class="purl__icon" aria-label="package URL">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                </span>
+              {/if}
+            </td>
           </tr>
         {/each}
       {/if}
     </tbody>
   </table>
-  {#if hasMore}
+  {#if totalCount > 0}
     <div class="more">
       <span class="more__count">
         Showing {visibleRows.length.toLocaleString()} of {totalCount.toLocaleString()} components
       </span>
-      <button
-        type="button"
-        class="more__btn"
-        onclick={() => (visibleCount += PAGE_SIZE)}
-      >
-        Show {Math.min(PAGE_SIZE, totalCount - visibleRows.length).toLocaleString()} more
-      </button>
-      <button
-        type="button"
-        class="more__btn more__btn--ghost"
-        onclick={() => (visibleCount = totalCount)}
-      >
-        Show all
-      </button>
+      <label class="more__pagesize">
+        <span>Rows per page:</span>
+        <select
+          class="more__select"
+          bind:value={pageSize}
+          aria-label="Rows per page"
+        >
+          {#each PAGE_SIZE_OPTIONS as opt (opt)}
+            <option value={opt}>
+              {opt === 'all' ? 'Show all' : opt}
+            </option>
+          {/each}
+        </select>
+      </label>
     </div>
   {/if}
 </div>
@@ -260,6 +302,27 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .purl--collapsed {
+    width: 3rem;
+    text-align: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .purl__icon {
+    display: inline-flex;
+    color: var(--color-ink-500);
+    cursor: help;
+  }
+  .purl__icon:hover {
+    color: var(--color-ink-800);
+  }
+  .purl__text {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
   .cell-name {
     display: flex;
     flex-direction: column;
@@ -322,26 +385,27 @@
   .more__count {
     flex: 1;
   }
-  .more__btn {
+  .more__pagesize {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-ink-600);
+  }
+  .more__select {
     appearance: none;
     border: 1px solid var(--color-ink-200);
     background: white;
     border-radius: 6px;
-    padding: 0.375rem 0.75rem;
+    padding: 0.25rem 1.75rem 0.25rem 0.5rem;
+    font: inherit;
     font-size: 0.8125rem;
     color: var(--color-ink-800);
     cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
   }
-  .more__btn:hover {
-    background: var(--color-ink-100);
-  }
-  .more__btn--ghost {
-    background: transparent;
-    border-color: transparent;
-    color: var(--color-ink-600);
-  }
-  .more__btn--ghost:hover {
-    background: var(--color-ink-100);
-    color: var(--color-ink-900);
+  .more__select:hover {
+    background-color: var(--color-ink-100);
   }
 </style>

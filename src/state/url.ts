@@ -13,6 +13,7 @@ const VALID_CATEGORIES: ReadonlySet<LicenseCategory> = new Set<LicenseCategory>(
   'permissive',
   'copyleft',
   'strong-copyleft',
+  'unrecognized',
   'proprietary',
 ]);
 

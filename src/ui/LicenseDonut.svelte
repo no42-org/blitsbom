@@ -10,7 +10,7 @@
 
   let { breakdown }: Props = $props();
 
-  const geom: DonutGeometry = { cx: 80, cy: 80, r: 50, rInner: 32 };
+  const geom: DonutGeometry = { cx: 100, cy: 100, r: 55, rInner: 36 };
 
   // Tick labels: a short radial line + "count (percent%)" placed just
   // outside each non-empty segment.
@@ -32,11 +32,20 @@
 
     const out: Tick[] = [];
     let cumulative = 0;
+    // Hide tick labels for segments under 2% — they collide with neighbors
+    // and the legend already shows the count.
+    const minVisibleFraction = 0.02;
     for (const o of ordered) {
-      if (o.count <= 0) continue;
+      if (o.count <= 0) {
+        continue;
+      }
+      const fraction = o.count / total;
+      // Always advance cumulative so the next segment's geometry is right;
+      // only skip the LABEL for tiny slivers (legend still shows the count).
       const startA = (cumulative / total) * Math.PI * 2 - Math.PI / 2;
       cumulative += o.count;
       const endA = (cumulative / total) * Math.PI * 2 - Math.PI / 2;
+      if (fraction < minVisibleFraction) continue;
       const midA = (startA + endA) / 2;
 
       const cosA = Math.cos(midA);
@@ -86,15 +95,8 @@
 
   const total = $derived(ordered.reduce((s, o) => s + o.count, 0));
 
-  // Legend entries: only non-empty categories, sorted descending by count.
-  const legendEntries = $derived(
-    ordered
-      .filter((o) => o.count > 0)
-      .sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return a.meta.order - b.meta.order;
-      }),
-  );
+  // Legend entries: only non-empty categories, in the fixed metadata order.
+  const legendEntries = $derived(ordered.filter((o) => o.count > 0));
 
   function isActive(id: string): boolean {
     return store.categoryFilters.has(id as never);
@@ -107,7 +109,7 @@
     <div class="donut__layout">
       <svg
         class="donut__svg"
-        viewBox="0 0 160 160"
+        viewBox="0 0 200 200"
         role="img"
         aria-label="License category breakdown"
       >
@@ -150,8 +152,8 @@
           >{tick.text}</text>
         {/each}
         <text
-          x="80"
-          y="84"
+          x="100"
+          y="104"
           text-anchor="middle"
           class="donut__center-count"
         >{total}</text>
@@ -213,7 +215,7 @@
   .donut__segment {
     cursor: pointer;
     transition: transform 80ms ease, opacity 80ms ease;
-    transform-origin: 80px 80px;
+    transform-origin: 100px 100px;
   }
   .donut__segment:hover {
     opacity: 0.85;
