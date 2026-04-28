@@ -1,0 +1,25 @@
+# Build artifacts
+dist/
+dist.zip
+.vite/
+
+# Dependencies
+node_modules/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Test
+coverage/
+screenshots/*.pdf
+
+# AI tools
+_bmad-output/
+_bmad/
+openspec/
+.agent/
+.claude/
+.codex/

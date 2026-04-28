@@ -1,0 +1,1680 @@
+{
+  "bomFormat" : "CycloneDX",
+  "specVersion" : "1.6",
+  "serialNumber" : "urn:uuid:ae781cd8-f0d2-315a-9e82-5eefb3e97233",
+  "version" : 1,
+  "metadata" : {
+    "timestamp" : "2026-04-27T14:37:52Z",
+    "lifecycles" : [
+      {
+        "phase" : "build"
+      }
+    ],
+    "tools" : {
+      "components" : [
+        {
+          "type" : "library",
+          "author" : "OWASP Foundation",
+          "group" : "org.cyclonedx",
+          "name" : "cyclonedx-maven-plugin",
+          "version" : "2.9.1",
+          "description" : "CycloneDX Maven plugin",
+          "hashes" : [
+            {
+              "alg" : "MD5",
+              "content" : "9c7a565cf28cce58557d0c621c5ea4b1"
+            },
+            {
+              "alg" : "SHA-1",
+              "content" : "be882d5a22050bfa9d19090b1420c188617d0e1c"
+            },
+            {
+              "alg" : "SHA-256",
+              "content" : "698e0f37184a5b28c245c4065fd036dfce253b52f82fbb7113d81d36326cc249"
+            },
+            {
+              "alg" : "SHA-512",
+              "content" : "c0f0b11026858166f872a2eb54719492e5cecaa0bc9cd6b30b3ecb4a174eed220f4a1b5829d18d6734128e778d3cb3db7ffed177c92866133129cb29081814a0"
+            },
+            {
+              "alg" : "SHA-384",
+              "content" : "d80964707dfe5caca8c70521d5066f57589304c0a657e6fbc7c0614ea0fc7b3b3dbe7778361eee0f54ba111e9cb0ffcb"
+            },
+            {
+              "alg" : "SHA3-384",
+              "content" : "80bc3a275d9514bc457461ff52a72add8c7ecbbc01d8912efce57139016c544ee776981851be0a58fa977ab4221f703f"
+            },
+            {
+              "alg" : "SHA3-256",
+              "content" : "142317d6f245390f4fd2d0c100b16281b8dfc5c0c2cff86943bdcc97039cb699"
+            },
+            {
+              "alg" : "SHA3-512",
+              "content" : "af0fb9137c90b65d1a07f72e4d51ae509956cdb8800f35c961b037cdda1fe4a14ce3b496cef71ba85f1621affcfe29cd42704ae4191ff0b090a9602087c8997b"
+            }
+          ]
+        }
+      ]
+    },
+    "component" : {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-parent@0.4.0-SNAPSHOT?type=pom",
+      "group" : "org.opennms.plugins",
+      "name" : "prometheus-remote-writer-parent",
+      "version" : "0.4.0-SNAPSHOT",
+      "description" : "OpenNMS Time Series Storage plugin that writes samples to any Prometheus-compatible Remote Write endpoint, exposing OpenNMS resource context as native Prometheus labels.",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-parent@0.4.0-SNAPSHOT?type=pom",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer"
+        }
+      ]
+    },
+    "properties" : [
+      {
+        "name" : "maven.goal",
+        "value" : "makeAggregateBom"
+      },
+      {
+        "name" : "maven.scopes",
+        "value" : "compile,provided,runtime,system"
+      }
+    ]
+  },
+  "components" : [
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=bundle",
+      "group" : "org.opennms.plugins",
+      "name" : "prometheus-remote-writer",
+      "version" : "0.4.0-SNAPSHOT",
+      "description" : "OpenNMS Time Series Storage plugin that writes samples to any Prometheus-compatible Remote Write endpoint, exposing OpenNMS resource context as native Prometheus labels.",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=bundle",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.integration.api/api@2.0.0?type=jar",
+      "group" : "org.opennms.integration.api",
+      "name" : "api",
+      "version" : "2.0.0",
+      "description" : "Integration and extension API for OpenNMS",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "c3899e4aa6b0351bc3b7038e3ff56385"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "efe5c19cbd610b60754fc3803e4eff438c78b960"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "5d17308a12bf645e161605a2a7eff49f22f7138dad485654ecfa3b5b24854c18"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "9027c7e703c92d2fb70892d7d6ac44432aeeee91f3510f8a393967eca75c163cce08ab78cf591d8a6ce928caaf7beebe96a767b0aec62f6d3510c6eb1f7631d6"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "8b137ea1bbd0546262701a258653be7edf2c2fccffb9f0b76c2abe5d97e86c3b51b60d765a114eebe7aeb4d67cf3b8e1"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "27e078347554f3b15a6d79d7d7c5f41cab0d35e945c764dc06ff60c1915dbc1a6dea47d3eac0d9e40afb1120c7080e7f"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "ece348a2cee18e3e731fea706abeae37e3f0418f5047b847100c2fdc0a0a67a2"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "1d472e44851735f8480b95b7fd848eb485dfbf40ee2ee1a4771d52235d2905cb8a46ccaa88c72e8aefadd97565002b0467ee04e04d738db1b343b218155c14e9"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.integration.api/api@2.0.0?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/OpenNMS/opennms-integration-api/api"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/OpenNMS/opennms-integration-api/api"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.integration.api/common@2.0.0?type=jar",
+      "group" : "org.opennms.integration.api",
+      "name" : "common",
+      "version" : "2.0.0",
+      "description" : "Integration and extension API for OpenNMS",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "844848205f1ba97ed17979349b4255ae"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "94b61f9e02899ad34fc7f4e6518907d42ddb05a5"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "e76d5bab6a8f45b22fcd801a6babcc84e4d237aa3b209230bff49623e234626c"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "e9c6c06c5d6ea444b6c8b04fb21fafcd72df1dd2a12c87d131aa0b2f2ab7623e794296dddee9bafb385d79eb26dfe2d3eec5360e0772ddc93035496785db9f2d"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "bd888c8972f4c3396438eee7483db2f85d0932d9a054e1834434edd8c8126ae93411ecdf5f0a74b320b45116bd5ad8ac"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "dfb376071e768ba24f79bd5820c2a3066763e9b84138f6a1cba7fb1535e0c4316c5cee69f20b3031d8a870ca2a53b857"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "31f59e0f1ba5dc36edd74381925bd2bcaa9d07981620cdea333ce4672bef1af5"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "358dd0acbf36d94eb07ab7b2294dfd0cff791883e5197db2b378c71815484ba9f82074f0a1b68df0c8744117a2ceb0418a65769a584c94ffdf9d6d02ae256ce5"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.integration.api/common@2.0.0?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/OpenNMS/opennms-integration-api/common"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/OpenNMS/opennms-integration-api/common"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/com.squareup.okhttp3/okhttp-jvm@5.3.2?type=jar",
+      "group" : "com.squareup.okhttp3",
+      "name" : "okhttp-jvm",
+      "version" : "5.3.2",
+      "description" : "Square’s meticulous HTTP client for Java and Kotlin.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "827a887aa959c1f1d6b12f3345df2484"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "f31e8de27feebe1e56d6c9d354a0986b65be0e1d"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "c771f48075b763f6c322055e21129a94b7de4c1faf3f8f58ace320b0c9517a30"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "302cba8ec649ecb20512b4878b9f347645cdeada2001e7469363b21ca251bbb05c00e48e426449a88780f0ec25c672f214112b101d8dfd059b5275999ab48768"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "a2bc92e52d8e1b2b9be40b0955828313f32a4276717bf7e1cace0aefa3bf5fad17997e409aeca7f68f335c9d975f1073"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "e585ea8e1ffbd6599654b5f7e9b1210ff972799f5019420652a0215b7dde6660b3a15e56b39d4702b42e307b3040b5d1"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "4737bb453c46672bef36c86ea7292a46f9552caaccfd7e6799bb9b3c508c4467"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "08ed5b2a6449ca0b8cced909bc2ded5cf20314b5bf8f8b094ed8641c5dd90e6b738fc66c917dd0eafbcf1e51497ba05ca154cc3d6fb4832a0ebc350a35c26abe"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/com.squareup.okhttp3/okhttp-jvm@5.3.2?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://square.github.io/okhttp/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/square/okhttp"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/com.squareup.okio/okio-jvm@3.16.4?type=jar",
+      "group" : "com.squareup.okio",
+      "name" : "okio-jvm",
+      "version" : "3.16.4",
+      "description" : "A modern I/O library for Android, Java, and Kotlin Multiplatform.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "34d866f45bb2a65bf601cde52b72d096"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "ceb794cf0bbf8d0d20f49aa91ce20db7fd77675d"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "2196b993cd34dbbd919e7e01f57a4781b58bee80f86106163e287c20343a96a7"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "1a7158538ae341b8a61fe7292506e12ca6063c5a51a1c122d0e934164395c7da585dc31b26ed88a993c47aeca89f6a854042c67a4bc7d771d35a0ece6c4dbde0"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "37949576947630aba9caf7b24ffb00677f4b21b29a98543a0a66043340d20bb42128419d2bebc4b2f2b93569f35f9ada"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "32830517d7f960b4c86229f5347e40033658999029162aad0f273636640ed8b7130689de57277aaff169ac9f227885be"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "3f65833b5d5128064f885b68da6a3955667cf4c31a098da08431561949fe398b"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "ee404499bb148b817e575c22049cb5487531605413bf38edf8fd2cecf0d15f899de42e37d7dafa5dc8bc5493e24b7a976c2bc14c42d6d7056af410bd72513ad3"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/com.squareup.okio/okio-jvm@3.16.4?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/square/okio/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/square/okio/"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.2.21?type=jar",
+      "group" : "org.jetbrains.kotlin",
+      "name" : "kotlin-stdlib",
+      "version" : "2.2.21",
+      "description" : "Kotlin Standard Library",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "493bc156c79fe10064e9f6b605c8297c"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "fa374a986e128314c3db00a20aae55f72a258511"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "6558a3d233da56a20934b32159f9db5f86ed5816ef098f78a2c223dc6abb79dd"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "cb7f62e2eb4c13f7a9873876f19d9dcb69c33d5e963c7cd87178f3789d65f29d2b6cf697573c04758428d2da6e26f2fdd3f0af46dedd8d04ad81d331e95859d7"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "09ed380b932f8efc46a516dbe0d92685bf7f3a3096eaa1c041125651b56735457280020f9f6df060e645ac6ee9e7caa1"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "5b2bb7b3d977588b8b47f98d8572c1985350a6672d65576973bc410039855ede15934118058fa1bd8ad8841d29e68c61"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "549cfd1201fc8d9eb65e363391f21d7610636d0f44fae374983becd60350632d"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "0709855aa95e76440e2dae29dd99bbd2e1be57281b5b023bb4431ec72417d82275f0e335ba5423f5f8a85ae95624668becf3797f4785b538db84a1063d4da296"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.2.21?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://kotlinlang.org/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/JetBrains/kotlin"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.jetbrains/annotations@13.0?type=jar",
+      "group" : "org.jetbrains",
+      "name" : "annotations",
+      "version" : "13.0",
+      "description" : "A set of annotations used for code inspection support and code documentation.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "f4fb462172517b46b6cd90003508515a"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "919f0dfe192fb4e063e7dacadee7f8bb9a2672a9"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "ace2a10dc8e2d5fd34925ecac03e4988b2c0f851650c94b8cef49ba1bd111478"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "5622d0ffe410e7272e2bb9fae1006caedeb86d0c62d2d9f3929a3b3cdcdef1963218fcf0cede82e95ef9f4da3ed4a173fa055ee6e4038886376181e0423e02ff"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "6bcde3a6e471d416522e6288474bc4f9115e2e8abf8ce5d300829bee4aa98dff73be7d8c6f0607f3d6d423c7f5abbf90"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "f4d5a5d5a76b24c4751c8c52f2879b097d2430c3571c59b4630e8c871c9bdb08e24e803a14c24fc8d3378417f29b7244"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "b4a80ea81c4bc7e364e07981465f547e8ed83031806eaf3b97dfb38f894f5b6f"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "15b23bce818b4399b334dd632eb85de5a1b70c47fb9260561e70b1f726211c83bddbc957f3b4c32a1d8c687f9bc6c38d0a638c731cb5daf5b619aa725d6050c2"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.jetbrains/annotations@13.0?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "http://www.jetbrains.org"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "http://oss.sonatype.org/service/local/staging/deploy/maven2/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/JetBrains/intellij-community"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar",
+      "publisher" : "xerial.org",
+      "group" : "org.xerial.snappy",
+      "name" : "snappy-java",
+      "version" : "1.1.10.8",
+      "description" : "snappy-java: A fast compression/decompression library",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "a25bd213d1ca2f3c605c5f03050db070"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "ccbaa2b5ea6a023a27c44daf2d6cdec0e138592d"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "50485d06037fea3d6e40c968386feeca6338cc9872e25549593ff3eb352cefcc"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "c7133f726f366b9f06df98d94b4dd7c91c7702c543e1a318055a886af5e625d8231b0a6728250596181bc20a6c4147855eeb02ed55c447fe13ff2156e29985a9"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "aeb78b3f4c56ce769f5fda9cfabe00be77d21b93637f70601c28b16eef41405e1291001c3a6e45001b356543e33b664b"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "6137f6354b574d8decb579ad9147dd9463e3a9f62d1e929266bee1adc020f57382973d0a1abf9daeb2007bb32671fed8"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "f44a4a8cffe82ce6c99b401e9d822e71cdfc63c1b279b278282eda07243b2a94"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "655731ef3b20a2cec213138c170f7dc7182c2a09536d74c1d8a13224bb204dd706a35749bf99b51c4b945b75784a0a26c60931a158d27e1378ccd1c8ac7a0783"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/xerial/snappy-java"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/xerial/snappy-java"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.json/json@20251224?type=jar",
+      "group" : "org.json",
+      "name" : "json",
+      "version" : "20251224",
+      "description" : "JSON is a light-weight, language independent, data interchange format. See http://www.JSON.org/ The files in this package implement JSON encoders/decoders in Java. It also includes the capability to convert between JSON and XML, HTTP headers, Cookies, and CDL. This is a reference implementation. There are a large number of JSON packages in Java. Perhaps someday the Java community will standardize on one. Until then, choose carefully.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "fec4b08b6ae3b07aa34ff719ee7a5cc3"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "758adfe5ff5c3cc286d62c9d097cbca84f870536"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "2a3438fbf9293174ea82bdfa35e83d8b965cfe6bddc034a1ac5d60107174c209"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "575500a53668f4a4501fe224c686fc3e8b04b3d685bba2d1fe7c5fa2e24f5c069a18645bbaf7f9d17b4101f43b8aa0de5b453cbbee1c0bfaca12def376fb9c92"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "37e930cb0b106f95577f8cacaa8d36aa794193fa27463eb20945c45922997cad46885116eafc6435996cf10b7c812b82"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "32484a4abfa6b039e2ffb92fac8be7dc0668889138747bd2315013f85979a39319aa62b87f7a7e5eafbf3eb68d6303b7"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "6e89eac8b1560427d383b93d455864976021f4f88d024c2848b990c3017ff868"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "1448da7d5fb272b96ecdf0abd64930ceff777e877a55d3535015905b3dca7c7cd7e55ec4bd3b1229fb5021a16ae8d53c04565f16cb4721c40c068b63c6ed8439"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "name" : "Public Domain",
+            "url" : "https://github.com/stleary/JSON-java/blob/master/LICENSE"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.json/json@20251224?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/douglascrockford/JSON-java"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/douglascrockford/JSON-java.git"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/com.google.protobuf/protobuf-java@4.34.1?type=jar",
+      "group" : "com.google.protobuf",
+      "name" : "protobuf-java",
+      "version" : "4.34.1",
+      "description" : "Core Protocol Buffers library. Protocol Buffers are a way of encoding structured data in an efficient yet extensible format.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "00ddb3042ac6e2ca519d6713fcd9d690"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "e3b07cd3be66ec918b9fa4db9863c86d5eeea891"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "ae0459030b54a6f3058ad349aa01fc2edcbb2d4a84b73699675bbd125df2e96d"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "9798283dbf73934a484c81d951b9ad7fbee2f6ac903e35ff9ed878aa7dbb1aa02cc96971d66ead91831e0c73a567732cdecbe4a0fcd3e056d9591c0e68df76bc"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "df76bff27ffaecaf3ec90583dd7d5573b229757740add69c59d445dbf3fb1ec5071f7be5d0324cc56a7ceaeebea22880"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "f69ac83aadfb7bafd42f90218b355cdffff27273bcf8a467ac67ee05046751e3c9fcc0f97989748ee5a63834d3b7352d"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "a965e7082e70fb3c7497a953cc9a7fe763df464ba2bedb35e7bf1e581069eb82"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "e51310299046910ec4cafe4f887268b454c9b36ee6bb106122cdfb295a90c1cd58c17ba511613b431ad3a8fe0b0ef7d9ddb2b7817b56d65f33623e643c1d8c9c"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "BSD-3-Clause",
+            "url" : "https://opensource.org/licenses/BSD-3-Clause"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/com.google.protobuf/protobuf-java@4.34.1?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://developers.google.com/protocol-buffers/protobuf-java/"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/protocolbuffers/protobuf/protobuf-java"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/io.dropwizard.metrics/metrics-core@4.2.38?type=jar",
+      "group" : "io.dropwizard.metrics",
+      "name" : "metrics-core",
+      "version" : "4.2.38",
+      "description" : "Metrics is a Java library which gives you unparalleled insight into what your code does in production. Metrics provides a powerful toolkit of ways to measure the behavior of critical components in your production environment.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "e58cff6cc587383c319e9272c01d3834"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "4b69739b1e6a3c988695d600a908d82c64283605"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "730f38779bf9bd620c23ef03201dfba1886d71054c872e1e4745c4dd8e7971dd"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "c46a6bcd6925d22fa59008e72b90f7555cc76320d5ebc0d9b7294c4b3861ef280c609882f33999d83f656db915797586d530a3c620bb8393f2549c1948a8d2c1"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "3393b65efd89ff8234d7d00b50ec02e3e6a5f72df2aab105db3018f0a555c3fb7fce2837ce745beaea2e10f85d8a66b1"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "990b2c7f2f32580cf04410cc600a7a4de1728ac319e701634df1d96901acc4342982b0428923fb4d7ed5dc840320e0ba"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "4b9b27257dd8d257bea7678103b8a116c0c6b44e424c6626411b72a6d9d941a0"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "c6a0d7e33f7aedf64d24567f6a3b3b80ecd782747223bafeff1ee902c8f117a83c9416b9670f96b734bab2531b3eebed6424666fafeadcd6d45e89b723ea22fc"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/io.dropwizard.metrics/metrics-core@4.2.38?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://metrics.dropwizard.io/metrics-core"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/dropwizard/metrics/issues/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/dropwizard/metrics/metrics-core/"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.slf4j/slf4j-api@2.0.17?type=jar",
+      "publisher" : "QOS.ch",
+      "group" : "org.slf4j",
+      "name" : "slf4j-api",
+      "version" : "2.0.17",
+      "description" : "The slf4j API",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "b6480d114a23683498ac3f746f959d2f"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "d9e58ac9c7779ba3bf8142aff6c830617a7fe60f"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "7b751d952061954d5abfed7181c1f645d336091b679891591d63329c622eb832"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "9a3e79db6666a6096a3021bb2e1d918f30f589d8de51d6b600f8ebd92515a510ae2d8f87919cc2dfa8365d64f10194cac8dfa0fb950160eef0e9da06f6caaeb9"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "6ea24f814a9b6ece428cfd0535e2f3b8927005745ef61006b50fdb5a90126ee5ea05650155382b3b755c5bce38ef3944"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "9b1015052f0ec43f9be09764e131834157599611cb52f6fe591c4ac6a8ab4817518f2a4b8871e5e738c8678e93af5557"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "00559b4f4066b4917ba4fe2a6f23111eaeada321112d030910d218ced9084b5e"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "9579c2f7e7516e177c2d493ccc9eb8150978cf19f6f09b28d116f6935239fd56dc6af2b62b3336f79b0b462445550cd1fb5377a07001a6f44aaab6a32fa2fa47"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "MIT",
+            "url" : "https://opensource.org/license/mit/"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.slf4j/slf4j-api@2.0.17?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "http://www.slf4j.org"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/qos-ch/slf4j/slf4j-parent/slf4j-api"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.osgi/osgi.core@8.0.0?type=jar",
+      "publisher" : "OSGi Alliance",
+      "group" : "org.osgi",
+      "name" : "osgi.core",
+      "version" : "8.0.0",
+      "description" : "OSGi Core Release 8, Interfaces and Classes for use in compiling bundles",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "ffd1f4098da0e85a2a781df130230c37"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "daa42a0e96c3b881e8c330a413813983e92d2426"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "41c24d187f67aaaf4745fab78fd1da66de7f37dd82581dbbbc9ba89645ba0166"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "0161f91ecb8ad102731c71ce73f96b99174b5bce2f216770226860cff8a3fcd12abec828399077a835b6765ed9bf9ec29be618de8d2a85b40d6250c00bab4404"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "8ceda8d626862113b7523ef71520e5d3e44d816250d35525b9be5e9f697cb6bce87771efcd68a82848cddcb637be606e"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "b36fba80caf3d320ae949733ea8551452bd6f0fc82db6077ac005c77a187b737651851e1e8b6d91f4526f3bf94b15d8f"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "2f6279dc3b98901ebfb6c383e6dcc3f00d2d1bde9b4df969f175bc11a8d06418"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "41af8b597ae9631e804605f6cc9f65804de27b0a90ed867debd252f28dc11cc1c3884a89c1bf5cbf6cccfe692302f7802f943d8679380512f79c2bae252068f2"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.osgi/osgi.core@8.0.0?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://www.osgi.org/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://osgi.org/gitweb/build.git"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.osgi/osgi.cmpn@7.0.0?type=jar",
+      "publisher" : "OSGi Alliance",
+      "group" : "org.osgi",
+      "name" : "osgi.cmpn",
+      "version" : "7.0.0",
+      "description" : "OSGi Compendium Release 7, Interfaces and Classes for use in compiling bundles",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "bc6bd0fe88a2d543d6477e611865a01b"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "4fa9f239a60aeca4a27648df329d112d562a350c"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "8e6445afe1abb3dcd43c60c8cd6c0f15b052a8f4228812559ba521c5ce91db34"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "7fb3ab1f27b097290d67369bde993c9fbbe2db81b541f90ac332d0181c2823b21b7f4444070b627216d601582997f16cb9886d8e177c3a24e7fa118a875316ae"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "112820e2ce3c55bd5b89ae1ac41b2cc2cd9b5294bf6c075b62e8a35d5e7507d6556d8aafc93e59ac988359d8599ef3a6"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "5bb1147222f4439ce9c04d434472f5549b1adef9c73591048b8c28b63d01c50d295d05307882fac2b39af78e04c63bfd"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "350342d6dde89b60b0d73f6d7724a184914e99d285142d46952724b1de860e49"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "4a5444bc250a36e7b1504f4deeee920d46ba0e253fe2ce8c02b269faec7a2331b79b42bff2b765c2b001ded8979df4c704550c1ff1daf726902a0a6835e11596"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.osgi/osgi.cmpn@7.0.0?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://www.osgi.org/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://osgi.org/gitweb/build.git"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.apache.karaf.shell/org.apache.karaf.shell.core@4.4.10?type=jar",
+      "publisher" : "The Apache Software Foundation",
+      "group" : "org.apache.karaf.shell",
+      "name" : "org.apache.karaf.shell.core",
+      "version" : "4.4.10",
+      "description" : "This bundle provides OSGi shell integration and console support.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "94a4b3691b8267ac82a1236d5203934b"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "ab92be0c55b350514dc42d4c1a0074e674f391bf"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "7c5f5292b29d7f1488496a9f335035e6f7f80c24cb5db23fde6f2aed96bd82ef"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "8fdfc7007ad5f201f453e370bf50f90a7a7db9c0a3f15fd32df96073407f18c10421cc2bdfcbb52f05f5638ce398fd94f7748d915f2afa51ba83d9bbcc9334e4"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "2708c8a517eaf9251d0894bac580f84b850613d4755caa65afc3b01518e198b11dbfd941570b3793a2bdbb9faa9f7327"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "ab5afc0d06f210c6db58ac8498737477ad7ebfa1d92fb4640d296200df91630c2e771748e104fea1ea533dcd68749310"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "ca4dc665b2934bf0c307f4ecb35df5e4b72daea6881808b9af773109746969a9"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "41c504839a51f2b0c60d2874a72df577003ac7480f2018faa34103e27401cb8f001c69190d0906ad013f52eb1958977e2f34410a3719564ae00eb547cc438491"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.apache.karaf.shell/org.apache.karaf.shell.core@4.4.10?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://www.apache.org/karaf/shell/org.apache.karaf.shell.core/"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "https://repository.apache.org/service/local/staging/deploy/maven2"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/apache/karaf/issues"
+        },
+        {
+          "type" : "mailing-list",
+          "url" : "https://www.mail-archive.com/dev%40karaf.apache.org/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://gitbox.apache.org/repos/asf?p=karaf.git;a=summary/shell/org.apache.karaf.shell.core"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.jline/jline@3.30.6?type=jar",
+      "group" : "org.jline",
+      "name" : "jline",
+      "version" : "3.30.6",
+      "description" : "JLine",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "754752aac7dcf6b2a219fb097b01a906"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "62949dd8d8f8d490170e0e16918d754660d3689c"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "bbc6c97167105a0aba2de65513c7ca4ca8fb78c0cb2875bde44ff15101dc4efa"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "8a16381dcc96895dc476420b08469d82c2e3634432ebf749755413c89b1a8117e1f6de6158dde7b96303ecfc886db36772d68df0a472882a3d3aa5654ec0492c"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "5635bc88eeda06d525cb1023c34c2c96a6f40df0e465179f7776d9b0d49a8a5a6d3f36f397fd5c65a16692ffbac22970"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "3c54775ab2d3d5979249e0b6c992323297653300e72c36a59534758e095c4300431287bb95d3d37071b9e15a6fea24fd"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "1fb0dc939fc0a976f8b8bac1f169d76f73dc6f5f0a43f70bf6fe2abd09bd4fc5"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "2c3889638f9b5f038b5334e54d998596e21e2631a1e5d3fe56c4f0bd8380f558aff626764f02c16660c1f6aef06aae8d6efd2baeb7d689c33cda9436f707559b"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "BSD-4-Clause"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.jline/jline@3.30.6?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/jline/jline3/jline"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "https://repo.maven.apache.org/maven2"
+        },
+        {
+          "type" : "vcs",
+          "url" : "http://github.com/jline/jline3/jline"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.apache.karaf.jaas/org.apache.karaf.jaas.boot@4.4.10?type=jar",
+      "publisher" : "The Apache Software Foundation",
+      "group" : "org.apache.karaf.jaas",
+      "name" : "org.apache.karaf.jaas.boot",
+      "version" : "4.4.10",
+      "description" : "Provides the JAAS classes loading at boot process.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "b977a269e7f8d6073f98b9f7a849347d"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "24b40f5c9f1a0934c6b35032ad1a82834052f4b4"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "e316ad5d25fb277eae2d78e2cf122519af39988b394f2cb959ad7251215168e0"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "1b8c9a8fd5b7edbde15a9bfe2a07c931b933d1d7cc5a9d523582dce58fc9e5c065a9c582c51a578114a24a41ffe7e0e46ecc759c5414976e3802cbe594fe63e0"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "f8a45bdf1a0d20e0f213971dddc05ae1ce6c45fcde2e7a42ecc656d3d90bcdf5bc745625aa543d02f7a46774b291d653"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "72713b56d356adbee1753adf603d279ed1882943645f8686e861b94232ee85d9f91b5929b97e687ffdb6af9a50a1e9f4"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "2cfff9aa4da67d95551631bf2a0da673f9080b0b75e326ee7d999b1e03ac6f2d"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "e190cd6299cbe658e91414641eb3e13cfb493ce694fc6336a3b2dc41b971b28c6aec9de61fbbae4a8a15e7a7a3555af96880e54047908a6f9d715269ae132f9e"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.apache.karaf.jaas/org.apache.karaf.jaas.boot@4.4.10?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://www.apache.org/karaf/jaas/org.apache.karaf.jaas.boot/"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "https://repository.apache.org/service/local/staging/deploy/maven2"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/apache/karaf/issues"
+        },
+        {
+          "type" : "mailing-list",
+          "url" : "https://www.mail-archive.com/dev%40karaf.apache.org/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://gitbox.apache.org/repos/asf?p=karaf.git;a=summary/jaas/org.apache.karaf.jaas.boot"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.apache.sshd/sshd-osgi@2.17.1?type=jar",
+      "publisher" : "The Apache Software Foundation",
+      "group" : "org.apache.sshd",
+      "name" : "sshd-osgi",
+      "version" : "2.17.1",
+      "description" : "The Apache Software Foundation provides support for the Apache community of open-source software projects. The Apache projects are characterized by a collaborative, consensus based development process, an open and pragmatic software license, and a desire to create high quality software that leads the way in its field. We consider ourselves not simply a group of projects sharing a server, but rather a community of developers and users.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "b4befe21de613ddcf110cd72e285f8c6"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "3d159a03c93fbc6e9022742d7a8616abc50dd0fa"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "77c7c19d86dd59c63cedc9fea79708df264ea779c30076ce5dcfc51dc941a78b"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "098913dcac7e217fe788db2d61dae1a239217b66346aebaa4eb294844c64d008d06ef72823a32b3de47bec1a26dcf32f277efe7341d62b6143d6b6d37e2669ad"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "04ec9f15a62ebdca06dee6cb1ce0a348a00568b0fd8f0a50c7640cdf1df564d87a5d32a171eb9e22f01f3be75e3a4dfd"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "b810165769130bd7b28fc3203816befda831e5ea18f8d26de651d05ba5b9122ff5a1449c95af41be9213d611e98237b2"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "55bed9577c54c7eb6f786b5e61616ba3e97ddcc3b8cf45812999075a33458644"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "269d28777b9a2194ead9be0eb3285d009df22f0ca9d891d264810296d7dfb0b98e490967585da1ecab71ada901281c22169063efc5e08043e6c3f8a041ac169e"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0",
+            "url" : "https://www.apache.org/licenses/LICENSE-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.apache.sshd/sshd-osgi@2.17.1?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://www.apache.org/sshd/sshd-osgi/"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/apache/mina-sshd/issues"
+        },
+        {
+          "type" : "mailing-list",
+          "url" : "https://mail-archives.apache.org/mod_mbox/mina-users/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/apache/mina-sshd/tree/sshd-2.17.1/sshd-osgi"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.slf4j/jcl-over-slf4j@1.7.36?type=jar",
+      "publisher" : "QOS.ch",
+      "group" : "org.slf4j",
+      "name" : "jcl-over-slf4j",
+      "version" : "1.7.36",
+      "description" : "JCL 1.2 implemented over SLF4J",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "8065610cde33ed9fd5d34367912c1938"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "d877e195a05aca4a2f1ad2ff14bfec1393af4b5e"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "ab57ca8fd223772c17365d121f59e94ecbf0ae59d08c03a3cb5b81071c019195"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "ac231ab44521bb5478742af13624db5c14aea809c3a2c13b989fba30186ba6db840f2d1b4aea54f9c1f779547b975fd042dd353f54025592774d40192bd71148"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "618704032ab3f8f87091ac797e2c9319a4b7f36a53e060695d56173b67ce9bc9e16c74cba228e758ac90e279df75428a"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "95a189173932d8080d91de8b71b9d1bca49a330db7cad9c41d51fe9514a9f6299b24e31441f06681b3dcc188807dcf40"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "7aef3380fdeae9b7a4adfa6ad69c2c92f246fcdbd4fcd3d1056ee846d8ef92fb"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "da7d1b8e5a150300e1051dda5755df64275e5822256ef624fd8a37c582cc2774aadce97f8732de52e54b1c74e28ba601d3bfc3482abb4a24f7e9f779e7e8dd64"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.slf4j/jcl-over-slf4j@1.7.36?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "http://www.slf4j.org"
+        },
+        {
+          "type" : "distribution-intake",
+          "url" : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/qos-ch/slf4j/jcl-over-slf4j"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?type=pom",
+      "group" : "org.opennms.plugins",
+      "name" : "prometheus-remote-writer-features",
+      "version" : "0.4.0-SNAPSHOT",
+      "description" : "OpenNMS Time Series Storage plugin that writes samples to any Prometheus-compatible Remote Write endpoint, exposing OpenNMS resource context as native Prometheus labels.",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?type=pom",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer-features"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer-features"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=jar",
+      "group" : "org.opennms.plugins",
+      "name" : "prometheus-remote-writer",
+      "version" : "0.4.0-SNAPSHOT",
+      "description" : "OpenNMS Time Series Storage plugin that writes samples to any Prometheus-compatible Remote Write endpoint, exposing OpenNMS resource context as native Prometheus labels.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "171ba20b8ccc5ffdd58bf43b2995d33f"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "3badd4534b4e0fdb4a6865a40a31f4b8cc372035"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "3893597d5763f89afbd35eb107314d4d131f4ac076d122ca547fe52b217fac5b"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "2b9090fecce6dd3a02bcb16bec7c1c9e879a5190d8aa0f2950e6b26d5ba1d24189e1f0b1bc624854a750a87c55e6fd544fed17ceb4fd297335e96d005cbeaec0"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "91b0793c96b4f2486e537fbb3699052c5b61f5c46e7acfc95c32fbdff6a6bc552bc52690410e9cca44830fe66fa09cb8"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "fd5e6eb0b7d644cc4dd894ca50998e938f4c0ed004f652c005b6facd4462107b98b09a182b5d253e070ad2adb87dd160"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "31b0dc7c8051ee3c0707f07f04140cc23e0180ddbc43174c9bea0131b661f789"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "2aed747e4644141c03bbf082fd5d5f56667b5ec3825175020fcd2a03e45b8fb969dda1a16206b3cf7e7af906e2bc449e65aed724f01ddf0f61e6b530d5b3fecd"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-kar@0.4.0-SNAPSHOT?type=kar",
+      "group" : "org.opennms.plugins",
+      "name" : "prometheus-remote-writer-kar",
+      "version" : "0.4.0-SNAPSHOT",
+      "description" : "OpenNMS Time Series Storage plugin that writes samples to any Prometheus-compatible Remote Write endpoint, exposing OpenNMS resource context as native Prometheus labels.",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-kar@0.4.0-SNAPSHOT?type=kar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/assembly/prometheus-remote-writer-kar"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/assembly/prometheus-remote-writer-kar"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?classifier=features&type=xml",
+      "group" : "org.opennms.plugins",
+      "name" : "prometheus-remote-writer-features",
+      "version" : "0.4.0-SNAPSHOT",
+      "description" : "OpenNMS Time Series Storage plugin that writes samples to any Prometheus-compatible Remote Write endpoint, exposing OpenNMS resource context as native Prometheus labels.",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "49636d78c3e3e2dbbb56b802c46b9535"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "b1f079f25c2a2b07216b8a585d45f2b78e79398a"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "7ac85cd99aea92fefd9a302a38fa640ced0349350ef44fdbbf713d001984c064"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "694478626bdf020f32ac1e21e9b25b8e343dbca64ee7c9798b707d991454b3e04fd4b460e3c9220bbf7c7ed3c05ecf3b28cabb2d6020071041fcb85d289c36d5"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "7b60bd309050177c756426f19d77e76e29ef481907c06b5e9d5a4e0e232d0b42ff0deaf72c61f2f8f448ad63d33d6687"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "f1f2a005384c43bb7abd4803f9d6fc912b8359cc73b948892f9ca296a07a71ad3b54387aa195ed17e9977b324dd401ad"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "ca92317a9aa73435e5a8b255342e6bf2b14e0df07b3a068a5eb21a7389f8bab3"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "7d9c4bf454452dbff4451b87119167dd3862be5a88e00e3c4ce61588acad4845f96093b9b33244aaee41cb76d207ee695d3e54e9e37b737f8bc86a9c5f4fec51"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?classifier=features&type=xml",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer-features"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer-features"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-docs@0.4.0-SNAPSHOT?type=pom",
+      "group" : "org.opennms.plugins",
+      "name" : "prometheus-remote-writer-docs",
+      "version" : "0.4.0-SNAPSHOT",
+      "description" : "Single-page operator documentation rendered from AsciiDoc sources via asciidoctor-maven-plugin. Produces target/generated-docs/index.html; no installable artifact. Invoked by `make docs` and the publish-docs GitHub Actions workflow — never on the inner-loop `make build` path.",
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-docs@0.4.0-SNAPSHOT?type=pom",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer-docs"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/opennms-forge/prometheus-remote-writer/prometheus-remote-writer-docs"
+        }
+      ]
+    }
+  ],
+  "dependencies" : [
+    {
+      "ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-parent@0.4.0-SNAPSHOT?type=pom",
+      "dependsOn" : [
+        "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=bundle",
+        "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?type=pom",
+        "pkg:maven/org.opennms.plugins/prometheus-remote-writer-kar@0.4.0-SNAPSHOT?type=kar",
+        "pkg:maven/org.opennms.plugins/prometheus-remote-writer-docs@0.4.0-SNAPSHOT?type=pom"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=bundle",
+      "dependsOn" : [
+        "pkg:maven/org.opennms.integration.api/api@2.0.0?type=jar",
+        "pkg:maven/org.opennms.integration.api/common@2.0.0?type=jar",
+        "pkg:maven/com.squareup.okhttp3/okhttp-jvm@5.3.2?type=jar",
+        "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar",
+        "pkg:maven/org.json/json@20251224?type=jar",
+        "pkg:maven/com.google.protobuf/protobuf-java@4.34.1?type=jar",
+        "pkg:maven/io.dropwizard.metrics/metrics-core@4.2.38?type=jar",
+        "pkg:maven/org.slf4j/slf4j-api@2.0.17?type=jar",
+        "pkg:maven/org.osgi/osgi.core@8.0.0?type=jar",
+        "pkg:maven/org.osgi/osgi.cmpn@7.0.0?type=jar",
+        "pkg:maven/org.apache.karaf.shell/org.apache.karaf.shell.core@4.4.10?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.integration.api/api@2.0.0?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.integration.api/common@2.0.0?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.opennms.integration.api/api@2.0.0?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/com.squareup.okhttp3/okhttp-jvm@5.3.2?type=jar",
+      "dependsOn" : [
+        "pkg:maven/com.squareup.okio/okio-jvm@3.16.4?type=jar",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.2.21?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/com.squareup.okio/okio-jvm@3.16.4?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.2.21?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.2.21?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.jetbrains/annotations@13.0?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.jetbrains/annotations@13.0?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.json/json@20251224?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/com.google.protobuf/protobuf-java@4.34.1?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/io.dropwizard.metrics/metrics-core@4.2.38?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.slf4j/slf4j-api@2.0.17?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.slf4j/slf4j-api@2.0.17?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.osgi/osgi.core@8.0.0?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.osgi/osgi.cmpn@7.0.0?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.apache.karaf.shell/org.apache.karaf.shell.core@4.4.10?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.jline/jline@3.30.6?type=jar",
+        "pkg:maven/org.apache.karaf.jaas/org.apache.karaf.jaas.boot@4.4.10?type=jar",
+        "pkg:maven/org.apache.sshd/sshd-osgi@2.17.1?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.jline/jline@3.30.6?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.apache.karaf.jaas/org.apache.karaf.jaas.boot@4.4.10?type=jar",
+      "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/org.apache.sshd/sshd-osgi@2.17.1?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.slf4j/slf4j-api@2.0.17?type=jar",
+        "pkg:maven/org.slf4j/jcl-over-slf4j@1.7.36?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.slf4j/jcl-over-slf4j@1.7.36?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.slf4j/slf4j-api@2.0.17?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?type=pom",
+      "dependsOn" : [
+        "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/com.squareup.okhttp3/okhttp-jvm@5.3.2?type=jar",
+        "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar",
+        "pkg:maven/org.json/json@20251224?type=jar",
+        "pkg:maven/com.google.protobuf/protobuf-java@4.34.1?type=jar",
+        "pkg:maven/io.dropwizard.metrics/metrics-core@4.2.38?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-kar@0.4.0-SNAPSHOT?type=kar",
+      "dependsOn" : [
+        "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?classifier=features&type=xml"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-features@0.4.0-SNAPSHOT?classifier=features&type=xml",
+      "dependsOn" : [
+        "pkg:maven/org.opennms.plugins/prometheus-remote-writer@0.4.0-SNAPSHOT?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.opennms.plugins/prometheus-remote-writer-docs@0.4.0-SNAPSHOT?type=pom",
+      "dependsOn" : [ ]
+    }
+  ]
+}

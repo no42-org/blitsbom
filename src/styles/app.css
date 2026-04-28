@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+#app {
+  min-height: 100%;
+}
+
+/* Subtle focus ring matching the restrained palette. */
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid theme('colors.accent.500');
+  outline-offset: 2px;
+}

@@ -1,0 +1,92 @@
+/* Print-only styles. Loaded with media="print" so screen rendering is
+ * untouched. The summary header doubles as the cover; interactive UI is
+ * suppressed; the table flows across pages with repeating headers. */
+
+@page {
+  size: A4;
+  margin: 18mm 14mm 18mm 14mm;
+}
+
+@media print {
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10pt;
+  }
+
+  /* Hide interactive chrome that has no meaning on paper. */
+  .drop-zone,
+  .search,
+  .toolbar,
+  .chips__clear,
+  .chip__remove,
+  .page__footer,
+  .banner__action,
+  .sort__arrow {
+    display: none !important;
+  }
+
+  /* The brand row stays as a small heading at the very top of the first page. */
+  .page__masthead {
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 4mm;
+    margin-bottom: 4mm;
+  }
+  .page__privacy {
+    display: none !important;
+  }
+
+  /* Stat cards and bars: print as flat outlined blocks. */
+  .summary-header,
+  .chart,
+  .table-wrap {
+    border: 1px solid #999 !important;
+    background: white !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 4mm;
+  }
+
+  .stat {
+    background: white !important;
+  }
+
+  .bar__track {
+    background: #eee !important;
+  }
+  .bar__fill {
+    background: #444 !important;
+    opacity: 1 !important;
+  }
+  .bar {
+    cursor: default !important;
+  }
+
+  .components-table thead {
+    display: table-header-group; /* repeat header on every printed page */
+  }
+  .components-table tbody tr {
+    page-break-inside: avoid;
+  }
+  .components-table thead th,
+  .components-table tbody td {
+    border-color: #ccc !important;
+  }
+
+  .license-pill {
+    background: white !important;
+    color: #000 !important;
+    border: 1px solid #999 !important;
+  }
+
+  .badge {
+    background: white !important;
+    border: 1px solid #999 !important;
+    color: #000 !important;
+  }
+
+  .sort {
+    pointer-events: none;
+  }
+}
