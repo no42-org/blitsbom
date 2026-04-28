@@ -3,9 +3,11 @@ import {
   applyFilters,
   computeCategoryBreakdown,
   computeLicenseBreakdown,
+  computeOriginatorBreakdown,
   distinctScopes,
   distinctTypes,
   licensesInCategory,
+  topOriginatorIds,
 } from './filters';
 import { filtersToQueryString, searchParamsToFilters } from './url';
 
@@ -31,6 +33,7 @@ class SbomStore {
   scopeFilters = $state<Set<string>>(new Set());
   typeFilters = $state<Set<string>>(new Set());
   categoryFilters = $state<Set<LicenseCategory>>(new Set());
+  originatorFilters = $state<Set<string>>(new Set());
 
   // Plain getter, NOT $derived. Reads the raw $state.raw loadedSbom and
   // returns its components array directly. Using $derived here was making
@@ -40,14 +43,26 @@ class SbomStore {
     return this.loadedSbom?.components ?? EMPTY_COMPONENTS;
   }
 
+  // Top-N (named) originator slice — needed both to render the donut and
+  // to resolve the synthetic "Other" filter token in applyFilters.
+  originatorBreakdownAll = $derived(
+    computeOriginatorBreakdown(this.components),
+  );
+  topOriginatorIdSet = $derived(topOriginatorIds(this.originatorBreakdownAll));
+
   filteredComponents = $derived(
-    applyFilters(this.components, {
-      query: this.query,
-      licenses: this.licenseFilters,
-      scopes: this.scopeFilters,
-      types: this.typeFilters,
-      categories: this.categoryFilters,
-    }),
+    applyFilters(
+      this.components,
+      {
+        query: this.query,
+        licenses: this.licenseFilters,
+        scopes: this.scopeFilters,
+        types: this.typeFilters,
+        categories: this.categoryFilters,
+        originators: this.originatorFilters,
+      },
+      this.topOriginatorIdSet,
+    ),
   );
 
   categoryBreakdownAll = $derived(computeCategoryBreakdown(this.components));
@@ -71,6 +86,17 @@ class SbomStore {
   licenseBreakdown = $derived(computeLicenseBreakdown(this.filteredComponents));
   availableScopes = $derived(distinctScopes(this.components));
   availableTypes = $derived(distinctTypes(this.components));
+
+  // Distinct non-null originators across all loaded components — drives
+  // the "Originators" stat in the summary header. We count uniques rather
+  // than the donut's top-N + Other since the long tail still has identity.
+  distinctOriginatorCount = $derived.by(() => {
+    const set = new Set<string>();
+    for (const c of this.components) {
+      if (c.originator !== null) set.add(c.originator);
+    }
+    return set.size;
+  });
 
   setLoaded(sbom: LoadedSbom): void {
     this.loadedSbom = sbom;
@@ -106,6 +132,7 @@ class SbomStore {
     this.scopeFilters = new Set();
     this.typeFilters = new Set();
     this.categoryFilters = new Set();
+    this.originatorFilters = new Set();
   }
 
   toggleLicense(value: string): void {
@@ -133,12 +160,23 @@ class SbomStore {
     this.syncToUrl();
   }
 
+  toggleOriginator(value: string): void {
+    this.originatorFilters = toggle(this.originatorFilters, value);
+    this.syncToUrl();
+  }
+
+  clearOriginator(): void {
+    this.originatorFilters = new Set();
+    this.syncToUrl();
+  }
+
   clearFilters(): void {
     this.query = '';
     this.licenseFilters = new Set();
     this.scopeFilters = new Set();
     this.typeFilters = new Set();
     this.categoryFilters = new Set();
+    this.originatorFilters = new Set();
     this.syncToUrl();
   }
 
@@ -152,6 +190,7 @@ class SbomStore {
     this.scopeFilters = new Set(f.scopes);
     this.typeFilters = new Set(f.types);
     this.categoryFilters = new Set(f.categories);
+    this.originatorFilters = new Set(f.originators);
   }
 
   syncToUrl(): void {
@@ -162,6 +201,7 @@ class SbomStore {
       scopes: this.scopeFilters,
       types: this.typeFilters,
       categories: this.categoryFilters,
+      originators: this.originatorFilters,
     });
     const next = `${window.location.pathname}${qs}${window.location.hash}`;
     if (next !== window.location.pathname + window.location.search + window.location.hash) {

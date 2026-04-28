@@ -4,6 +4,7 @@
   import DropZone from './DropZone.svelte';
   import SummaryHeader from './SummaryHeader.svelte';
   import LicenseDonut from './LicenseDonut.svelte';
+  import OriginatorDonut from './OriginatorDonut.svelte';
   import LicenseDrilldown from './LicenseDrilldown.svelte';
   import SearchBar from './SearchBar.svelte';
   import FilterChips from './FilterChips.svelte';
@@ -47,9 +48,12 @@
         componentCount={store.filteredComponents.length}
         licenseCount={store.licenseBreakdown.length}
         typeCount={store.availableTypes.length}
-        vulnCount={sbom.metadata.vulnerabilityCount}
+        originatorCount={store.distinctOriginatorCount}
       />
-      <LicenseDonut breakdown={store.categoryBreakdownAll} />
+      <div class="donut-row">
+        <LicenseDonut breakdown={store.categoryBreakdownAll} />
+        <OriginatorDonut breakdown={store.originatorBreakdownAll} />
+      </div>
       <LicenseDrilldown />
 
       <section class="controls">
@@ -83,11 +87,25 @@
 
 <style>
   .page {
-    max-width: 80rem;
+    max-width: 110rem;
     margin: 0 auto;
     padding: 2rem 1.5rem 3rem;
     display: grid;
     gap: 1.5rem;
+  }
+  .donut-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: stretch;
+  }
+  .donut-row > :global(*) {
+    min-width: 0;
+  }
+  @media (max-width: 1100px) {
+    .donut-row {
+      grid-template-columns: 1fr;
+    }
   }
   .page__masthead {
     display: flex;

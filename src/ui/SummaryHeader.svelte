@@ -6,10 +6,10 @@
     componentCount: number;
     licenseCount: number;
     typeCount: number;
-    vulnCount: number;
+    originatorCount: number;
   }
 
-  let { sbom, componentCount, licenseCount, typeCount, vulnCount }: Props =
+  let { sbom, componentCount, licenseCount, typeCount, originatorCount }: Props =
     $props();
 
   const formattedTimestamp = $derived(formatTimestamp(sbom.metadata.timestamp));
@@ -56,8 +56,8 @@
       <dt class="stat__label">Types</dt>
     </div>
     <div class="stat">
-      <dd class="stat__value">{vulnCount}</dd>
-      <dt class="stat__label">Vulnerabilities</dt>
+      <dd class="stat__value">{originatorCount}</dd>
+      <dt class="stat__label">Originators</dt>
     </div>
   </dl>
 </header>

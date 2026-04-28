@@ -40,6 +40,7 @@ describe('URL serialization', () => {
       scopes: new Set(['required']),
       types: new Set(['library']),
       categories: new Set(['permissive' as LicenseCategory]),
+      originators: new Set(['The Apache Software Foundation']),
     };
     const params = filtersToSearchParams(original);
     const restored = searchParamsToFilters(params);
@@ -48,6 +49,7 @@ describe('URL serialization', () => {
     expect([...restored.scopes]).toEqual(['required']);
     expect([...restored.types]).toEqual(['library']);
     expect([...restored.categories]).toEqual(['permissive']);
+    expect([...restored.originators]).toEqual(['The Apache Software Foundation']);
   });
 
   it('drops invalid category values rather than corrupting state', () => {

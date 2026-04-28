@@ -6,6 +6,7 @@ const PARAM_LICENSE = 'license';
 const PARAM_SCOPE = 'scope';
 const PARAM_TYPE = 'type';
 const PARAM_CATEGORY = 'category';
+const PARAM_ORIGINATOR = 'originator';
 
 const VALID_CATEGORIES: ReadonlySet<LicenseCategory> = new Set<LicenseCategory>([
   'undeclared',
@@ -25,6 +26,9 @@ export function filtersToSearchParams(filters: FilterState): URLSearchParams {
   for (const v of [...filters.scopes].sort()) params.append(PARAM_SCOPE, v);
   for (const v of [...filters.types].sort()) params.append(PARAM_TYPE, v);
   for (const v of [...filters.categories].sort()) params.append(PARAM_CATEGORY, v);
+  for (const v of [...filters.originators].sort()) {
+    params.append(PARAM_ORIGINATOR, v);
+  }
   return params;
 }
 
@@ -42,6 +46,7 @@ export function searchParamsToFilters(params: URLSearchParams): FilterState {
     scopes: new Set(params.getAll(PARAM_SCOPE)),
     types: new Set(params.getAll(PARAM_TYPE)),
     categories,
+    originators: new Set(params.getAll(PARAM_ORIGINATOR)),
   };
 }
 

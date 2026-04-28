@@ -26,6 +26,20 @@
   --color-license-unrecognized: #94a3b8;     /* slate-400 — neutral grey, SPDX-id mismatch */
   --color-license-undeclared: #475569;       /* slate-600 — dark grey, NOASSERTION */
 
+  /* Originator palette — top-N cycling colors (distinct from the license
+     palette so the two donuts read as separate facets). The synthetic
+     "Other" / "Unknown" buckets share neutrals with the license greys. */
+  --color-originator-1: #3b82f6;             /* blue-500 */
+  --color-originator-2: #8b5cf6;             /* violet-500 */
+  --color-originator-3: #ec4899;             /* pink-500 */
+  --color-originator-4: #14b8a6;             /* teal-500 */
+  --color-originator-5: #6366f1;             /* indigo-500 */
+  --color-originator-6: #06b6d4;             /* cyan-500 */
+  --color-originator-7: #84cc16;             /* lime-500 */
+  --color-originator-8: #d97706;             /* amber-600 */
+  --color-originator-other: #94a3b8;         /* slate-400 — long-tail aggregate */
+  --color-originator-unknown: #475569;       /* slate-600 — no originator declared */
+
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
