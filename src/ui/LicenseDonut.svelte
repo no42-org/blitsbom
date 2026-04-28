@@ -207,8 +207,8 @@
     align-items: center;
   }
   .donut__svg {
-    width: 14rem;
-    height: 14rem;
+    width: 25rem;
+    height: 25rem;
   }
   .donut__segment {
     cursor: pointer;

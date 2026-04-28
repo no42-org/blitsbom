@@ -164,7 +164,7 @@
             <td>
               <span class="badge badge--neutral">{c.type}</span>
             </td>
-            <td class="mono purl">{c.purl ?? '—'}</td>
+            <td class="mono purl" title={c.purl ?? ''}>{c.purl ?? '—'}</td>
           </tr>
         {/each}
       {/if}
@@ -198,7 +198,7 @@
     background: white;
     border: 1px solid var(--color-ink-200);
     border-radius: 12px;
-    overflow: hidden;
+    overflow-x: auto;
   }
   .components-table {
     width: 100%;
@@ -255,8 +255,10 @@
     color: var(--color-ink-700);
   }
   .purl {
-    word-break: break-all;
     max-width: 24rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cell-name {
     display: flex;

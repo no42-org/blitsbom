@@ -26,10 +26,10 @@
   <header class="page__masthead">
     <div class="brand">
       <span class="brand__name">blitsbom</span>
-      <span class="brand__tag">CycloneDX SBOM viewer</span>
+      <span class="brand__tag">Pixelperfect SBOM analytics</span>
     </div>
     <p class="page__privacy">
-      Everything stays in your browser — no upload, no telemetry.
+      Everything stays in your browser — no upload, no telemetry, no tracking.
     </p>
   </header>
 
@@ -65,9 +65,14 @@
   </main>
 
   <footer class="page__footer">
-    <span>blitsbom · runs entirely in your browser</span>
+    <span>
+      <a
+        href="https://github.com/no42-org/blitsbom"
+        target="_blank"
+        rel="noopener noreferrer">blitsbom</a> · runs entirely in your browser
+    </span>
     <span class="page__credit">
-      Made with ❤️ for Open Source in Europe ·
+      Made with AI and ❤️ for Open Source in Europe ·
       <a
         href="https://blog.no42.org/page/about/"
         target="_blank"
@@ -139,11 +144,11 @@
     gap: 0.5rem 1.5rem;
     justify-content: space-between;
   }
-  .page__credit a {
+  .page__footer a {
     color: var(--color-accent-600);
     text-decoration: none;
   }
-  .page__credit a:hover {
+  .page__footer a:hover {
     text-decoration: underline;
   }
 </style>
