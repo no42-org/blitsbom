@@ -16,14 +16,12 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 
 | Artifact                                  | Source                          | Pushed by                      |
 |-------------------------------------------|---------------------------------|--------------------------------|
-| GitHub Pages site (`https://no42-org.github.io/blitsbom/`) | tip of `main`                   | `.github/workflows/pages.yml`  |
 | `dist.zip` + `dist.zip.sha512` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
 | `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` | every push to `main`           | `.github/workflows/docker.yml` |
 | `ghcr.io/no42-org/blitsbom:latest` / `:X.Y.Z` / `:X.Y` | the `vX.Y.Z` Git tag           | `.github/workflows/docker.yml` |
 
 Notes:
 
-- The Pages deployment is continuous — every merge to `main` updates it. There is no separate "promote to prod" step.
 - GHCR's `:rc` tag is overwritten on every push to `main`. Use `:main-<sha>` if you need to pin to a specific commit.
 - GHCR's `:latest` is moved on every release; use `:X.Y.Z` to pin to a specific version.
 
@@ -55,7 +53,7 @@ git push origin main
 git push origin v0.2.0
 ```
 
-Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip`) and `docker.yml` (`:latest`, `:0.2.0`, `:0.2` in GHCR). Pushing to `main` fires `pages.yml` separately.
+Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip` + checksum) and `docker.yml` (`:latest`, `:0.2.0`, `:0.2` in GHCR). The corresponding push to `main` fires `docker.yml` separately for the `:rc` tag.
 
 ## Verifying the release
 
@@ -71,7 +69,7 @@ After the workflows turn green:
    docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:0.2.0
    open http://localhost:8080
    ```
-3. **Pages** — visit the site; load one of the sample SBOMs end-to-end.
+   Then load one of the sample SBOMs end-to-end and confirm the donut + table render.
 
 ## Hotfixes
 
@@ -99,7 +97,6 @@ Then cut a new patch version.
 ## Troubleshooting
 
 - **`docker.yml` fails on first run with "denied: permission_denied"** — the GHCR package didn't exist yet and is private by default. After the first successful publish, set the package visibility to `public` under **Repository → Packages → blitsbom → Package settings**, or grant the workflow `packages: write` (already configured here).
-- **`pages.yml` fails to deploy** — check that **Settings → Pages → Source** is set to "GitHub Actions". This is a one-time setup per repo.
 - **`size-check` fails locally but passes in CI** — local `node_modules` may be stale. Run `make clean && make install && make size-check`.
 - **Sample-SBOM e2e times out** — the `opennms-core` fixture (~29 MB, 2839 components) is intentionally aggressive. If it regresses, look at recent changes to the parser or the store's `$state.raw` patterns.
 

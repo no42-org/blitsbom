@@ -48,13 +48,9 @@ The image is a static nginx serving the built bundle — no telemetry, no outbou
 | `:rc`                  | tip of `main`                 | on every push to `main`     |
 | `:main-<short-sha>`    | a specific main commit        | on every push to `main`     |
 
-## Three install paths
+## Two install paths
 
-### 1. Hosted (zero install)
-
-Open the GitHub Pages site for this repository — drop your `bom.json` onto the page. Done.
-
-### 2. Self-host (drop into any static server)
+### 1. Self-host (drop into any static server)
 
 Each tagged release publishes a `dist.zip` of the built static files plus a `dist.zip.sha512` checksum.
 
@@ -69,9 +65,9 @@ sha512sum -c dist.zip.sha512
 unzip dist.zip -d /var/www/blitsbom
 ```
 
-Any static server works: nginx, Apache, S3 + CloudFront, Caddy, `python -m http.server`, GitHub Pages on your own repo. blitsbom uses relative asset paths, so it runs from any subdirectory.
+Any static server works: nginx, Apache, S3 + CloudFront, Caddy, `python -m http.server`. blitsbom uses relative asset paths, so it runs from any subdirectory.
 
-### 3. Air-gapped (double-click `index.html`)
+### 2. Air-gapped (double-click `index.html`)
 
 For regulated or offline environments:
 
@@ -148,9 +144,8 @@ CI invokes `make` targets, never the underlying npm scripts directly, so the dev
 
 ## Deployment
 
-- Pushing to `main` triggers `.github/workflows/pages.yml`, which builds, runs `make verify`, runs the size and `file://` smoke checks, and publishes `dist/` to GitHub Pages.
-- Pushing to `main` also triggers `.github/workflows/docker.yml`, which builds and pushes `ghcr.io/no42-org/blitsbom:rc` (and `:main-<short-sha>`).
-- Pushing a tag matching `v*` triggers `.github/workflows/release.yml` (produces `dist.zip` and attaches it to the GitHub Release) and `.github/workflows/docker.yml` (publishes `:latest`, `:X.Y.Z`, `:X.Y` to GHCR).
+- Pushing to `main` triggers `.github/workflows/docker.yml`, which builds and pushes `ghcr.io/no42-org/blitsbom:rc` (and `:main-<short-sha>`).
+- Pushing a tag matching `v*` triggers `.github/workflows/release.yml` (produces `dist.zip` + `dist.zip.sha512` and attaches them to the GitHub Release) and `.github/workflows/docker.yml` (publishes `:latest`, `:X.Y.Z`, `:X.Y` to GHCR).
 
 All third-party Actions are pinned to immutable commit SHAs and kept current by Dependabot.
 
