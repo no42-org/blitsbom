@@ -102,7 +102,7 @@
     border: 2px dashed var(--color-ink-300);
     border-radius: 12px;
     padding: 4rem 2rem;
-    background: white;
+    background: var(--color-surface);
     cursor: pointer;
     transition: border-color 120ms ease, background-color 120ms ease;
   }

@@ -3,13 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="referrer" content="no-referrer" />
     <title>blitsbom — Pixelperfect SBOM analytics</title>
     <meta
       name="description"
       content="A zero-install browser-only viewer for CycloneDX SBOM files. Nothing leaves your browser."
     />
+    <script>
+      // Pre-apply the user's saved theme override before paint to avoid a
+      // flash of the wrong palette. Mirrors the logic in ThemeToggle.svelte;
+      // any failure is silently ignored (file://, private mode, etc.).
+      try {
+        var t = localStorage.getItem('blitsbom-theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.dataset.theme = t;
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body class="bg-ink-50 text-ink-900 antialiased">
     <div id="app"></div>

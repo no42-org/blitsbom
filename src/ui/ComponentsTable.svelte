@@ -133,6 +133,37 @@
     if (sortKey !== key) return '';
     return sortDir === 'asc' ? '↑' : '↓';
   }
+
+  // Short display for SHA-style versions ("sha256:abc…") so the column
+  // doesn't blow out horizontally. Non-SHA versions render unchanged.
+  // The full value is preserved separately and copied to the clipboard
+  // when the user hits the icon.
+  const SHA_RE = /^(sha(?:1|224|256|384|512))[:-]([0-9a-f]+)$/i;
+  function displayVersion(v: string): string {
+    const m = v.match(SHA_RE);
+    if (!m) return v;
+    const algo = m[1]!.toLowerCase();
+    const digest = m[2]!;
+    if (digest.length <= 12) return `${algo}:${digest}`;
+    return `${algo}:${digest.slice(0, 12)}…`;
+  }
+
+  // Briefly swap the clipboard icon to a checkmark on the row that was
+  // just copied, so the action gives a visible confirmation. Tracked by
+  // visibleRows index; cleared after 1.5s.
+  let copiedIdx = $state<number | null>(null);
+  async function copyVersion(idx: number, value: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(value);
+      copiedIdx = idx;
+      setTimeout(() => {
+        if (copiedIdx === idx) copiedIdx = null;
+      }, 1500);
+    } catch {
+      // Clipboard API unavailable (insecure context, etc.) — silently
+      // skip rather than throwing into the user's face.
+    }
+  }
 </script>
 
 <div class="table-wrap">
@@ -191,7 +222,53 @@
                 <span class="cell-name__name">{c.name}</span>
               </div>
             </td>
-            <td class="mono">{c.version ?? '—'}</td>
+            <td class="cell-version">
+              {#if c.version}
+                <button
+                  type="button"
+                  class="copy-btn"
+                  onclick={() => copyVersion(idx, c.version!)}
+                  aria-label={`Copy ${c.version} to clipboard`}
+                  title={copiedIdx === idx ? 'Copied!' : 'Copy version'}
+                >
+                  {#if copiedIdx === idx}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  {:else}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  {/if}
+                </button>
+                <span class="mono" title={c.version}>
+                  {displayVersion(c.version)}
+                </span>
+              {:else}
+                <span class="muted">—</span>
+              {/if}
+            </td>
             <td>
               {#if c.licenses.length === 0}
                 <span class="muted">—</span>
@@ -328,7 +405,7 @@
 
 <style>
   .table-wrap {
-    background: white;
+    background: var(--color-surface);
     border: 1px solid var(--color-ink-200);
     border-radius: 12px;
     overflow-x: auto;
@@ -386,6 +463,23 @@
   .mono {
     font-family: var(--font-mono);
     color: var(--color-ink-700);
+  }
+  .cell-version {
+    white-space: nowrap;
+  }
+  .copy-btn {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    margin-right: 0.375rem;
+    color: var(--color-ink-400);
+    cursor: pointer;
+    line-height: 0;
+    vertical-align: middle;
+  }
+  .copy-btn:hover {
+    color: var(--color-accent-600);
   }
   .purl {
     max-width: 24rem;
@@ -501,7 +595,7 @@
   .more__select {
     appearance: none;
     border: 1px solid var(--color-ink-200);
-    background: white;
+    background: var(--color-surface);
     border-radius: 6px;
     padding: 0.25rem 1.75rem 0.25rem 0.5rem;
     font: inherit;
@@ -523,7 +617,7 @@
   .pager__btn {
     appearance: none;
     border: 1px solid var(--color-ink-200);
-    background: white;
+    background: var(--color-surface);
     border-radius: 6px;
     padding: 0.25rem 0.625rem;
     font: inherit;

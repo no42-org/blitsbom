@@ -40,7 +40,7 @@
   .btn {
     appearance: none;
     border: 1px solid var(--color-ink-200);
-    background: white;
+    background: var(--color-surface);
     border-radius: 8px;
     padding: 0.5rem 0.875rem;
     font-size: 0.875rem;

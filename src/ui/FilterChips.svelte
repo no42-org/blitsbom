@@ -76,7 +76,7 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.5rem 0.25rem 0.625rem;
-    background: white;
+    background: var(--color-surface);
     border: 1px solid var(--color-ink-200);
     border-radius: 999px;
     font-size: 0.8125rem;

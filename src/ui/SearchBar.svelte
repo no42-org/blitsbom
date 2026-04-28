@@ -43,7 +43,7 @@
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--color-ink-200);
     border-radius: 8px;
-    background: white;
+    background: var(--color-surface);
     font-size: 0.9375rem;
     color: var(--color-ink-900);
   }
@@ -54,7 +54,7 @@
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--color-ink-200);
     border-radius: 8px;
-    background: white;
+    background: var(--color-surface);
     font-size: 0.875rem;
     color: var(--color-ink-600);
     cursor: pointer;

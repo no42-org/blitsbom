@@ -40,6 +40,14 @@
   --color-originator-other: #94a3b8;         /* slate-400 — long-tail aggregate */
   --color-originator-unknown: #475569;       /* slate-600 — no originator declared */
 
+  /* Semantic surface tokens. Reference these (not literal `white`) for
+     anything that needs to flip in dark mode. `surface` = card / table
+     background; `segment-gap` = the thin stroke that separates donut
+     segments and must match the surrounding card so the gap looks
+     "punched out" rather than drawn in. */
+  --color-surface: #ffffff;
+  --color-segment-gap: #ffffff;
+
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -64,4 +72,47 @@ body {
 :where(button, a, input, select, [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent-500);
   outline-offset: 2px;
+}
+
+/* Dark mode — three states: follow system (default), forced light, forced
+   dark. The header-toggle stamps `data-theme="light|dark"` on <html> and
+   localStorage persists the choice; with no attribute we honor the OS.
+   Component code keeps reading the same `var(--color-ink-N)` tokens; we
+   just flip the values. The license + originator palettes stay vivid;
+   only neutrals invert (slate scale 50 ↔ 900). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-ink-50: #0f172a;
+    --color-ink-100: #1e293b;
+    --color-ink-200: #334155;
+    --color-ink-300: #475569;
+    --color-ink-400: #64748b;
+    --color-ink-500: #94a3b8;
+    --color-ink-600: #cbd5e1;
+    --color-ink-700: #e2e8f0;
+    --color-ink-800: #f1f5f9;
+    --color-ink-900: #f8fafc;
+    --color-surface: #1e293b;
+    --color-segment-gap: #1e293b;
+    --color-accent-500: #3b82f6;
+    --color-accent-600: #60a5fa;
+    --color-license-undeclared: #94a3b8;
+  }
+}
+:root[data-theme="dark"] {
+  --color-ink-50: #0f172a;
+  --color-ink-100: #1e293b;
+  --color-ink-200: #334155;
+  --color-ink-300: #475569;
+  --color-ink-400: #64748b;
+  --color-ink-500: #94a3b8;
+  --color-ink-600: #cbd5e1;
+  --color-ink-700: #e2e8f0;
+  --color-ink-800: #f1f5f9;
+  --color-ink-900: #f8fafc;
+  --color-surface: #1e293b;
+  --color-segment-gap: #1e293b;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #60a5fa;
+  --color-license-undeclared: #94a3b8;
 }

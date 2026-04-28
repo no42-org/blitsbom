@@ -11,6 +11,7 @@
   import ComponentsTable from './ComponentsTable.svelte';
   import ErrorBanner from './ErrorBanner.svelte';
   import Toolbar from './Toolbar.svelte';
+  import ThemeToggle from './ThemeToggle.svelte';
 
   onMount(() => {
     store.hydrateFromUrl();
@@ -29,9 +30,12 @@
       <span class="brand__name">blitsbom</span>
       <span class="brand__tag">Pixelperfect SBOM analytics</span>
     </div>
-    <p class="page__privacy">
-      Everything stays in your browser — no upload, no telemetry, no tracking.
-    </p>
+    <div class="page__masthead-right">
+      <p class="page__privacy">
+        Everything stays in your browser — no upload, no telemetry, no tracking.
+      </p>
+      <ThemeToggle />
+    </div>
   </header>
 
   <main class="page__main">
@@ -110,11 +114,18 @@
   .page__masthead {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.5rem 1rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--color-ink-200);
+  }
+  .page__masthead-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
   .brand {
     display: inline-flex;

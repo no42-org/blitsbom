@@ -129,7 +129,6 @@
             <path
               d={arc.d}
               fill={fillFor(meta.id, meta.colorToken)}
-              stroke="white"
               stroke-width="1"
               stroke-linejoin="round"
               class="donut__segment"
@@ -205,7 +204,7 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 1.5rem;
-    background: white;
+    background: var(--color-surface);
     border: 1px solid var(--color-ink-200);
     border-radius: 12px;
   }
@@ -231,6 +230,9 @@
     cursor: pointer;
     transition: transform 80ms ease, opacity 80ms ease;
     transform-origin: 100px 100px;
+    /* Stroke matches the surrounding card so the inter-segment gap reads
+       as "punched out" — flips with dark mode automatically. */
+    stroke: var(--color-segment-gap);
   }
   .donut__segment:hover {
     opacity: 0.85;

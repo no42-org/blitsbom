@@ -67,7 +67,7 @@
     display: grid;
     gap: 1.5rem;
     padding: 2rem;
-    background: white;
+    background: var(--color-surface);
     border: 1px solid var(--color-ink-200);
     border-radius: 12px;
   }
