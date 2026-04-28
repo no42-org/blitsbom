@@ -21,16 +21,22 @@ const FIXTURES = [
     expectedCount: 24,
     expectsPermissive: true,
   },
-  // The two big SPDX samples (opennms-core, opennms-minion) are exercised
-  // by the unit tests (src/parse/spdx.test.ts) — they parse, classify, and
-  // assert counts. Loading them via headless Chromium hangs the main thread
-  // post-render in a way I haven't been able to isolate; tracking as v2
-  // follow-up. The synthetic SPDX fixture below covers the format-detection
-  // path through the full UI without the giant document.
   {
     name: 'SPDX synthetic',
     file: join(SAMPLES, 'spdx-synthetic.json'),
     expectedCount: 3,
+    expectsPermissive: true,
+  },
+  {
+    name: 'SPDX large (opennms-minion)',
+    file: join(SAMPLES, 'opennms-minion.json'),
+    expectedCount: 1339,
+    expectsPermissive: true,
+  },
+  {
+    name: 'SPDX huge (opennms-core)',
+    file: join(SAMPLES, 'opennms-core.json'),
+    expectedCount: 2839,
     expectsPermissive: true,
   },
 ];
@@ -63,10 +69,7 @@ const pageErrors = [];
 const consoleErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err));
 page.on('console', (msg) => {
-  const text = msg.text();
-  if (msg.type() === 'error') consoleErrors.push(text);
-  // Surface diagnostic logs from the bundle for the e2e operator.
-  if (text.includes('[blitsbom]')) console.log(`  page: ${text}`);
+  if (msg.type() === 'error') consoleErrors.push(msg.text());
 });
 
 const externalRequests = [];
@@ -109,17 +112,7 @@ for (const fixture of FIXTURES) {
     const ingestText = await page
       .evaluate(() => document.querySelector('.drop-zone')?.textContent ?? '')
       .catch(() => '');
-    const bodyText = await page
-      .evaluate(() => document.body.innerText.slice(0, 500))
-      .catch(() => '');
-    const summaryNode = await page.evaluate(() => {
-      const el = document.querySelector('.summary-header');
-      return el ? `present (${el.outerHTML.slice(0, 200)})` : 'absent';
-    }).catch(() => 'eval-failed');
     console.error(`  drop-zone text at timeout: ${ingestText.slice(0, 200)}`);
-    console.error(`  summary-header at timeout: ${summaryNode}`);
-    console.error(`  body innerText: ${bodyText}`);
-    await page.screenshot({ path: '/tmp/e2e-timeout.png', fullPage: true }).catch(() => {});
     throw err;
   }
 
@@ -147,7 +140,9 @@ for (const fixture of FIXTURES) {
       .locator('.legend__row', { hasText: 'Permissive' })
       .first()
       .click();
-    await page.waitForFunction(() => location.search.includes('category=permissive'));
+    await page.waitForFunction(
+      () => location.search.includes('category=permissive'),
+    );
     const tableRows = await page.locator('tbody tr').count();
     if (tableRows === 0) {
       fail(`${fixture.name}: permissive filter produced no rows`);

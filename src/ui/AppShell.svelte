@@ -15,15 +15,11 @@
     store.hydrateFromUrl();
   });
 
-  $effect(() => {
-    // Touch every filter slice so this effect re-runs on change.
-    store.query;
-    store.licenseFilters;
-    store.scopeFilters;
-    store.typeFilters;
-    store.categoryFilters;
-    store.syncToUrl();
-  });
+  // URL state syncs directly from each store mutation method. The query
+  // input also calls store.syncToUrl on change. We don't use a
+  // $effect here because it fires AFTER the reactive cascade triggered
+  // by the same state change — for large SBOMs, that means the URL update
+  // gets queued behind a slow table render.
 </script>
 
 <div class="page">
@@ -53,9 +49,7 @@
         typeCount={store.availableTypes.length}
         vulnCount={sbom.metadata.vulnerabilityCount}
       />
-
       <LicenseDonut breakdown={store.categoryBreakdownAll} />
-
       <LicenseDrilldown />
 
       <section class="controls">

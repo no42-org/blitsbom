@@ -6,7 +6,11 @@
   <input
     type="search"
     placeholder="Search components, versions, licenses…"
-    bind:value={store.query}
+    value={store.query}
+    oninput={(e) => {
+      store.query = (e.currentTarget as HTMLInputElement).value;
+      store.syncToUrl();
+    }}
     class="search__input"
     autocomplete="off"
     spellcheck="false"
@@ -15,7 +19,10 @@
     <button
       type="button"
       class="search__clear"
-      onclick={() => (store.query = '')}
+      onclick={() => {
+        store.query = '';
+        store.syncToUrl();
+      }}
       aria-label="Clear search"
     >
       Clear

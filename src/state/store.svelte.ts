@@ -1,4 +1,4 @@
-import type { LoadedSbom, LicenseCategory } from '../types';
+import type { Component, LoadedSbom, LicenseCategory } from '../types';
 import {
   applyFilters,
   computeCategoryBreakdown,
@@ -9,10 +9,17 @@ import {
 } from './filters';
 import { filtersToQueryString, searchParamsToFilters } from './url';
 
+const EMPTY_COMPONENTS: Component[] = [];
+
 export type IngestState = 'idle' | 'reading' | 'parsing' | 'error';
 
 class SbomStore {
-  loadedSbom = $state<LoadedSbom | null>(null);
+  // $state.raw — the loaded SBOM is read-only after ingest. Without `.raw`
+  // Svelte 5 deep-proxies every Component / License object lazily on each
+  // read, which compounds across the derived chain (components, filtered,
+  // breakdown, drilldown) and freezes the browser for SBOMs with thousands
+  // of packages. Raw skips the proxy machinery entirely.
+  loadedSbom = $state.raw<LoadedSbom | null>(null);
   loadError = $state<string | null>(null);
 
   ingestState = $state<IngestState>('idle');
@@ -25,7 +32,13 @@ class SbomStore {
   typeFilters = $state<Set<string>>(new Set());
   categoryFilters = $state<Set<LicenseCategory>>(new Set());
 
-  components = $derived(this.loadedSbom?.components ?? []);
+  // Plain getter, NOT $derived. Reads the raw $state.raw loadedSbom and
+  // returns its components array directly. Using $derived here was making
+  // the array participate in Svelte's reactive proxy machinery in ways
+  // that compounded with downstream iteration. Plain getter side-steps it.
+  get components(): Component[] {
+    return this.loadedSbom?.components ?? EMPTY_COMPONENTS;
+  }
 
   filteredComponents = $derived(
     applyFilters(this.components, {
@@ -97,22 +110,27 @@ class SbomStore {
 
   toggleLicense(value: string): void {
     this.licenseFilters = toggle(this.licenseFilters, value);
+    this.syncToUrl();
   }
 
   toggleScope(value: string): void {
     this.scopeFilters = toggle(this.scopeFilters, value);
+    this.syncToUrl();
   }
 
   toggleType(value: string): void {
     this.typeFilters = toggle(this.typeFilters, value);
+    this.syncToUrl();
   }
 
   toggleCategory(value: LicenseCategory): void {
     this.categoryFilters = toggle(this.categoryFilters, value) as Set<LicenseCategory>;
+    this.syncToUrl();
   }
 
   clearCategory(): void {
     this.categoryFilters = new Set();
+    this.syncToUrl();
   }
 
   clearFilters(): void {
@@ -121,6 +139,7 @@ class SbomStore {
     this.scopeFilters = new Set();
     this.typeFilters = new Set();
     this.categoryFilters = new Set();
+    this.syncToUrl();
   }
 
   hydrateFromUrl(): void {

@@ -30,9 +30,16 @@ const SHOTS = [
     sample: join(SAMPLES, 'spdx-synthetic.json'),
     file: 'loaded-spdx-synthetic.png',
   },
-  // The big OpenNMS SPDX samples (opennms-core 29MB, opennms-minion 18MB)
-  // hang headless Chromium post-render — see design.md open questions.
-  // Capturing them via the dev server in a real browser is the v2 plan.
+  {
+    label: 'spdx-minion',
+    sample: join(SAMPLES, 'opennms-minion.json'),
+    file: 'loaded-spdx-minion.png',
+  },
+  {
+    label: 'spdx-core',
+    sample: join(SAMPLES, 'opennms-core.json'),
+    file: 'loaded-spdx-core.png',
+  },
 ];
 
 const url = pathToFileURL(DIST_HTML).toString();

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { store } from '../state/store.svelte';
   import { CATEGORY_METADATA } from '../license/classify';
   import type { LicenseCategory } from '../types';
@@ -13,7 +14,15 @@
       : null,
   );
 
-  const licenses = $derived(store.drilldownLicenses ?? []);
+  // PERF: same pattern as ComponentsTable — $state.raw populated via
+  // $effect avoids Svelte 5 proxying iterated array elements. The
+  // untrack(...) wraps the spread copy so iterating the source $derived
+  // doesn't register per-element dependencies on the proxy.
+  let licenses = $state.raw<{ license: string; count: number; kind: string }[]>([]);
+  $effect(() => {
+    const src = store.drilldownLicenses;
+    licenses = src ? untrack(() => [...src]) : [];
+  });
 </script>
 
 {#if activeCategory && meta}

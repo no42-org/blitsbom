@@ -14,26 +14,53 @@
   let sortKey = $state<SortKey>('name');
   let sortDir = $state<SortDir>('asc');
 
-  const PAGE_SIZE = 500;
+  const PAGE_SIZE = 100;
   let visibleCount = $state(PAGE_SIZE);
 
-  // Reset the cap whenever the input list shrinks (new SBOM, filter change).
+  // PERF: visibleRows MUST be $state.raw populated from $effect, not $derived.
+  // A $derived array passed to {#each} causes Svelte 5 to wrap each accessed
+  // property in reactive proxies; for thousands of source components plus
+  // {#each} reading c.name, c.version, c.licenses, etc., this freezes the
+  // browser. $state.raw side-steps the proxy machinery on the array elements.
+  // Same pattern is applied to `sorted` because the sort key extraction
+  // walks the full array.
+  let visibleRows = $state.raw<Component[]>([]);
+  let totalCount = $state(0);
+  let hasMore = $state(false);
+
   $effect(() => {
-    components.length;
-    visibleCount = PAGE_SIZE;
+    // Capture reactive deps explicitly, then defer the heavy sort to a
+    // setTimeout(0) so it doesn't block Svelte's other DOM updates (donut,
+    // drilldown) — they get to paint first, then the table updates.
+    const list = components;
+    const key = sortKey;
+    const dir = sortDir;
+    const cap0 = visibleCount;
+
+    const handle = setTimeout(() => {
+      const cap = Math.min(cap0, list.length);
+      const keys = new Array<string>(list.length);
+      for (let i = 0; i < list.length; i++) {
+        keys[i] = sortValue(list[i]!, key);
+      }
+      const order = new Array<number>(list.length);
+      for (let i = 0; i < list.length; i++) order[i] = i;
+      order.sort((a, b) => {
+        const va = keys[a]!;
+        const vb = keys[b]!;
+        const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+        return dir === 'asc' ? cmp : -cmp;
+      });
+      const sortedArr = new Array<Component>(list.length);
+      for (let i = 0; i < list.length; i++) sortedArr[i] = list[order[i]!]!;
+
+      visibleRows = sortedArr.slice(0, cap);
+      totalCount = list.length;
+      hasMore = list.length > cap;
+    }, 0);
+
+    return () => clearTimeout(handle);
   });
-
-  const sorted = $derived(
-    [...components].sort((a, b) => {
-      const va = sortValue(a, sortKey);
-      const vb = sortValue(b, sortKey);
-      const cmp = va.localeCompare(vb, undefined, { numeric: true });
-      return sortDir === 'asc' ? cmp : -cmp;
-    }),
-  );
-
-  const visibleRows = $derived(sorted.slice(0, visibleCount));
-  const hasMore = $derived(sorted.length > visibleRows.length);
 
   function sortValue(c: Component, key: SortKey): string {
     switch (key) {
@@ -92,14 +119,14 @@
       </tr>
     </thead>
     <tbody>
-      {#if sorted.length === 0}
+      {#if totalCount === 0}
         <tr>
           <td class="empty" colspan="6">
             No components match the current filters.
           </td>
         </tr>
       {:else}
-        {#each visibleRows as c (c.purl ?? `${c.group ?? ''}:${c.name}:${c.version ?? ''}`)}
+        {#each visibleRows as c, idx (idx)}
           <tr>
             <td>
               <div class="cell-name">
@@ -117,7 +144,6 @@
                   <button
                     type="button"
                     class="license-pill"
-                    class:license-pill--active={store.licenseFilters.has(lic.value)}
                     onclick={() => store.toggleLicense(lic.value)}
                     title={lic.kind === 'expression'
                       ? 'SPDX expression'
@@ -147,19 +173,19 @@
   {#if hasMore}
     <div class="more">
       <span class="more__count">
-        Showing {visibleRows.length.toLocaleString()} of {sorted.length.toLocaleString()} components
+        Showing {visibleRows.length.toLocaleString()} of {totalCount.toLocaleString()} components
       </span>
       <button
         type="button"
         class="more__btn"
         onclick={() => (visibleCount += PAGE_SIZE)}
       >
-        Show {Math.min(PAGE_SIZE, sorted.length - visibleRows.length).toLocaleString()} more
+        Show {Math.min(PAGE_SIZE, totalCount - visibleRows.length).toLocaleString()} more
       </button>
       <button
         type="button"
         class="more__btn more__btn--ghost"
-        onclick={() => (visibleCount = sorted.length)}
+        onclick={() => (visibleCount = totalCount)}
       >
         Show all
       </button>
@@ -271,11 +297,6 @@
   }
   .license-pill:hover {
     background: color-mix(in srgb, var(--color-accent-500) 15%, transparent);
-  }
-  .license-pill--active {
-    background: var(--color-accent-500);
-    color: white;
-    border-color: var(--color-accent-500);
   }
   .muted {
     color: var(--color-ink-400);
