@@ -22,7 +22,7 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@tsconfig/svelte": "^5.0.4",
-    "@types/node": "^22.7.4",
+    "@types/node": "^25.6.0",
     "autoprefixer": "^10.4.20",
     "jsdom": "^29.1.0",
     "playwright": "^1.47.2",
