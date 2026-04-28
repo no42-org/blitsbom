@@ -10,6 +10,7 @@ function lib(overrides: Partial<Component> = {}): Component {
     version: '1.0.0',
     description: null,
     publisher: null,
+    originator: null,
     scope: 'required',
     purl: 'pkg:maven/org.example/thing@1.0.0',
     licenses: [{ kind: 'id', value: 'Apache-2.0' }],

@@ -16,6 +16,7 @@ function lib(name: string, overrides: Partial<Component> = {}): Component {
     version: '1.0.0',
     description: null,
     publisher: null,
+    originator: null,
     scope: 'required',
     purl: null,
     licenses: [{ kind: 'id', value: 'Apache-2.0' }],

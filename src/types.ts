@@ -87,6 +87,7 @@ export interface SpdxPackage {
   name: string;
   versionInfo?: string;
   supplier?: string;
+  originator?: string;
   licenseConcluded?: string;
   licenseDeclared?: string;
   externalRefs?: SpdxExternalRef[];
@@ -138,6 +139,9 @@ export interface Component {
   version: string | null;
   description: string | null;
   publisher: string | null;
+  /** Originating organization or person — SPDX `originator` (preferred)
+   * falling back to `supplier`; for CycloneDX, mirrors `publisher`. */
+  originator: string | null;
   scope: string | null;
   purl: string | null;
   licenses: License[];

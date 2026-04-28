@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import { SUPPORTED_CDX_VERSIONS } from '../types';
 import { emptyToNull, notNull } from './util';
+import { normalizeLicenseValue } from './licenseValue';
 
 export function isCdxBom(value: unknown): value is CdxBom {
   if (typeof value !== 'object' || value === null) return false;
@@ -31,13 +32,17 @@ export function normalizeCdxBom(bom: CdxBom): LoadedSbom {
 }
 
 export function normalizeCdxComponent(raw: CdxComponent): Component {
+  const publisher = emptyToNull(raw.publisher);
   return {
     type: raw.type,
     group: emptyToNull(raw.group),
     name: raw.name,
     version: emptyToNull(raw.version),
     description: emptyToNull(raw.description),
-    publisher: emptyToNull(raw.publisher),
+    publisher,
+    // CycloneDX 1.4–1.6 doesn't have a distinct "originator" field; mirror
+    // `publisher` so the originator donut works uniformly across formats.
+    originator: publisher,
     scope: emptyToNull(raw.scope),
     purl: emptyToNull(raw.purl),
     licenses: (raw.licenses ?? []).map(normalizeCdxLicense).filter(notNull),
@@ -53,13 +58,19 @@ function normalizeCdxLicense(choice: CdxLicenseChoice): License | null {
   if ('license' in choice && choice.license) {
     const lic = choice.license;
     if (typeof lic.id === 'string' && lic.id.trim()) {
-      const license: License = { kind: 'id', value: lic.id.trim() };
-      if (lic.url) license.url = lic.url;
+      const norm = normalizeLicenseValue(lic.id);
+      if (!norm.value) return null;
+      const license: License = { kind: 'id', value: norm.value };
+      const url = lic.url ?? norm.url;
+      if (url) license.url = url;
       return license;
     }
     if (typeof lic.name === 'string' && lic.name.trim()) {
-      const license: License = { kind: 'name', value: lic.name.trim() };
-      if (lic.url) license.url = lic.url;
+      const norm = normalizeLicenseValue(lic.name);
+      if (!norm.value) return null;
+      const license: License = { kind: 'name', value: norm.value };
+      const url = lic.url ?? norm.url;
+      if (url) license.url = url;
       return license;
     }
   }

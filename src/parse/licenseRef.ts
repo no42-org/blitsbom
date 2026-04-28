@@ -3,6 +3,7 @@ import type {
   SpdxDocument,
   SpdxExtractedLicensingInfo,
 } from '../types';
+import { normalizeLicenseValue } from './licenseValue';
 
 /**
  * Build a per-document Map<licenseRefId, License> by walking
@@ -50,25 +51,38 @@ export function resolveLicenseRef(
     if (fromUrl) return { kind: 'id', value: fromUrl };
   }
 
-  // 3. Pull from the `name` field. Two patterns observed in the wild:
-  //      `"Apache-2.0";link="https://..."`              → take the quoted id
-  //      `Apache License 2.0`                            → URL-match the URL
-  //      `(MIT OR Apache-2.0)`                           → treat as expression
-  const name = typeof info.name === 'string' ? info.name : '';
-  const fromName = matchFromName(name);
-  if (fromName) return fromName;
+  // 3. Pull from the `name` field. Three patterns observed in the wild:
+  //      `"Apache-2.0";link="https://..."`        → quoted id, URL stripped
+  //      `BSD-3-Clause;link=https://asm.ow2.io/…` → unquoted id, URL stripped
+  //      `Apache License 2.0`                      → URL-match in the same string
+  //      `(MIT OR Apache-2.0)`                     → can't pick one; bail
+  // Run normalizeLicenseValue first so the matchers below see the clean
+  // bare id, and lift the captured URL for the fallback case.
+  const rawName = typeof info.name === 'string' ? info.name : '';
+  const normName = normalizeLicenseValue(rawName);
+  const fromName = matchFromName(normName.value);
+  if (fromName) {
+    if (!fromName.url && normName.url) fromName.url = normName.url;
+    return fromName;
+  }
 
   // 4. Parse the licenseId itself for tooling-specific patterns
   //    like `LicenseRef--Apache-2.0--link--...`.
   const fromId = matchFromLicenseId(info.licenseId);
-  if (fromId) return { kind: 'id', value: fromId };
+  if (fromId) {
+    const license: License = { kind: 'id', value: fromId };
+    if (normName.url) license.url = normName.url;
+    return license;
+  }
 
   // 5. Fallback: surface a human-readable name so the table cell is
   //    sensible. Classifier will mark it proprietary because we couldn't
   //    recognize it.
-  const display = name.trim() || info.licenseId;
+  const display = normName.value || info.licenseId;
   const out: License = { kind: 'name', value: display };
-  if (seeAlsos.length > 0 && typeof seeAlsos[0] === 'string') {
+  if (normName.url) {
+    out.url = normName.url;
+  } else if (seeAlsos.length > 0 && typeof seeAlsos[0] === 'string') {
     out.url = seeAlsos[0];
   }
   return out;

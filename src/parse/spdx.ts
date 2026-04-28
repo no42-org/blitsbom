@@ -8,6 +8,7 @@ import type {
 } from '../types';
 import { isNoAssertion, emptyToNull } from './util';
 import { buildLicenseRefMap } from './licenseRef';
+import { normalizeLicenseValue } from './licenseValue';
 
 export function isSpdxDocument(value: unknown): value is SpdxDocument {
   if (typeof value !== 'object' || value === null) return false;
@@ -41,13 +42,20 @@ export function normalizeSpdxPackage(
 ): Component {
   const licenses = resolvePackageLicenses(pkg, licenseRefMap);
   const purl = extractPurl(pkg);
+  // SPDX has both `originator` (the upstream creator) and `supplier`
+  // (the entity that delivered this package). Many tools fill only one;
+  // for the originator field we prefer `originator` and fall back to
+  // `supplier`. The publisher field follows the historical mapping.
+  const originator =
+    parseSpdxAgent(pkg.originator) ?? parseSpdxAgent(pkg.supplier);
   return {
     type: 'library',
     group: emptyToNull(extractGroupFromPurl(purl)),
     name: pkg.name,
     version: isNoAssertion(pkg.versionInfo) ? null : emptyToNull(pkg.versionInfo) ,
     description: null,
-    publisher: extractPublisher(pkg.supplier),
+    publisher: parseSpdxAgent(pkg.supplier) ?? parseSpdxAgent(pkg.originator),
+    originator,
     scope: null,
     purl,
     licenses,
@@ -107,7 +115,12 @@ function resolveSingleToken(
     // so it renders verbatim and classifies as proprietary.
     return { kind: 'name', value: token };
   }
-  return { kind: 'id', value: token };
+  // Strip parse-time tooling artifacts ( ;link=URL, surrounding quotes,
+  // "with <exception>") and lift the URL into License.url if present.
+  const norm = normalizeLicenseValue(token);
+  const license: License = { kind: 'id', value: norm.value };
+  if (norm.url) license.url = norm.url;
+  return license;
 }
 
 function extractPurl(pkg: SpdxPackage): string | null {
@@ -130,11 +143,15 @@ function extractGroupFromPurl(purl: string | null): string | null {
   return m && m[1] ? m[1] : null;
 }
 
-function extractPublisher(supplier: string | undefined): string | null {
-  if (!supplier || typeof supplier !== 'string') return null;
-  const trimmed = supplier.trim();
+/**
+ * Strip the SPDX agent prefix and return the bare name. Both `supplier`
+ * and `originator` use the same encoding: "Organization: Foo" or
+ * "Person: Foo Bar <foo@bar>". Returns null for empty / NOASSERTION.
+ */
+function parseSpdxAgent(raw: string | undefined): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
   if (!trimmed || isNoAssertion(trimmed)) return null;
-  // SPDX format: "Organization: Foo" / "Person: Foo Bar <foo@bar>"
   const m = trimmed.match(/^(?:Organization|Person)\s*:\s*(.+)$/i);
   return m && m[1] ? m[1].trim() : trimmed;
 }
