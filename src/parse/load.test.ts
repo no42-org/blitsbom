@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseSbomText } from './load';
+import { parseAsVex, parseDroppedFile, parseSbomText } from './load';
+import type { LoadedSbom } from '../types';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAMPLES = join(HERE, '..', '..', 'samples', 'opennms');
@@ -113,5 +114,161 @@ describe('parseSbomText — format detection', () => {
     const doc = { spdxVersion: 'SPDX-3.0', packages: [] };
     const result = parseSbomText(JSON.stringify(doc));
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('parseDroppedFile — VEX detection and embedded vulns', () => {
+  function loadFirst(): LoadedSbom {
+    const r = parseSbomText(readSample('prometheus-remote-writer.json'));
+    if (!r.ok) throw new Error('fixture failed to load');
+    return r.sbom;
+  }
+
+  it('treats a primary CDX SBOM as kind=sbom on first drop', () => {
+    const r = parseDroppedFile(
+      readSample('prometheus-remote-writer.json'),
+      null,
+      'sbom.json',
+    );
+    expect(r.kind).toBe('sbom');
+  });
+
+  it('classifies a CDX with no components and only vulns as VEX once an SBOM is loaded', () => {
+    const sbom = loadFirst();
+    const vexDoc = {
+      bomFormat: 'CycloneDX',
+      specVersion: '1.6',
+      vulnerabilities: [
+        {
+          id: 'CVE-FAKE-1',
+          ratings: [{ severity: 'high' }],
+          affects: [
+            // matches one of the prometheus-remote-writer purls
+            { ref: 'pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar' },
+          ],
+        },
+      ],
+    };
+    const r = parseDroppedFile(JSON.stringify(vexDoc), sbom, 'vex.json');
+    expect(r.kind).toBe('vex');
+    if (r.kind !== 'vex') return;
+    expect(r.unmatched).toBe(0);
+    expect(r.sbom.vexMetadata?.sourceFilename).toBe('vex.json');
+  });
+
+  it('treats a first-drop CDX with embedded vulns as kind=sbom and merges them', () => {
+    const doc = {
+      bomFormat: 'CycloneDX',
+      specVersion: '1.6',
+      components: [
+        {
+          type: 'library',
+          name: 'foo',
+          version: '1.0',
+          purl: 'pkg:npm/foo@1.0',
+        },
+      ],
+      vulnerabilities: [
+        {
+          id: 'CVE-EMB-1',
+          ratings: [{ severity: 'high' }],
+          affects: [{ ref: 'pkg:npm/foo@1.0' }],
+        },
+      ],
+    };
+    const r = parseDroppedFile(JSON.stringify(doc), null, 'sbom.json');
+    expect(r.kind).toBe('sbom');
+    if (r.kind !== 'sbom') return;
+    expect(r.sbom.components[0]!.vulnerabilities).toHaveLength(1);
+  });
+
+  it('SPDX is never classified as VEX even after an SBOM is loaded', () => {
+    const sbom = loadFirst();
+    const spdx = {
+      spdxVersion: 'SPDX-2.3',
+      SPDXID: 'SPDXRef-DOCUMENT',
+      name: 'another',
+      packages: [],
+    };
+    const r = parseDroppedFile(JSON.stringify(spdx), sbom, 'other.spdx.json');
+    expect(r.kind).toBe('sbom');
+  });
+
+  it('returns kind=error for invalid JSON', () => {
+    const r = parseDroppedFile('{not-json', null, 'broken.json');
+    expect(r.kind).toBe('error');
+  });
+});
+
+describe('parseAsVex — explicit VEX-merge path', () => {
+  function loadFirst(): LoadedSbom {
+    const r = parseSbomText(readSample('prometheus-remote-writer.json'));
+    if (!r.ok) throw new Error('fixture failed to load');
+    return r.sbom;
+  }
+
+  it('merges vulnerabilities even when the dropped file is a CDX SBOM with components', () => {
+    // The exact regression: a "VEX" file emitted by some tools has its
+    // own components[] (often a superset of the SBOM's). The original
+    // heuristic in parseDroppedFile would treat it as a primary SBOM
+    // and replace the loaded one. parseAsVex must not.
+    const sbom = loadFirst();
+    const dropped = {
+      bomFormat: 'CycloneDX',
+      specVersion: '1.6',
+      // Many components — looks like a primary SBOM by raw shape.
+      components: Array.from({ length: 100 }, (_, i) => ({
+        type: 'library',
+        name: `noise-${i}`,
+        version: '0.0.0',
+      })),
+      vulnerabilities: [
+        {
+          id: 'CVE-X',
+          ratings: [{ severity: 'high' }],
+          affects: [
+            { ref: 'pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar' },
+          ],
+        },
+      ],
+    };
+    const r = parseAsVex(JSON.stringify(dropped), sbom, 'minion.vex.json');
+    expect(r.kind).toBe('vex');
+    if (r.kind !== 'vex') return;
+    // Components from the loaded SBOM remain intact (24 of them).
+    expect(r.sbom.components.length).toBe(24);
+    expect(r.sbom.vexMetadata?.totalVulns).toBe(1);
+  });
+
+  it('errors on a CDX without vulnerabilities[]', () => {
+    const sbom = loadFirst();
+    const dropped = {
+      bomFormat: 'CycloneDX',
+      specVersion: '1.6',
+      components: [],
+    };
+    const r = parseAsVex(JSON.stringify(dropped), sbom, 'oops.json');
+    expect(r.kind).toBe('error');
+  });
+
+  it('errors on SPDX (no vex concept)', () => {
+    const sbom = loadFirst();
+    const spdx = {
+      spdxVersion: 'SPDX-2.3',
+      SPDXID: 'SPDXRef-DOCUMENT',
+      name: 'x',
+      packages: [],
+    };
+    const r = parseAsVex(JSON.stringify(spdx), sbom, 'foo.spdx.json');
+    expect(r.kind).toBe('error');
+    if (r.kind === 'error') {
+      expect(r.error).toMatch(/SPDX/);
+    }
+  });
+
+  it('errors on invalid JSON', () => {
+    const sbom = loadFirst();
+    const r = parseAsVex('{garbage', sbom, 'broken.json');
+    expect(r.kind).toBe('error');
   });
 });

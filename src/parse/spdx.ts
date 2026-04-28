@@ -9,6 +9,7 @@ import type {
 import { isNoAssertion, emptyToNull } from './util';
 import { buildLicenseRefMap } from './licenseRef';
 import { normalizeLicenseValue } from './licenseValue';
+import { canonicalizePurl } from './purlMatch';
 
 export function isSpdxDocument(value: unknown): value is SpdxDocument {
   if (typeof value !== 'object' || value === null) return false;
@@ -58,7 +59,12 @@ export function normalizeSpdxPackage(
     originator,
     scope: null,
     purl,
+    purlCanonical: canonicalizePurl(purl),
+    // SPDX has no equivalent of CDX bom-ref for cross-document join;
+    // SPDXID is document-internal. Leave null.
+    bomRef: null,
     licenses,
+    vulnerabilities: [],
   };
 }
 

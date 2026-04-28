@@ -1,14 +1,21 @@
-import type { Component, LoadedSbom, LicenseCategory } from '../types';
+import type {
+  Component,
+  LoadedSbom,
+  LicenseCategory,
+  Severity,
+} from '../types';
 import {
   applyFilters,
   computeCategoryBreakdown,
   computeLicenseBreakdown,
   computeOriginatorBreakdown,
+  computeVulnsBySeverityBreakdown,
   distinctScopes,
   distinctTypes,
   licensesInCategory,
   topOriginatorIds,
 } from './filters';
+import { isLive } from '../parse/vex';
 import { filtersToQueryString, searchParamsToFilters } from './url';
 
 const EMPTY_COMPONENTS: Component[] = [];
@@ -34,6 +41,19 @@ class SbomStore {
   typeFilters = $state<Set<string>>(new Set());
   categoryFilters = $state<Set<LicenseCategory>>(new Set());
   originatorFilters = $state<Set<string>>(new Set());
+  severityFilters = $state<Set<Severity>>(new Set());
+  /** When true, suppressed VEX entries (status `not_affected` etc.)
+   * are included in counts, badges, and severity filtering. */
+  showSuppressed = $state(false);
+  /** Component currently expanded in the vulnerability drilldown panel,
+   * or null when no row is expanded. Tracked by purl/bomRef/name fallback
+   * so a re-merge that creates fresh component objects keeps the panel
+   * pointing at the right component. */
+  vexDrilldownKey = $state<string | null>(null);
+  /** When set, the drilldown is scoped to a single severity (the user
+   * clicked the Crit/High/Med/Low cell rather than the row generally).
+   * Null = show all visible vulnerabilities for the row. */
+  vexDrilldownSeverity = $state<Severity | null>(null);
 
   // Plain getter, NOT $derived. Reads the raw $state.raw loadedSbom and
   // returns its components array directly. Using $derived here was making
@@ -50,6 +70,12 @@ class SbomStore {
   );
   topOriginatorIdSet = $derived(topOriginatorIds(this.originatorBreakdownAll));
 
+  /** Vulnerabilities (live or suppressed per `showSuppressed`) bucketed by
+   * severity. Only meaningful when a VEX is loaded. */
+  vulnsBySeverityBreakdownAll = $derived(
+    computeVulnsBySeverityBreakdown(this.components, this.showSuppressed),
+  );
+
   filteredComponents = $derived(
     applyFilters(
       this.components,
@@ -60,10 +86,35 @@ class SbomStore {
         types: this.typeFilters,
         categories: this.categoryFilters,
         originators: this.originatorFilters,
+        severities: this.severityFilters,
       },
       this.topOriginatorIdSet,
+      this.showSuppressed,
     ),
   );
+
+  /** True when a VEX file has been merged into the loaded SBOM. */
+  get hasVex(): boolean {
+    return this.loadedSbom?.vexMetadata != null;
+  }
+
+  /** Counts derived from the merged components. `live` honors VEX status
+   * suppression unless `showSuppressed` is on. */
+  liveVulnCount = $derived.by(() => {
+    let n = 0;
+    for (const c of this.components) {
+      for (const v of c.vulnerabilities) {
+        if (this.showSuppressed || isLive(v)) n += 1;
+      }
+    }
+    return n;
+  });
+  suppressedVulnCount = $derived.by(() => {
+    return this.loadedSbom?.vexMetadata?.suppressedByStatus ?? 0;
+  });
+  unmatchedVulnCount = $derived.by(() => {
+    return this.loadedSbom?.vexMetadata?.unmatched ?? 0;
+  });
 
   categoryBreakdownAll = $derived(computeCategoryBreakdown(this.components));
   categoryBreakdownFiltered = $derived(
@@ -133,6 +184,36 @@ class SbomStore {
     this.typeFilters = new Set();
     this.categoryFilters = new Set();
     this.originatorFilters = new Set();
+    this.severityFilters = new Set();
+    this.showSuppressed = false;
+    this.vexDrilldownKey = null;
+    this.vexDrilldownSeverity = null;
+  }
+
+  /** Replace the loaded SBOM with a VEX-merged version. The merged
+   * LoadedSbom carries a `vexMetadata` block; the rest of the store
+   * keeps its filter state intact. */
+  applyVex(merged: LoadedSbom): void {
+    this.loadedSbom = merged;
+  }
+
+  /** Drop any loaded VEX while keeping the SBOM. Restores components
+   * to their VEX-free state by zeroing each component's vulnerabilities
+   * array — cheaper than re-parsing, and the original raw vulnerabilities
+   * are not retained anyway. */
+  clearVex(): void {
+    if (!this.loadedSbom) return;
+    const components = this.loadedSbom.components.map((c) => ({
+      ...c,
+      vulnerabilities: [],
+    }));
+    this.loadedSbom = {
+      metadata: this.loadedSbom.metadata,
+      components,
+    };
+    this.severityFilters = new Set();
+    this.showSuppressed = false;
+    this.syncToUrl();
   }
 
   toggleLicense(value: string): void {
@@ -170,6 +251,61 @@ class SbomStore {
     this.syncToUrl();
   }
 
+  toggleSeverity(value: Severity): void {
+    this.severityFilters = toggle(this.severityFilters, value) as Set<Severity>;
+    this.syncToUrl();
+  }
+
+  clearSeverity(): void {
+    this.severityFilters = new Set();
+    this.syncToUrl();
+  }
+
+  toggleSuppressed(): void {
+    this.showSuppressed = !this.showSuppressed;
+  }
+
+  /** Compose a stable key for a component the user opened in the vuln
+   * drilldown. Falls back through purlCanonical → bomRef → name+version. */
+  static componentKey(c: Component): string {
+    if (c.purlCanonical) return `purl:${c.purlCanonical}`;
+    if (c.bomRef) return `bomref:${c.bomRef}`;
+    return `nv:${c.name}@${c.version ?? ''}`;
+  }
+  /** Open / close / re-scope the per-row vulnerability drilldown.
+   *
+   * - No `severity` arg → toggle the row in "all severities" mode.
+   * - With `severity` arg → toggle the row in "this severity only" mode.
+   * - Clicking the same row at a DIFFERENT severity column re-scopes the
+   *   open drilldown instead of closing it (so users can flip between
+   *   Crit / High / Med / Low quickly).
+   */
+  toggleVexDrilldown(c: Component, severity?: Severity): void {
+    const key = SbomStore.componentKey(c);
+    const sev = severity ?? null;
+    if (this.vexDrilldownKey === key && this.vexDrilldownSeverity === sev) {
+      // Same row + same scope → close.
+      this.vexDrilldownKey = null;
+      this.vexDrilldownSeverity = null;
+    } else {
+      this.vexDrilldownKey = key;
+      this.vexDrilldownSeverity = sev;
+    }
+  }
+  closeVexDrilldown(): void {
+    this.vexDrilldownKey = null;
+    this.vexDrilldownSeverity = null;
+  }
+  /** Component instance corresponding to the currently-expanded drilldown
+   * key, looked up from the live merged component list. Null when none. */
+  get vexDrilldownComponent(): Component | null {
+    if (!this.vexDrilldownKey) return null;
+    for (const c of this.components) {
+      if (SbomStore.componentKey(c) === this.vexDrilldownKey) return c;
+    }
+    return null;
+  }
+
   clearFilters(): void {
     this.query = '';
     this.licenseFilters = new Set();
@@ -177,6 +313,7 @@ class SbomStore {
     this.typeFilters = new Set();
     this.categoryFilters = new Set();
     this.originatorFilters = new Set();
+    this.severityFilters = new Set();
     this.syncToUrl();
   }
 
@@ -191,6 +328,7 @@ class SbomStore {
     this.typeFilters = new Set(f.types);
     this.categoryFilters = new Set(f.categories);
     this.originatorFilters = new Set(f.originators);
+    this.severityFilters = new Set(f.severities);
   }
 
   syncToUrl(): void {
@@ -202,6 +340,7 @@ class SbomStore {
       types: this.typeFilters,
       categories: this.categoryFilters,
       originators: this.originatorFilters,
+      severities: this.severityFilters,
     });
     const next = `${window.location.pathname}${qs}${window.location.hash}`;
     if (next !== window.location.pathname + window.location.search + window.location.hash) {

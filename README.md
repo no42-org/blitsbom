@@ -114,6 +114,34 @@ CycloneDX and SPDX both accept compound expressions like `(MIT OR Apache-2.0)` a
 
 SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasExtractedLicensingInfos` block. blitsbom resolves these by matching the actual extracted text against signature regexes for ~13 common licenses (Apache-2.0, MIT, BSD-*, GPL-*, LGPL-*, AGPL-3.0, MPL-2.0, EPL-*, CDDL-1.0, ISC), falling back to canonical license URLs in `seeAlsos` and to encoded ids in the LicenseRef name itself. Anything that can't be recognized stays as a verbatim name and classifies as Proprietary.
 
+## Vulnerabilities (VEX)
+
+After loading an SBOM, you can optionally drop a [CycloneDX VEX](https://cyclonedx.org/capabilities/vex/) file (or any CycloneDX document with a populated `vulnerabilities[]` array) on top to overlay vulnerability data on the components. **VEX is purely additive — the SBOM-only flow stays exactly the same when no VEX is loaded.**
+
+Generate a compatible VEX from any SBOM:
+
+```bash
+# Anchore Grype — input: any SBOM; output: CycloneDX with vulnerabilities[]
+grype sbom:./bom.json -o cyclonedx-json > vex.json
+
+# Aqua Trivy
+trivy sbom ./bom.json --format cyclonedx --output vex.json
+
+# Google OSV-Scanner
+osv-scanner --sbom=./bom.json --format=cyclonedx > vex.json
+```
+
+Drop the file via the **Load vulnerabilities (VEX)…** button next to the summary header. blitsbom joins each vulnerability to a component by canonical purl (with `bom-ref` as a fallback) and surfaces:
+
+- A fifth summary tile with the live vulnerability count.
+- A severity-coloured badge column in the components table — click any badge to drill down to per-component CVE detail.
+- A severity facet in the filter bar (`critical / high / medium / low / unknown / none`), URL-encoded as `?severity=…`.
+- Provenance info (VEX filename + timestamp) above the summary tiles, plus an "N unmatched" hint when a VEX entry's `affects[].ref` doesn't resolve to any component.
+
+VEX `analysis.state` is honored: entries marked `not_affected`, `false_positive`, or `resolved` are hidden by default. A "Show suppressed (N)" toggle reveals them when present.
+
+Everything stays offline — no network call, no online lookup against OSV.dev or NVD. The existing `purity-check` build guard still enforces this.
+
 ## Features
 
 - Drag-and-drop or pick a `bom.json` / `sbom.json` (CycloneDX or SPDX)
@@ -123,8 +151,9 @@ SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasE
 - Click a donut segment → filter the table to that category, drill down to individual licenses inside it
 - Sortable component table with name / version / license / scope / type / purl, paginated for large SBOMs (500 rows visible by default with show-more)
 - Free-text search across name, version, license, scope, type, group, publisher, description, purl
-- Click-to-toggle filter chips (category, license, scope, type)
-- Filter state encoded in the URL — copy the address to share a view (`?category=permissive&license=Apache-2.0`)
+- Click-to-toggle filter chips (category, license, scope, type, severity)
+- Optional VEX overlay: drop a CycloneDX VEX file to attach CVE data to components, with severity badges, drilldown, and severity filter (see Vulnerabilities (VEX) above)
+- Filter state encoded in the URL — copy the address to share a view (`?category=permissive&license=Apache-2.0&severity=high`)
 - CSV export of the filtered view (RFC 4180, Excel-compatible)
 
 ## Developer workflow
@@ -155,7 +184,8 @@ See **[RELEASING.md](./RELEASING.md)** for the full release workflow — version
 
 ```
 src/
-  parse/      CycloneDX + SPDX parsers, format detection, LicenseRef resolution
+  parse/      CycloneDX + SPDX parsers, format detection, LicenseRef resolution,
+              VEX merge + purl canonicalization
   license/    FSF-sourced classification table
   state/      Svelte store, filter combinator (incl. category facet), URL state
   ui/         Svelte components (AppShell, DropZone, SummaryHeader,

@@ -1,5 +1,11 @@
-import type { Component, License, LicenseCategory } from '../types';
+import type {
+  Component,
+  License,
+  LicenseCategory,
+  Severity,
+} from '../types';
 import { classifyComponent } from '../license/classify';
+import { isLive, worstSeverityOf } from '../parse/vex';
 
 export interface FilterState {
   query: string;
@@ -10,6 +16,9 @@ export interface FilterState {
   /** Originator filter values; can include the special tokens
    * ORIGINATOR_OTHER and ORIGINATOR_UNKNOWN. */
   originators: ReadonlySet<string>;
+  /** Severity filter values. `none` is a pseudo-severity that matches
+   * components with zero live (visible-by-default) vulnerabilities. */
+  severities: ReadonlySet<Severity>;
 }
 
 export function emptyFilters(): FilterState {
@@ -20,6 +29,7 @@ export function emptyFilters(): FilterState {
     types: new Set(),
     categories: new Set(),
     originators: new Set(),
+    severities: new Set(),
   };
 }
 
@@ -30,7 +40,8 @@ export function hasActiveFilters(f: FilterState): boolean {
     f.scopes.size > 0 ||
     f.types.size > 0 ||
     f.categories.size > 0 ||
-    f.originators.size > 0
+    f.originators.size > 0 ||
+    f.severities.size > 0
   );
 }
 
@@ -47,6 +58,10 @@ export function applyFilters(
   // so we can identify which components belong to the implicit "Other"
   // bucket. When omitted, ORIGINATOR_OTHER matches no component.
   topOriginators: ReadonlySet<string> = EMPTY_SET,
+  // When true, suppressed vulnerabilities (VEX `analysis.state` of
+  // `not_affected` / `false_positive` / `resolved`) participate in the
+  // severity filter. When false (default), they are treated as if absent.
+  showSuppressed = false,
 ): Component[] {
   const q = filters.query.trim().toLowerCase();
   return components.filter((c) => {
@@ -69,9 +84,33 @@ export function applyFilters(
         return false;
       }
     }
+    if (filters.severities.size > 0) {
+      if (!matchesSeverity(c, filters.severities, showSuppressed)) return false;
+    }
     if (q.length > 0 && !matchesQuery(c, q)) return false;
     return true;
   });
+}
+
+function matchesSeverity(
+  c: Component,
+  selected: ReadonlySet<Severity>,
+  showSuppressed: boolean,
+): boolean {
+  // Match by the component's WORST visible severity (mirrors the per-row
+  // badge color). This makes "select low" mean "show me components whose
+  // problems are all low-severity" rather than "show me components with
+  // at least one low vuln (which may also have criticals)" — the latter
+  // is confusing when criticals end up in the result set. The component's
+  // primary severity behaves like its primary license-category for the
+  // category facet: one value per component, exact match against the set.
+  const visible = showSuppressed
+    ? c.vulnerabilities
+    : c.vulnerabilities.filter(isLive);
+  if (visible.length === 0) {
+    return selected.has('none');
+  }
+  return selected.has(worstSeverityOf(visible));
 }
 
 const EMPTY_SET: ReadonlySet<string> = new Set();
@@ -272,4 +311,127 @@ export function topOriginatorIds(
   const set = new Set<string>();
   for (const b of breakdown) if (!b.synthetic) set.add(b.id);
   return set;
+}
+
+export interface SeverityBreakdownEntry {
+  severity: Severity;
+  label: string;
+  count: number;
+}
+
+const SEVERITY_LABEL: Record<Severity, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  unknown: 'Unknown',
+  none: 'None',
+};
+
+/** Display order from most severe → least severe; mirrors SeverityFilter. */
+const SEVERITY_ORDER: readonly Severity[] = [
+  'critical',
+  'high',
+  'medium',
+  'low',
+  'unknown',
+];
+
+/**
+ * Count vulnerabilities by severity across all loaded components. Honors
+ * `showSuppressed` (suppressed entries count only when the toggle is on).
+ * The "none" pseudo-severity is intentionally excluded — it represents
+ * components without vulns and would crowd the donut.
+ */
+export function computeVulnsBySeverityBreakdown(
+  components: readonly Component[],
+  showSuppressed: boolean,
+): SeverityBreakdownEntry[] {
+  const counts: Record<Severity, number> = {
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    unknown: 0,
+    none: 0,
+  };
+  for (const c of components) {
+    for (const v of c.vulnerabilities) {
+      if (!showSuppressed && !isLive(v)) continue;
+      counts[v.severity] = (counts[v.severity] ?? 0) + 1;
+    }
+  }
+  // Empty buckets are omitted so the donut doesn't render slivers for
+  // severities that aren't present in this SBOM/VEX pair.
+  return SEVERITY_ORDER.filter((s) => counts[s] > 0).map((s) => ({
+    severity: s,
+    label: SEVERITY_LABEL[s],
+    count: counts[s],
+  }));
+}
+
+/**
+ * Bucket vulnerabilities by their components' originator. The shape mirrors
+ * computeOriginatorBreakdown so it can feed the same OriginatorDonut. Counts
+ * are vulnerabilities (not components); a component with three live vulns
+ * contributes three to its originator's bucket. Honors the `showSuppressed`
+ * flag — when false, only entries where `isLive` is true are counted.
+ *
+ * Originators with zero vulnerabilities are omitted entirely.
+ */
+export function computeVulnsByOriginatorBreakdown(
+  components: readonly Component[],
+  showSuppressed: boolean,
+  topN = 8,
+): OriginatorBreakdownEntry[] {
+  const counts = new Map<string, number>();
+  let unknown = 0;
+  for (const c of components) {
+    const n = showSuppressed
+      ? c.vulnerabilities.length
+      : c.vulnerabilities.filter(isLive).length;
+    if (n === 0) continue;
+    if (c.originator === null) {
+      unknown += n;
+    } else {
+      counts.set(c.originator, (counts.get(c.originator) ?? 0) + n);
+    }
+  }
+  const ranked = Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name);
+    });
+  const top = ranked.slice(0, topN);
+  const tail = ranked.slice(topN);
+  const otherCount = tail.reduce((s, t) => s + t.count, 0);
+  const out: OriginatorBreakdownEntry[] = top.map((t) => ({
+    label: t.name,
+    id: t.name,
+    count: t.count,
+    synthetic: false,
+  }));
+  if (otherCount > 0) {
+    out.push({
+      label: `Other (${tail.length})`,
+      id: ORIGINATOR_OTHER,
+      count: otherCount,
+      synthetic: true,
+    });
+  }
+  if (unknown > 0) {
+    out.push({
+      label: 'Unknown',
+      id: ORIGINATOR_UNKNOWN,
+      count: unknown,
+      synthetic: true,
+    });
+  }
+  out.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    if (a.synthetic !== b.synthetic) return a.synthetic ? 1 : -1;
+    return a.label.localeCompare(b.label);
+  });
+  return out;
 }

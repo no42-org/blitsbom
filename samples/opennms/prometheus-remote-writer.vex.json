@@ -1,0 +1,71 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-04-28T13:00:00Z",
+    "tools": [
+      { "name": "blitsbom-fixture", "version": "0.1.0" }
+    ]
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-FIXTURE-CRITICAL",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-FIXTURE-CRITICAL"
+      },
+      "ratings": [
+        {
+          "source": { "name": "NVD" },
+          "score": 9.8,
+          "severity": "critical",
+          "method": "CVSSv3",
+          "vector": "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        }
+      ],
+      "description": "Synthetic critical fixture vulnerability for blitsbom e2e tests.",
+      "affects": [
+        { "ref": "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar" }
+      ]
+    },
+    {
+      "id": "CVE-FIXTURE-HIGH",
+      "source": { "name": "NVD" },
+      "ratings": [
+        { "score": 7.5, "severity": "high", "method": "CVSSv3" }
+      ],
+      "description": "Synthetic high-severity fixture vulnerability.",
+      "affects": [
+        { "ref": "pkg:maven/org.apache.sshd/sshd-osgi@2.17.1?type=jar" }
+      ]
+    },
+    {
+      "id": "CVE-FIXTURE-SUPPRESSED",
+      "source": { "name": "NVD" },
+      "ratings": [
+        { "score": 5.5, "severity": "medium", "method": "CVSSv3" }
+      ],
+      "description": "Medium-severity fixture vuln marked not_affected (suppressed by default).",
+      "affects": [
+        { "ref": "pkg:maven/org.xerial.snappy/snappy-java@1.1.10.8?type=jar" }
+      ],
+      "analysis": {
+        "state": "not_affected",
+        "justification": "code_not_reachable",
+        "detail": "We don't invoke the affected code path in this project."
+      }
+    },
+    {
+      "id": "CVE-FIXTURE-UNMATCHED",
+      "source": { "name": "NVD" },
+      "ratings": [
+        { "score": 7.0, "severity": "high", "method": "CVSSv3" }
+      ],
+      "description": "Synthetic vulnerability whose affects.ref does not match any component (used to exercise the unmatched-counter UI).",
+      "affects": [
+        { "ref": "pkg:maven/com.example.does-not-exist/foo@9.9.9?type=jar" }
+      ]
+    }
+  ]
+}

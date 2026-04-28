@@ -5,9 +5,11 @@
   import SummaryHeader from './SummaryHeader.svelte';
   import LicenseDonut from './LicenseDonut.svelte';
   import OriginatorDonut from './OriginatorDonut.svelte';
+  import SeverityDonut from './SeverityDonut.svelte';
   import LicenseDrilldown from './LicenseDrilldown.svelte';
   import SearchBar from './SearchBar.svelte';
   import FilterChips from './FilterChips.svelte';
+  import SeverityFilter from './SeverityFilter.svelte';
   import ComponentsTable from './ComponentsTable.svelte';
   import ErrorBanner from './ErrorBanner.svelte';
   import Toolbar from './Toolbar.svelte';
@@ -54,9 +56,12 @@
         typeCount={store.availableTypes.length}
         originatorCount={store.distinctOriginatorCount}
       />
-      <div class="donut-row">
+      <div class="donut-row" class:donut-row--three={store.hasVex}>
         <LicenseDonut breakdown={store.categoryBreakdownAll} />
         <OriginatorDonut breakdown={store.originatorBreakdownAll} />
+        {#if store.hasVex}
+          <SeverityDonut breakdown={store.vulnsBySeverityBreakdownAll} />
+        {/if}
       </div>
       <LicenseDrilldown />
 
@@ -65,6 +70,7 @@
           <SearchBar />
           <Toolbar />
         </div>
+        <SeverityFilter />
         <FilterChips />
       </section>
 
@@ -103,11 +109,20 @@
     gap: 1.5rem;
     align-items: stretch;
   }
+  .donut-row--three {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
   .donut-row > :global(*) {
     min-width: 0;
   }
+  @media (max-width: 1500px) {
+    .donut-row--three {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
   @media (max-width: 1100px) {
-    .donut-row {
+    .donut-row,
+    .donut-row--three {
       grid-template-columns: 1fr;
     }
   }

@@ -128,16 +128,16 @@ for (const fixture of FIXTURES) {
   }
   console.log(`  components: ${count} (ok)`);
 
-  // Donut should render at least one segment.
-  const segCount = await page.locator('.donut__segment').count();
-  if (segCount === 0) fail(`${fixture.name}: donut rendered no segments`);
-  console.log(`  donut segments: ${segCount}`);
+  // Bar chart should render at least one bar.
+  const barCount = await page.locator('.bar').count();
+  if (barCount === 0) fail(`${fixture.name}: bar chart rendered no bars`);
+  console.log(`  chart bars: ${barCount}`);
 
-  // Activate the Permissive category via the legend (donut segments are
-  // present but the legend rows are easier to locate by visible text).
+  // Activate the Permissive category via the chart bar (matched by
+  // visible label text).
   if (fixture.expectsPermissive) {
     await page
-      .locator('.legend__row', { hasText: 'Permissive' })
+      .locator('.bar', { hasText: 'Permissive' })
       .first()
       .click();
     await page.waitForFunction(
@@ -177,6 +177,90 @@ for (const fixture of FIXTURES) {
   }
   console.log(`  CSV: ${csv.length} bytes, ${lineCount} non-blank lines`);
 }
+
+// VEX flow — load the small CycloneDX SBOM, then drop the synthetic VEX
+// fixture. Verify: vuln tile appears, severity column populated, severity
+// filter narrows the table, "Show suppressed" reveals the hidden entry.
+console.log(`\n--- VEX overlay (CycloneDX small + fixture VEX) ---`);
+await page.goto(url, { waitUntil: 'load' });
+await page.waitForSelector('.drop-zone');
+await page.setInputFiles(
+  'input[type=file]',
+  join(SAMPLES, 'prometheus-remote-writer.json'),
+);
+await page.waitForSelector('.summary-header', { timeout: 60_000 });
+
+// No vuln tile yet.
+const vulnTilePre = await page.locator('.stat--vuln').count();
+if (vulnTilePre !== 0) fail(`VEX flow: vuln tile present before VEX load`);
+
+// Drop the VEX through the LoadVexButton's hidden file input.
+await page.setInputFiles(
+  '.vex-load__btn input[type=file]',
+  join(SAMPLES, 'prometheus-remote-writer.vex.json'),
+);
+await page.waitForSelector('.stat--vuln', { timeout: 30_000 });
+const liveCountText = await page.textContent('.stat--vuln .stat__value');
+const liveCount = Number(liveCountText?.trim().replace(/,/g, ''));
+// Fixture has 4 raws; 1 unmatched, 1 suppressed → expect 2 live.
+if (liveCount !== 2) {
+  fail(`VEX flow: expected 2 live vulns, got ${liveCount}`);
+}
+console.log(`  live vulns: ${liveCount} (ok)`);
+
+// Vuln severity columns should be populated. The components with vulns
+// (snappy-java / sshd-osgi) sort alphabetically toward the end of the
+// 24-component SBOM, so bump the page size to "all" before counting
+// counts; also wait until at least one count cell has rendered.
+await page.locator('.more__select').selectOption('all');
+await page.waitForSelector('.sev-count', { timeout: 10_000 });
+const badgeCount = await page.locator('.sev-count').count();
+if (badgeCount < 1) fail(`VEX flow: no severity counts rendered`);
+console.log(`  severity counts: ${badgeCount}`);
+
+// Click critical severity chip → table narrows.
+await page.locator('.sev-chip--critical').click();
+await page.waitForFunction(() => location.search.includes('severity=critical'));
+// Table re-render is deferred via setTimeout(0); wait for the row count
+// to actually drop before reading it.
+await page.waitForFunction(
+  () => document.querySelectorAll('tbody tr').length < 24,
+  { timeout: 5_000 },
+);
+const criticalRows = await page.locator('tbody tr').count();
+if (criticalRows < 1 || criticalRows > 5) {
+  fail(`VEX flow: critical filter row count out of expected range: ${criticalRows}`);
+}
+console.log(`  critical filter: ${criticalRows} rows`);
+
+// Clear the filter.
+await page.locator('.sev-chip--critical').click();
+await page.waitForFunction(() => !location.search.includes('severity='));
+
+// Toggle "Show suppressed" — count should bump (suppressed=1).
+await page.locator('.suppressed-toggle').click();
+await page.waitForFunction(() => {
+  const t = document.querySelector('.suppressed-toggle');
+  return t && /Hide/.test(t.textContent ?? '');
+});
+const liveAfter = Number(
+  (await page.textContent('.stat--vuln .stat__value'))?.trim().replace(/,/g, ''),
+);
+if (liveAfter !== 3) {
+  fail(`VEX flow: expected 3 vulns after showing suppressed, got ${liveAfter}`);
+}
+console.log(`  show suppressed: ${liveAfter} vulns (ok)`);
+
+// Click a severity count → drilldown opens.
+await page.locator('.sev-count').first().click();
+await page.waitForSelector('.vuln-row', { timeout: 5_000 });
+const drilldownVulnRows = await page.locator('.vuln-row').count();
+if (drilldownVulnRows < 1) fail(`VEX flow: vuln drilldown empty`);
+console.log(`  vuln drilldown rows: ${drilldownVulnRows}`);
+
+// Reload the page (URL stays) — VEX state is in-memory only, the tile
+// should be gone after a fresh load. Skipping that explicit assertion
+// here to keep the e2e fast; covered by unit tests.
 
 if (externalRequests.length > 0) {
   console.error('\ne2e: unexpected external requests:');

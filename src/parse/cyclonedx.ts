@@ -10,6 +10,7 @@ import type {
 import { SUPPORTED_CDX_VERSIONS } from '../types';
 import { emptyToNull, notNull } from './util';
 import { normalizeLicenseValue } from './licenseValue';
+import { canonicalizePurl } from './purlMatch';
 
 export function isCdxBom(value: unknown): value is CdxBom {
   if (typeof value !== 'object' || value === null) return false;
@@ -33,6 +34,7 @@ export function normalizeCdxBom(bom: CdxBom): LoadedSbom {
 
 export function normalizeCdxComponent(raw: CdxComponent): Component {
   const publisher = emptyToNull(raw.publisher);
+  const purl = emptyToNull(raw.purl);
   return {
     type: raw.type,
     group: emptyToNull(raw.group),
@@ -44,8 +46,11 @@ export function normalizeCdxComponent(raw: CdxComponent): Component {
     // `publisher` so the originator donut works uniformly across formats.
     originator: publisher,
     scope: emptyToNull(raw.scope),
-    purl: emptyToNull(raw.purl),
+    purl,
+    purlCanonical: canonicalizePurl(purl),
+    bomRef: emptyToNull(raw['bom-ref']),
     licenses: (raw.licenses ?? []).map(normalizeCdxLicense).filter(notNull),
+    vulnerabilities: [],
   };
 }
 

@@ -19,7 +19,10 @@ function lib(name: string, overrides: Partial<Component> = {}): Component {
     originator: null,
     scope: 'required',
     purl: null,
+    purlCanonical: null,
+    bomRef: null,
     licenses: [{ kind: 'id', value: 'Apache-2.0' }],
+    vulnerabilities: [],
     ...overrides,
   };
 }
@@ -114,6 +117,76 @@ describe('applyFilters', () => {
     expect(applyFilters(withUnknown, filters).map((c) => c.name)).toEqual([
       'mystery-tool',
     ]);
+  });
+
+  describe('severity facet (matched by worst severity)', () => {
+    const a = lib('a', {
+      vulnerabilities: [{ id: 'CVE-1', source: 's', severity: 'high' }],
+    });
+    const b = lib('b', {
+      vulnerabilities: [{ id: 'CVE-2', source: 's', severity: 'low' }],
+    });
+    const mixed = lib('mixed', {
+      vulnerabilities: [
+        { id: 'CVE-A', source: 's', severity: 'low' },
+        { id: 'CVE-B', source: 's', severity: 'high' },
+      ],
+    });
+    const clean = lib('clean'); // no vulns
+    const suppressed = lib('s', {
+      vulnerabilities: [
+        { id: 'CVE-3', source: 's', severity: 'critical', status: 'not_affected' },
+      ],
+    });
+    const universe = [a, b, mixed, clean, suppressed];
+
+    it('matches by the component WORST severity (OR within facet)', () => {
+      const filters = {
+        ...emptyFilters(),
+        severities: new Set<'high' | 'critical'>(['high', 'critical']),
+      };
+      // a (high) and mixed (worst=high) match. b (low) does not.
+      expect(
+        applyFilters(universe, filters as never).map((c) => c.name).sort(),
+      ).toEqual(['a', 'mixed']);
+    });
+
+    it('selecting "low" excludes components whose worst is higher than low', () => {
+      // Regression: previously a "low" filter would match `mixed` because
+      // it has at least one low vuln. The user-reported behavior was
+      // confusing (criticals/highs leaking into the result). The fix
+      // matches by the component's worst severity instead.
+      const filters = { ...emptyFilters(), severities: new Set<'low'>(['low']) };
+      expect(
+        applyFilters(universe, filters as never).map((c) => c.name),
+      ).toEqual(['b']);
+    });
+
+    it('"none" pseudo-severity matches components with zero live vulns', () => {
+      const filters = { ...emptyFilters(), severities: new Set<'none'>(['none']) };
+      expect(
+        applyFilters(universe, filters as never).map((c) => c.name).sort(),
+      ).toEqual(['clean', 's']); // suppressed-only counts as zero live by default
+    });
+
+    it('honors showSuppressed flag', () => {
+      const filters = {
+        ...emptyFilters(),
+        severities: new Set<'critical'>(['critical']),
+      };
+      // Default: suppressed not visible, so `s` is filtered OUT of critical.
+      expect(
+        applyFilters(universe, filters as never, undefined, false).map(
+          (c) => c.name,
+        ),
+      ).toEqual([]);
+      // With showSuppressed=true, `s`'s worst becomes critical → matches.
+      expect(
+        applyFilters(universe, filters as never, undefined, true).map(
+          (c) => c.name,
+        ),
+      ).toEqual(['s']);
+    });
   });
 });
 

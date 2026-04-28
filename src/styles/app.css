@@ -40,6 +40,15 @@
   --color-originator-other: #94a3b8;         /* slate-400 — long-tail aggregate */
   --color-originator-unknown: #475569;       /* slate-600 — no originator declared */
 
+  /* Vulnerability severity colors — mirror the license-category palette
+     so visual language stays coherent. */
+  --color-severity-none: #94a3b8;            /* slate-400 — no vulns */
+  --color-severity-low: #16a34a;             /* darker green — informational */
+  --color-severity-medium: #eab308;          /* yellow */
+  --color-severity-high: #f97316;            /* orange */
+  --color-severity-critical: #dc2626;        /* red */
+  --color-severity-unknown: #64748b;         /* slate-500 */
+
   /* Semantic surface tokens. Reference these (not literal `white`) for
      anything that needs to flip in dark mode. `surface` = card / table
      background; `segment-gap` = the thin stroke that separates donut

@@ -1,11 +1,12 @@
 <script lang="ts">
   import { store } from '../state/store.svelte';
   import { CATEGORY_METADATA } from '../license/classify';
-  import type { LicenseCategory } from '../types';
+  import type { LicenseCategory, Severity } from '../types';
 
   type FacetEntry =
     | { label: string; value: string; facet: 'license' | 'scope' | 'type' }
-    | { label: string; value: LicenseCategory; facet: 'category' };
+    | { label: string; value: LicenseCategory; facet: 'category' }
+    | { label: string; value: Severity; facet: 'severity' };
 
   function categoryLabel(id: LicenseCategory): string {
     const meta = CATEGORY_METADATA.find((c) => c.id === id);
@@ -33,12 +34,18 @@
       value,
       facet: 'type' as const,
     })),
+    ...[...store.severityFilters].sort().map((value) => ({
+      label: `severity: ${value}`,
+      value,
+      facet: 'severity' as const,
+    })),
   ]);
 
   function remove(entry: FacetEntry) {
     if (entry.facet === 'category') store.toggleCategory(entry.value);
     else if (entry.facet === 'license') store.toggleLicense(entry.value);
     else if (entry.facet === 'scope') store.toggleScope(entry.value);
+    else if (entry.facet === 'severity') store.toggleSeverity(entry.value);
     else store.toggleType(entry.value);
   }
 </script>

@@ -5,7 +5,7 @@ import {
   searchParamsToFilters,
 } from './url';
 import { emptyFilters } from './filters';
-import type { LicenseCategory } from '../types';
+import type { LicenseCategory, Severity } from '../types';
 
 describe('URL serialization', () => {
   it('produces empty query string for empty filters', () => {
@@ -41,6 +41,7 @@ describe('URL serialization', () => {
       types: new Set(['library']),
       categories: new Set(['permissive' as LicenseCategory]),
       originators: new Set(['The Apache Software Foundation']),
+      severities: new Set<Severity>(['high', 'critical']),
     };
     const params = filtersToSearchParams(original);
     const restored = searchParamsToFilters(params);
@@ -50,6 +51,14 @@ describe('URL serialization', () => {
     expect([...restored.types]).toEqual(['library']);
     expect([...restored.categories]).toEqual(['permissive']);
     expect([...restored.originators]).toEqual(['The Apache Software Foundation']);
+    expect([...restored.severities].sort()).toEqual(['critical', 'high']);
+  });
+
+  it('drops invalid severity values rather than corrupting state', () => {
+    const restored = searchParamsToFilters(
+      new URLSearchParams('severity=high&severity=bogus'),
+    );
+    expect([...restored.severities]).toEqual(['high']);
   });
 
   it('drops invalid category values rather than corrupting state', () => {

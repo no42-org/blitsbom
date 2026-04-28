@@ -1,6 +1,16 @@
 <script lang="ts">
-  import type { Component } from '../types';
+  import type { Component, Severity } from '../types';
   import { store } from '../state/store.svelte';
+  import { isLive } from '../parse/vex';
+
+  function severityCount(c: Component, sev: Severity): number {
+    let n = 0;
+    for (const v of c.vulnerabilities) {
+      if (!store.showSuppressed && !isLive(v)) continue;
+      if (v.severity === sev) n += 1;
+    }
+    return n;
+  }
 
   interface Props {
     components: Component[];
@@ -8,8 +18,30 @@
 
   let { components }: Props = $props();
 
-  type SortKey = 'name' | 'version' | 'license' | 'scope' | 'type';
+  type SortKey =
+    | 'name'
+    | 'version'
+    | 'license'
+    | 'scope'
+    | 'type'
+    | 'vulns-critical'
+    | 'vulns-high'
+    | 'vulns-medium'
+    | 'vulns-low';
   type SortDir = 'asc' | 'desc';
+  type SeverityColumn = 'critical' | 'high' | 'medium' | 'low';
+  const SEVERITY_COLUMNS: readonly SeverityColumn[] = [
+    'critical',
+    'high',
+    'medium',
+    'low',
+  ];
+  const SEVERITY_COLUMN_LABEL: Record<SeverityColumn, string> = {
+    critical: 'Crit',
+    high: 'High',
+    medium: 'Med',
+    low: 'Low',
+  };
 
   let sortKey = $state<SortKey>('name');
   let sortDir = $state<SortDir>('asc');
@@ -38,6 +70,10 @@
     const list = components;
     const key = sortKey;
     const dir = sortDir;
+    // Sorting by 'vulns' depends on liveCount(c), which reads
+    // store.showSuppressed. Touch it here so the effect re-runs when the
+    // toggle flips. Cheap (one boolean), and a no-op for other sort keys.
+    void store.showSuppressed;
 
     const handle = setTimeout(() => {
       const keys = new Array<string>(list.length);
@@ -116,6 +152,19 @@
         return c.scope ?? '';
       case 'type':
         return c.type;
+      case 'vulns-critical':
+      case 'vulns-high':
+      case 'vulns-medium':
+      case 'vulns-low': {
+        // Zero-pad so lexicographic comparison matches numeric order;
+        // tie-break by lowercase name so equal-count rows are stable.
+        const sev = key.slice('vulns-'.length) as Severity;
+        return (
+          String(severityCount(c, sev)).padStart(10, '0') +
+          ':' +
+          c.name.toLowerCase()
+        );
+      }
     }
   }
 
@@ -189,6 +238,30 @@
             </button>
           </th>
         {/each}
+        {#if store.hasVex}
+          {#each SEVERITY_COLUMNS as sev (sev)}
+            {@const k = `vulns-${sev}` as SortKey}
+            <th
+              scope="col"
+              class="th-sev"
+              aria-sort={sortKey === k
+                ? sortDir === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+                : 'none'}
+            >
+              <button
+                type="button"
+                class="sort sort--sev sort--sev-{sev}"
+                onclick={() => setSort(k)}
+                title={`Sort by ${sev} vulnerabilities`}
+              >
+                {SEVERITY_COLUMN_LABEL[sev]}
+                <span class="sort__arrow" aria-hidden="true">{arrow(k)}</span>
+              </button>
+            </th>
+          {/each}
+        {/if}
         <th scope="col">
           <button
             type="button"
@@ -209,7 +282,7 @@
     <tbody>
       {#if totalCount === 0}
         <tr>
-          <td class="empty" colspan="6">
+          <td class="empty" colspan={store.hasVex ? 10 : 6}>
             No components match the current filters.
           </td>
         </tr>
@@ -325,6 +398,27 @@
             <td>
               <span class="badge badge--neutral">{c.type}</span>
             </td>
+            {#if store.hasVex}
+              {#each SEVERITY_COLUMNS as sev (sev)}
+                {@const cnt = severityCount(c, sev)}
+                <td class="cell-sev">
+                  {#if cnt === 0}
+                    <span class="muted">—</span>
+                  {:else}
+                    <button
+                      type="button"
+                      class="sev-count sev-count--{sev}"
+                      onclick={() => store.toggleVexDrilldown(c, sev)}
+                      aria-pressed={store.vexDrilldownComponent === c &&
+                        store.vexDrilldownSeverity === sev}
+                      title={`${cnt} ${sev} ${cnt === 1 ? 'vulnerability' : 'vulnerabilities'}`}
+                    >
+                      {cnt}
+                    </button>
+                  {/if}
+                </td>
+              {/each}
+            {/if}
             <td
               class="purl"
               class:purl--collapsed={!purlExpanded}
@@ -355,6 +449,53 @@
               {/if}
             </td>
           </tr>
+          {#if store.hasVex && store.vexDrilldownComponent === c}
+            {@const baseVulns = store.showSuppressed
+              ? c.vulnerabilities
+              : c.vulnerabilities.filter(isLive)}
+            {@const visibleVulns = store.vexDrilldownSeverity === null
+              ? baseVulns
+              : baseVulns.filter(
+                  (v) => v.severity === store.vexDrilldownSeverity,
+                )}
+            <tr class="vuln-expansion">
+              <td colspan="10">
+                {#if visibleVulns.length === 0}
+                  <p class="vuln-expansion__empty">No vulnerabilities to show.</p>
+                {:else}
+                  <ul class="vuln-list">
+                    {#each visibleVulns as v (v.id + ':' + v.source)}
+                      <li
+                        class="vuln-row"
+                        class:vuln-row--suppressed={v.status && !isLive(v)}
+                      >
+                        <span class="vuln-row__sev vuln-row__sev--{v.severity}">{v.severity}</span>
+                        <span class="vuln-row__id">
+                          {#if v.url}
+                            <a href={v.url} target="_blank" rel="noopener noreferrer">{v.id}</a>
+                          {:else}
+                            {v.id}
+                          {/if}
+                        </span>
+                        <span class="vuln-row__source">{v.source}</span>
+                        {#if v.cvssScore !== undefined}
+                          <span class="vuln-row__cvss" title={v.cvssVector ?? undefined}>
+                            CVSS {v.cvssScore.toFixed(1)}
+                          </span>
+                        {/if}
+                        {#if v.status}
+                          <span class="vuln-row__status" title={v.justification ?? ''}>{v.status}</span>
+                        {/if}
+                        {#if v.description}
+                          <p class="vuln-row__description">{v.description}</p>
+                        {/if}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </td>
+            </tr>
+          {/if}
         {/each}
       {/if}
     </tbody>
@@ -638,5 +779,159 @@
     color: var(--color-ink-600);
     min-width: 8rem;
     text-align: center;
+  }
+  .th-sev {
+    text-align: center;
+    /* Narrow severity columns — content is at most a 4-digit count. */
+    width: 4rem;
+    min-width: 3.5rem;
+  }
+  .cell-sev {
+    text-align: center;
+    white-space: nowrap;
+  }
+  .sort--sev {
+    margin: 0 auto;
+  }
+  .sort--sev-critical { color: var(--color-severity-critical); }
+  .sort--sev-high { color: var(--color-severity-high); }
+  .sort--sev-medium { color: var(--color-severity-medium); }
+  .sort--sev-low { color: var(--color-severity-low); }
+  .sev-count {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--badge-border, var(--color-ink-200));
+    background: var(--badge-bg, transparent);
+    color: var(--badge-fg, var(--color-ink-800));
+    border-radius: 999px;
+    min-width: 1.875rem;
+    padding: 0.0625rem 0.5rem;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .sev-count--low {
+    --badge-bg: color-mix(in srgb, var(--color-severity-low) 8%, transparent);
+    --badge-border: color-mix(in srgb, var(--color-severity-low) 25%, transparent);
+    --badge-fg: var(--color-severity-low);
+  }
+  .sev-count--medium {
+    --badge-bg: color-mix(in srgb, var(--color-severity-medium) 10%, transparent);
+    --badge-border: color-mix(in srgb, var(--color-severity-medium) 30%, transparent);
+    --badge-fg: var(--color-severity-medium);
+  }
+  .sev-count--high {
+    --badge-bg: color-mix(in srgb, var(--color-severity-high) 10%, transparent);
+    --badge-border: color-mix(in srgb, var(--color-severity-high) 30%, transparent);
+    --badge-fg: var(--color-severity-high);
+  }
+  .sev-count--critical {
+    --badge-bg: color-mix(in srgb, var(--color-severity-critical) 12%, transparent);
+    --badge-border: color-mix(in srgb, var(--color-severity-critical) 35%, transparent);
+    --badge-fg: var(--color-severity-critical);
+  }
+  .sev-count[aria-pressed='true'] {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent-500) 30%, transparent);
+  }
+
+  /* Inline expansion row that appears immediately under a row whose vuln
+     badge is active. Visually nested under the parent via inset background
+     + left rule so the table reads as parent → expanded children. */
+  .vuln-expansion > td {
+    padding: 0.75rem 1rem 1rem 2.25rem;
+    background: var(--color-ink-50);
+    border-bottom: 1px solid var(--color-ink-200);
+    border-left: 3px solid color-mix(in srgb, var(--color-accent-500) 50%, transparent);
+  }
+  .vuln-expansion__empty {
+    margin: 0;
+    color: var(--color-ink-500);
+    font-size: 0.8125rem;
+  }
+  .vuln-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .vuln-row {
+    display: grid;
+    grid-template-columns: 5rem 1fr auto auto auto;
+    gap: 0.625rem;
+    align-items: baseline;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--color-ink-200);
+    border-radius: 6px;
+    background: var(--color-surface);
+  }
+  .vuln-row--suppressed {
+    opacity: 0.65;
+  }
+  .vuln-row__sev {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    color: white;
+  }
+  .vuln-row__sev--low { background: var(--color-severity-low); }
+  .vuln-row__sev--medium { background: var(--color-severity-medium); color: var(--color-ink-900); }
+  .vuln-row__sev--high { background: var(--color-severity-high); }
+  .vuln-row__sev--critical { background: var(--color-severity-critical); }
+  .vuln-row__sev--none,
+  .vuln-row__sev--unknown { background: var(--color-severity-unknown); }
+  .vuln-row__id {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--color-ink-900);
+  }
+  .vuln-row__id a {
+    color: var(--color-accent-600);
+    text-decoration: none;
+  }
+  .vuln-row__id a:hover {
+    text-decoration: underline;
+  }
+  .vuln-row__source {
+    font-size: 0.8125rem;
+    color: var(--color-ink-600);
+  }
+  .vuln-row__cvss {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-ink-700);
+    cursor: help;
+  }
+  .vuln-row__status {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-ink-500);
+    cursor: help;
+  }
+  .vuln-row__description {
+    grid-column: 1 / -1;
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-ink-600);
+  }
+  @media (max-width: 720px) {
+    .vuln-row {
+      grid-template-columns: 5rem 1fr auto;
+    }
+    .vuln-row__cvss,
+    .vuln-row__status {
+      grid-column: 2 / -1;
+    }
   }
 </style>

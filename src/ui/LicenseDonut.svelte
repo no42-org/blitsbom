@@ -2,7 +2,6 @@
   import type { CategoryBreakdownEntry } from '../state/filters';
   import { CATEGORY_METADATA } from '../license/classify';
   import { store } from '../state/store.svelte';
-  import { computeArcs, type DonutGeometry } from './donut-arc';
 
   interface Props {
     breakdown: CategoryBreakdownEntry[];
@@ -10,196 +9,65 @@
 
   let { breakdown }: Props = $props();
 
-  const geom: DonutGeometry = { cx: 100, cy: 100, r: 55, rInner: 36 };
-
-  // Tick labels: a short radial line + "count (percent%)" placed just
-  // outside each non-empty segment.
-  interface Tick {
-    line: { x1: number; y1: number; x2: number; y2: number };
-    label: { x: number; y: number };
-    anchor: 'start' | 'middle' | 'end';
-    dy: string;
-    text: string;
-  }
-
-  const ticks = $derived.by<Tick[]>(() => {
-    const total = ordered.reduce((s, o) => s + o.count, 0);
-    if (total <= 0) return [];
-    const nonEmpty = ordered.filter((o) => o.count > 0);
-    // For a single full-ring segment, the percentage is 100% and a label
-    // would crowd the donut — skip ticks entirely.
-    if (nonEmpty.length <= 1) return [];
-
-    const out: Tick[] = [];
-    let cumulative = 0;
-    // Hide tick labels for segments under 2% — they collide with neighbors
-    // and the legend already shows the count.
-    const minVisibleFraction = 0.02;
-    for (const o of ordered) {
-      if (o.count <= 0) {
-        continue;
-      }
-      const fraction = o.count / total;
-      // Always advance cumulative so the next segment's geometry is right;
-      // only skip the LABEL for tiny slivers (legend still shows the count).
-      const startA = (cumulative / total) * Math.PI * 2 - Math.PI / 2;
-      cumulative += o.count;
-      const endA = (cumulative / total) * Math.PI * 2 - Math.PI / 2;
-      if (fraction < minVisibleFraction) continue;
-      const midA = (startA + endA) / 2;
-
-      const cosA = Math.cos(midA);
-      const sinA = Math.sin(midA);
-
-      const tickIn = { x: geom.cx + geom.r * cosA, y: geom.cy + geom.r * sinA };
-      const tickOut = {
-        x: geom.cx + (geom.r + 6) * cosA,
-        y: geom.cy + (geom.r + 6) * sinA,
-      };
-      const labelPos = {
-        x: geom.cx + (geom.r + 9) * cosA,
-        y: geom.cy + (geom.r + 9) * sinA,
-      };
-
-      const anchor: Tick['anchor'] =
-        cosA > 0.15 ? 'start' : cosA < -0.15 ? 'end' : 'middle';
-      const dy = sinA > 0.3 ? '0.8em' : sinA < -0.3 ? '-0.1em' : '0.35em';
-
-      const pct = Math.max(1, Math.round((o.count / total) * 100));
-      out.push({
-        line: { x1: tickIn.x, y1: tickIn.y, x2: tickOut.x, y2: tickOut.y },
-        label: labelPos,
-        anchor,
-        dy,
-        text: `${o.count} (${pct}%)`,
-      });
-    }
-    return out;
-  });
-
-  // Index entries in metadata order so the donut + legend ordering is stable
-  // across re-renders (segments don't shuffle as filters change).
+  // Pin bar order to CATEGORY_METADATA so the chart stays stable as
+  // filters change. Drop empty buckets so we don't render zero-width bars.
   const ordered = $derived(
     CATEGORY_METADATA.map((meta) => {
       const entry = breakdown.find((b) => b.category === meta.id);
       return { meta, count: entry?.count ?? 0 };
-    }),
-  );
-
-  const arcs = $derived(
-    computeArcs(
-      ordered.map((o) => ({ count: o.count })),
-      geom,
-    ),
+    }).filter((o) => o.count > 0),
   );
 
   const total = $derived(ordered.reduce((s, o) => s + o.count, 0));
 
-  // Legend entries: only non-empty categories, in the fixed metadata order.
-  const legendEntries = $derived(ordered.filter((o) => o.count > 0));
-
   function isActive(id: string): boolean {
     return store.categoryFilters.has(id as never);
   }
-
-  // When any category filter is active, the unselected categories render in
-  // a muted light grey so the active one(s) pop visually.
   const anyActive = $derived(store.categoryFilters.size > 0);
-  const dimmedFill = 'var(--color-ink-200)';
 
   function fillFor(id: string, colorToken: string): string {
     if (!anyActive || isActive(id)) return `var(--${colorToken})`;
-    return dimmedFill;
+    return 'var(--color-ink-200)';
   }
 </script>
 
 {#if total > 0}
-  <section class="donut" aria-label="License breakdown by category">
-    <h2 class="donut__heading">Licenses by Category</h2>
-    <div class="donut__layout">
-      <svg
-        class="donut__svg"
-        viewBox="0 0 200 200"
-        role="img"
-        aria-label="License category breakdown"
-      >
-        {#each arcs as arc (arc.index)}
-          {@const meta = ordered[arc.index]?.meta}
-          {#if meta}
-            <path
-              d={arc.d}
-              fill={fillFor(meta.id, meta.colorToken)}
-              stroke-width="1"
-              stroke-linejoin="round"
-              class="donut__segment"
-              class:donut__segment--active={isActive(meta.id)}
-              class:donut__segment--dimmed={anyActive && !isActive(meta.id)}
-              role="button"
-              tabindex="0"
-              aria-pressed={isActive(meta.id)}
-              aria-label={`${meta.label}: ${ordered[arc.index]!.count} components`}
-              onclick={() => store.toggleCategory(meta.id)}
-              onkeydown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  store.toggleCategory(meta.id);
-                }
-              }}
-            />
-          {/if}
-        {/each}
-        {#each ticks as tick}
-          <line
-            x1={tick.line.x1}
-            y1={tick.line.y1}
-            x2={tick.line.x2}
-            y2={tick.line.y2}
-            class="donut__tick"
-          />
-          <text
-            x={tick.label.x}
-            y={tick.label.y}
-            dy={tick.dy}
-            text-anchor={tick.anchor}
-            class="donut__tick-label"
-          >{tick.text}</text>
-        {/each}
-        <text
-          x="100"
-          y="104"
-          text-anchor="middle"
-          class="donut__center-count"
-        >{total}</text>
-      </svg>
-
-      <ul class="legend">
-        {#each legendEntries as entry (entry.meta.id)}
-          <li>
-            <button
-              type="button"
-              class="legend__row"
-              class:legend__row--active={isActive(entry.meta.id)}
-              class:legend__row--dimmed={anyActive && !isActive(entry.meta.id)}
-              onclick={() => store.toggleCategory(entry.meta.id)}
-              aria-pressed={isActive(entry.meta.id)}
-            >
+  <section class="chart" aria-label="License breakdown by category">
+    <h2 class="chart__heading">
+      Licenses by Category
+      <span class="chart__total">{total.toLocaleString()}</span>
+    </h2>
+    <ul class="bars">
+      {#each ordered as o (o.meta.id)}
+        {@const pct = (o.count / total) * 100}
+        <li>
+          <button
+            type="button"
+            class="bar"
+            class:bar--active={isActive(o.meta.id)}
+            class:bar--dimmed={anyActive && !isActive(o.meta.id)}
+            aria-pressed={isActive(o.meta.id)}
+            aria-label={`${o.meta.label}: ${o.count} components (${pct.toFixed(1)}%)`}
+            onclick={() => store.toggleCategory(o.meta.id)}
+          >
+            <span class="bar__label">{o.meta.label}</span>
+            <span class="bar__track">
               <span
-                class="legend__swatch"
-                style={`background: ${fillFor(entry.meta.id, entry.meta.colorToken)};`}
-                aria-hidden="true"
+                class="bar__fill"
+                style={`width: ${pct}%; background: ${fillFor(o.meta.id, o.meta.colorToken)};`}
               ></span>
-              <span class="legend__label">{entry.meta.label}</span>
-              <span class="legend__count">{entry.count}</span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </div>
+            </span>
+            <span class="bar__count">{o.count.toLocaleString()}</span>
+            <span class="bar__pct">{pct.toFixed(1)}%</span>
+          </button>
+        </li>
+      {/each}
+    </ul>
   </section>
 {/if}
 
 <style>
-  .donut {
+  .chart {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -208,118 +76,104 @@
     border: 1px solid var(--color-ink-200);
     border-radius: 12px;
   }
-  .donut__heading {
+  .chart__heading {
     margin: 0;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-ink-500);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
-  .donut__layout {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 2rem;
-    align-items: center;
-  }
-  .donut__svg {
-    width: 25rem;
-    height: 25rem;
-  }
-  .donut__segment {
-    cursor: pointer;
-    transition: transform 80ms ease, opacity 80ms ease;
-    transform-origin: 100px 100px;
-    /* Stroke matches the surrounding card so the inter-segment gap reads
-       as "punched out" — flips with dark mode automatically. */
-    stroke: var(--color-segment-gap);
-  }
-  .donut__segment:hover {
-    opacity: 0.85;
-  }
-  .donut__segment--active {
-    /* Outward bump signals the active segment. */
-    transform: scale(1.08);
-  }
-  .donut__segment--dimmed {
-    transition: fill 120ms ease;
-  }
-  .donut__tick {
-    stroke: var(--color-ink-300);
-    stroke-width: 0.5;
-  }
-  .donut__tick-label {
-    font-size: 5px;
-    fill: var(--color-ink-700);
+  .chart__total {
+    font-size: 0.875rem;
+    color: var(--color-ink-700);
     font-variant-numeric: tabular-nums;
-    pointer-events: none;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
   }
-  .donut__center-count {
-    font-size: 14px;
-    font-weight: 600;
-    fill: var(--color-ink-900);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .legend {
+  .bars {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.375rem;
   }
-  .legend__row {
-    display: grid;
-    grid-template-columns: 1rem 1fr auto;
-    gap: 0.625rem;
-    align-items: center;
-    width: 100%;
-    padding: 0.375rem 0.5rem;
-    background: transparent;
+  .bar {
+    appearance: none;
     border: 1px solid transparent;
-    border-radius: 6px;
-    cursor: pointer;
-    text-align: left;
+    background: transparent;
     color: inherit;
     font: inherit;
+    cursor: pointer;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 9rem 1fr 4rem 4rem;
+    align-items: center;
+    gap: 0.625rem;
+    text-align: left;
     transition: background-color 80ms ease, border-color 80ms ease;
   }
-  .legend__row:hover {
+  .bar:hover {
     background: var(--color-ink-50);
   }
-  .legend__row--active {
+  .bar--active {
     background: color-mix(in srgb, var(--color-accent-500) 8%, transparent);
     border-color: color-mix(in srgb, var(--color-accent-500) 35%, transparent);
   }
-  .legend__row--dimmed .legend__label,
-  .legend__row--dimmed .legend__count {
+  .bar__label {
+    font-size: 0.875rem;
+    color: var(--color-ink-800);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bar--dimmed .bar__label,
+  .bar--dimmed .bar__count,
+  .bar--dimmed .bar__pct {
     color: var(--color-ink-400);
   }
-  .legend__swatch {
-    width: 0.875rem;
-    height: 0.875rem;
-    border-radius: 3px;
-    border: 1px solid color-mix(in srgb, var(--color-ink-900) 20%, transparent);
+  .bar__track {
+    height: 0.625rem;
+    background: var(--color-ink-100);
+    border-radius: 999px;
+    overflow: hidden;
   }
-  .legend__label {
-    font-size: 0.875rem;
-    color: var(--color-ink-700);
+  .bar__fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 120ms ease, background-color 120ms ease;
+    min-width: 2px;
   }
-  .legend__count {
-    text-align: right;
+  .bar__count {
     font-variant-numeric: tabular-nums;
     font-size: 0.875rem;
-    color: var(--color-ink-600);
+    color: var(--color-ink-700);
+    text-align: right;
   }
-
+  .bar__pct {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: var(--color-ink-500);
+    text-align: right;
+  }
   @media (max-width: 640px) {
-    .donut__layout {
-      grid-template-columns: 1fr;
-      justify-items: center;
+    .bar {
+      grid-template-columns: 1fr 3.5rem 3.5rem;
     }
-    .legend {
-      width: 100%;
+    .bar__label {
+      grid-column: 1 / -1;
+    }
+    .bar__track {
+      grid-column: 1 / -1;
     }
   }
 </style>

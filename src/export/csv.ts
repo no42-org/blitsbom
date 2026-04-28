@@ -1,40 +1,81 @@
 import type { Component, SbomMetadata } from '../types';
 
 export const CSV_COLUMNS = [
+  // Component identity / metadata.
   'Name',
-  'Version',
-  'License',
-  'Scope',
-  'Type',
   'Group',
+  'Version',
+  'Type',
+  'Scope',
   'Publisher',
+  'Originator',
+  'Description',
+  'License',
   'purl',
+  'bom-ref',
+  // Per-vulnerability columns (one row per vulnerability; component
+  // fields above repeat across the vuln's rows). For components with
+  // no vulnerabilities, a single row is emitted with these blank.
+  'VulnId',
+  'VulnSeverity',
+  'VulnSource',
+  'VulnCvssScore',
+  'VulnStatus',
+  'VulnUrl',
+  'VulnDescription',
 ] as const;
 
 const CRLF = '\r\n';
 
 /**
  * Build an RFC 4180-compliant CSV string from a list of components.
+ *
+ * Denormalized layout — each vulnerability gets its own row with the
+ * parent component's fields repeated. A component with N vulnerabilities
+ * produces N rows; a component with no vulnerabilities produces a
+ * single row with the per-vuln columns left blank. This makes the
+ * export trivial to filter / pivot in spreadsheet tools.
+ *
  * Quotes fields containing commas, double quotes, or newlines.
- * Uses CRLF line endings as required by the RFC.
+ * Uses CRLF line endings as required by RFC 4180.
  */
 export function buildCsv(components: readonly Component[]): string {
   const rows: string[] = [CSV_COLUMNS.map(escape).join(',')];
+  const EMPTY_VULN_FIELDS = ['', '', '', '', '', '', ''];
   for (const c of components) {
-    rows.push(
-      [
-        c.name,
-        c.version ?? '',
-        c.licenses.map((l) => l.value).join('; '),
-        c.scope ?? '',
-        c.type,
-        c.group ?? '',
-        c.publisher ?? '',
-        c.purl ?? '',
-      ]
-        .map(escape)
-        .join(','),
-    );
+    const compFields: string[] = [
+      c.name,
+      c.group ?? '',
+      c.version ?? '',
+      c.type,
+      c.scope ?? '',
+      c.publisher ?? '',
+      c.originator ?? '',
+      c.description ?? '',
+      c.licenses.map((l) => l.value).join('; '),
+      c.purl ?? '',
+      c.bomRef ?? '',
+    ];
+    if (c.vulnerabilities.length === 0) {
+      rows.push([...compFields, ...EMPTY_VULN_FIELDS].map(escape).join(','));
+    } else {
+      for (const v of c.vulnerabilities) {
+        rows.push(
+          [
+            ...compFields,
+            v.id,
+            v.severity,
+            v.source,
+            v.cvssScore !== undefined ? String(v.cvssScore) : '',
+            v.status ?? '',
+            v.url ?? '',
+            v.description ?? '',
+          ]
+            .map(escape)
+            .join(','),
+        );
+      }
+    }
   }
   return rows.join(CRLF) + CRLF;
 }
