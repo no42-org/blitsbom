@@ -1,15 +1,10 @@
 <script lang="ts">
   import { store } from '../state/store.svelte';
   import { downloadCsv } from '../export/csv';
-  import { exportPdf } from '../export/pdf';
 
   function onCsv() {
     if (!store.loadedSbom) return;
     downloadCsv(store.filteredComponents, store.loadedSbom.metadata);
-  }
-
-  function onPdf() {
-    exportPdf();
   }
 
   function onReset() {
@@ -24,9 +19,8 @@
     Load another file
   </button>
   <div class="toolbar__exports">
-    <button type="button" class="btn" onclick={onCsv}>Export CSV</button>
-    <button type="button" class="btn btn--primary" onclick={onPdf}>
-      Export PDF
+    <button type="button" class="btn btn--primary" onclick={onCsv}>
+      Export CSV
     </button>
   </div>
 </div>

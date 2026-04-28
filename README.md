@@ -130,7 +130,6 @@ SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasE
 - Click-to-toggle filter chips (category, license, scope, type)
 - Filter state encoded in the URL — copy the address to share a view (`?category=permissive&license=Apache-2.0`)
 - CSV export of the filtered view (RFC 4180, Excel-compatible)
-- PDF export via the browser's native print dialog (clean print stylesheet, summary header doubles as the cover page)
 
 ## Developer workflow
 
@@ -166,8 +165,8 @@ src/
   state/      Svelte store, filter combinator (incl. category facet), URL state
   ui/         Svelte components (AppShell, DropZone, SummaryHeader,
               LicenseDonut, LicenseDrilldown, ComponentsTable, ...)
-  export/     CSV writer, PDF print trigger
-  styles/     Tailwind v4 CSS entry (@theme static design tokens) + print stylesheet
+  export/     CSV writer
+  styles/     Tailwind v4 CSS entry (@theme static design tokens)
 scripts/      size-check, purity-check, file-smoke, e2e
 samples/      Real-world SBOMs used as test corpus (not bundled into dist/)
 ```
