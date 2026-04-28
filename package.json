@@ -16,8 +16,7 @@
     "size-check": "node scripts/size-check.mjs",
     "purity-check": "node scripts/purity-check.mjs",
     "smoke": "node scripts/file-smoke.mjs",
-    "e2e": "node scripts/e2e.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "e2e": "node scripts/e2e.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",

@@ -1,4 +1,4 @@
-.PHONY: help install dev build verify test lint format clean preview dist-zip size-check purity-check smoke e2e screenshots ci
+.PHONY: help install dev build verify test lint format clean preview dist-zip size-check purity-check smoke e2e ci
 
 help:
 	@echo "blitsbom — Make targets"
@@ -14,7 +14,6 @@ help:
 	@echo "  purity-check    Fail if any forbidden network call appears in src/"
 	@echo "  smoke           Run the file:// headless-Chromium smoke test"
 	@echo "  e2e             Full file:// end-to-end UX check (upload, filter, export)"
-	@echo "  screenshots     Capture loaded-view + print-preview screenshots"
 	@echo "  dist-zip        Build and zip dist/ as dist.zip"
 	@echo "  ci              build + verify + size-check + smoke + e2e (used by CI)"
 	@echo "  clean           Remove dist/ and node_modules/"
@@ -53,9 +52,6 @@ smoke:
 
 e2e:
 	npm run e2e
-
-screenshots:
-	npm run screenshots
 
 dist-zip: build
 	rm -f dist.zip

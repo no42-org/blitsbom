@@ -4,8 +4,6 @@ A zero-install, browser-only viewer for [CycloneDX](https://cyclonedx.org/) SBOM
 
 > **Privacy:** every byte stays in your browser. No upload, no phone-home, no telemetry. The page works with the network cable unplugged.
 
-![blitsbom showing the reference SBOM with summary, license chart, and components table](./screenshots/loaded-view.png)
-
 ## Three install paths
 
 ### 1. Hosted (zero install)
@@ -87,8 +85,6 @@ SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasE
 - CSV export of the filtered view (RFC 4180, Excel-compatible)
 - PDF export via the browser's native print dialog (clean print stylesheet, summary header doubles as the cover page)
 
-![blitsbom rendered with print-media emulation, ready to be saved as PDF](./screenshots/print-preview.png)
-
 ## Developer workflow
 
 ```bash
@@ -122,7 +118,7 @@ src/
               LicenseDonut, LicenseDrilldown, ComponentsTable, ...)
   export/     CSV writer, PDF print trigger
   styles/     Tailwind v4 CSS entry (@theme static design tokens) + print stylesheet
-scripts/      size-check, purity-check, file-smoke, e2e, screenshots
+scripts/      size-check, purity-check, file-smoke, e2e
 samples/      Real-world SBOMs used as test corpus (not bundled into dist/)
 ```
 
