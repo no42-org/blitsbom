@@ -14,6 +14,7 @@
   import ErrorBanner from './ErrorBanner.svelte';
   import Toolbar from './Toolbar.svelte';
   import ThemeToggle from './ThemeToggle.svelte';
+  import logoUrl from '../../assets/logo.svg';
 
   onMount(() => {
     store.hydrateFromUrl();
@@ -29,6 +30,7 @@
 <div class="page">
   <header class="page__masthead">
     <div class="brand">
+      <img src={logoUrl} alt="" class="brand__logo" aria-hidden="true" />
       <span class="brand__name">blitsbom</span>
       <span class="brand__tag">Pixelperfect SBOM analytics</span>
     </div>
@@ -144,8 +146,14 @@
   }
   .brand {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.625rem;
+  }
+  .brand__logo {
+    width: 1.75rem;
+    height: 1.75rem;
+    display: block;
+    flex-shrink: 0;
   }
   .brand__name {
     font-size: 1.25rem;
