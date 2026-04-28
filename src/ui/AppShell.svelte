@@ -70,6 +70,13 @@
 
   <footer class="page__footer">
     <span>blitsbom · runs entirely in your browser</span>
+    <span class="page__credit">
+      Made with ❤️ for Open Source in Europe ·
+      <a
+        href="https://blog.no42.org/page/about/"
+        target="_blank"
+        rel="noopener noreferrer">About Me</a>
+    </span>
   </footer>
 </div>
 
@@ -131,5 +138,16 @@
     border-top: 1px solid theme('colors.ink.200');
     font-size: 0.8125rem;
     color: theme('colors.ink.500');
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    justify-content: space-between;
+  }
+  .page__credit a {
+    color: theme('colors.accent.600');
+    text-decoration: none;
+  }
+  .page__credit a:hover {
+    text-decoration: underline;
   }
 </style>
