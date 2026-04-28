@@ -20,12 +20,14 @@
   type PageSize = 20 | 50 | 100 | 200 | 'all';
   const PAGE_SIZE_OPTIONS: readonly PageSize[] = [20, 50, 100, 200, 'all'];
   let pageSize = $state<PageSize>(20);
+  let currentPage = $state(1);
 
-  // PERF: visibleRows MUST be $state.raw populated from $effect, not $derived.
-  // A $derived array passed to {#each} causes Svelte 5 to wrap each accessed
-  // property in reactive proxies; for thousands of source components plus
-  // {#each} reading c.name, c.version, c.licenses, etc., this freezes the
-  // browser. $state.raw side-steps the proxy machinery on the array elements.
+  // PERF: sortedRows and visibleRows MUST be $state.raw populated from
+  // $effect, not $derived. A $derived array passed to {#each} causes
+  // Svelte 5 to wrap each accessed property in reactive proxies; for
+  // thousands of source components plus {#each} reading c.name, c.version,
+  // c.licenses, etc., this freezes the browser.
+  let sortedRows = $state.raw<Component[]>([]);
   let visibleRows = $state.raw<Component[]>([]);
   let totalCount = $state(0);
 
@@ -36,10 +38,8 @@
     const list = components;
     const key = sortKey;
     const dir = sortDir;
-    const ps = pageSize;
 
     const handle = setTimeout(() => {
-      const cap = ps === 'all' ? list.length : Math.min(ps, list.length);
       const keys = new Array<string>(list.length);
       for (let i = 0; i < list.length; i++) {
         keys[i] = sortValue(list[i]!, key);
@@ -55,12 +55,54 @@
       const sortedArr = new Array<Component>(list.length);
       for (let i = 0; i < list.length; i++) sortedArr[i] = list[order[i]!]!;
 
-      visibleRows = sortedArr.slice(0, cap);
+      sortedRows = sortedArr;
       totalCount = list.length;
     }, 0);
 
     return () => clearTimeout(handle);
   });
+
+  // When the underlying list changes (filters etc.) or the page size
+  // changes, jump back to page 1. Sort changes are handled in setSort.
+  $effect(() => {
+    components;
+    pageSize;
+    currentPage = 1;
+  });
+
+  // Visible slice — derived from sortedRows + page + pageSize. Cheap, but
+  // still kept in $state.raw to avoid the proxy-on-iterate trap above.
+  $effect(() => {
+    const arr = sortedRows;
+    const ps = pageSize;
+    const cp = currentPage;
+    if (ps === 'all') {
+      visibleRows = arr;
+      return;
+    }
+    const start = (cp - 1) * ps;
+    visibleRows = arr.slice(start, start + ps);
+  });
+
+  const totalPages = $derived(
+    pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalCount / pageSize)),
+  );
+  const pageStart = $derived(
+    totalCount === 0
+      ? 0
+      : pageSize === 'all'
+        ? 1
+        : (currentPage - 1) * pageSize + 1,
+  );
+  const pageEnd = $derived(
+    pageSize === 'all'
+      ? totalCount
+      : Math.min(currentPage * pageSize, totalCount),
+  );
+
+  function goToPage(n: number): void {
+    currentPage = Math.max(1, Math.min(totalPages, n));
+  }
 
   function sortValue(c: Component, key: SortKey): string {
     switch (key) {
@@ -84,6 +126,7 @@
       sortKey = key;
       sortDir = 'asc';
     }
+    currentPage = 1;
   }
 
   function arrow(key: SortKey): string {
@@ -155,16 +198,43 @@
               {:else}
                 {#each c.licenses as lic, i (lic.value + i)}
                   {#if i > 0}, {/if}
-                  <button
-                    type="button"
-                    class="license-pill"
-                    onclick={() => store.toggleLicense(lic.value)}
-                    title={lic.kind === 'expression'
-                      ? 'SPDX expression'
-                      : lic.value}
-                  >
-                    {lic.value}
-                  </button>
+                  <span class="license-cell">
+                    {#if lic.url}
+                      <a
+                        class="license-link"
+                        href={lic.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${lic.value} license text in a new tab`}
+                        title={lic.url}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                        </svg>
+                      </a>
+                    {/if}
+                    <button
+                      type="button"
+                      class="license-pill"
+                      onclick={() => store.toggleLicense(lic.value)}
+                      title={lic.kind === 'expression'
+                        ? 'SPDX expression'
+                        : lic.value}
+                    >
+                      {lic.value}
+                    </button>
+                  </span>
                 {/each}
               {/if}
             </td>
@@ -215,7 +285,7 @@
   {#if totalCount > 0}
     <div class="more">
       <span class="more__count">
-        Showing {visibleRows.length.toLocaleString()} of {totalCount.toLocaleString()} components
+        Showing {pageStart.toLocaleString()}–{pageEnd.toLocaleString()} of {totalCount.toLocaleString()} components
       </span>
       <label class="more__pagesize">
         <span>Rows per page:</span>
@@ -231,6 +301,27 @@
           {/each}
         </select>
       </label>
+      {#if pageSize !== 'all' && totalPages > 1}
+        <nav class="pager" aria-label="Table pagination">
+          <button
+            type="button"
+            class="pager__btn"
+            onclick={() => goToPage(currentPage - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+          >‹ Prev</button>
+          <span class="pager__indicator" aria-live="polite">
+            Page {currentPage.toLocaleString()} of {totalPages.toLocaleString()}
+          </span>
+          <button
+            type="button"
+            class="pager__btn"
+            onclick={() => goToPage(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            aria-label="Next page"
+          >Next ›</button>
+        </nav>
+      {/if}
     </div>
   {/if}
 </div>
@@ -349,6 +440,22 @@
   .badge--neutral {
     background: var(--color-ink-50);
   }
+  .license-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    vertical-align: middle;
+  }
+  .license-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-ink-400);
+    text-decoration: none;
+    line-height: 0;
+  }
+  .license-link:hover {
+    color: var(--color-accent-600);
+  }
   .license-pill {
     display: inline-block;
     padding: 0.125rem 0.5rem;
@@ -407,5 +514,35 @@
   }
   .more__select:hover {
     background-color: var(--color-ink-100);
+  }
+  .pager {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .pager__btn {
+    appearance: none;
+    border: 1px solid var(--color-ink-200);
+    background: white;
+    border-radius: 6px;
+    padding: 0.25rem 0.625rem;
+    font: inherit;
+    font-size: 0.8125rem;
+    color: var(--color-ink-800);
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .pager__btn:hover:not(:disabled) {
+    background-color: var(--color-ink-100);
+  }
+  .pager__btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .pager__indicator {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-600);
+    min-width: 8rem;
+    text-align: center;
   }
 </style>
