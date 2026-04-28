@@ -1,4 +1,4 @@
-.PHONY: help install dev build verify test lint format clean preview dist-zip size-check purity-check smoke e2e ci
+.PHONY: help install dev build verify test lint format clean preview dist-zip size-check purity-check smoke e2e docker-build docker-run ci
 
 help:
 	@echo "blitsbom — Make targets"
@@ -15,6 +15,8 @@ help:
 	@echo "  smoke           Run the file:// headless-Chromium smoke test"
 	@echo "  e2e             Full file:// end-to-end UX check (upload, filter, export)"
 	@echo "  dist-zip        Build and zip dist/ as dist.zip"
+	@echo "  docker-build    Build the Alpine-based Docker image (tag: blitsbom:latest)"
+	@echo "  docker-run      Run the image locally on http://localhost:8080"
 	@echo "  ci              build + verify + size-check + smoke + e2e (used by CI)"
 	@echo "  clean           Remove dist/ and node_modules/"
 
@@ -56,6 +58,12 @@ e2e:
 dist-zip: build
 	rm -f dist.zip
 	cd dist && zip -r ../dist.zip .
+
+docker-build:
+	docker build -t blitsbom:latest .
+
+docker-run:
+	docker run --rm -p 8080:80 blitsbom:latest
 
 ci: build verify size-check smoke e2e
 

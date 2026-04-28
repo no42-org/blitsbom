@@ -4,6 +4,50 @@ A zero-install, browser-only viewer for [CycloneDX](https://cyclonedx.org/) SBOM
 
 > **Privacy:** every byte stays in your browser. No upload, no phone-home, no telemetry. The page works with the network cable unplugged.
 
+## Quick start (Docker)
+
+The fastest way to run blitsbom in your own environment — Alpine-based image, ~50 MB, no runtime dependencies.
+
+### Pull a published image from GHCR
+
+```bash
+# Stable release
+docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:latest
+
+# A specific version
+docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:0.1.0
+
+# Bleeding-edge build from main (release-candidate)
+docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:rc
+```
+
+Then open <http://localhost:8080> and drop your `bom.json` / `sbom.json` onto the page.
+
+### Build it yourself
+
+```bash
+make docker-build   # build the local image
+make docker-run     # serve it on http://localhost:8080
+```
+
+Equivalent without Make:
+
+```bash
+docker build -t blitsbom:latest .
+docker run --rm -p 8080:80 blitsbom:latest
+```
+
+The image is a static nginx serving the built bundle — no telemetry, no outbound calls, safe behind air-gapped firewalls.
+
+### Image tags
+
+| Tag                    | Source                        | When pushed                 |
+|------------------------|-------------------------------|-----------------------------|
+| `:latest`              | latest tagged release         | on `vX.Y.Z` tag             |
+| `:X.Y.Z`, `:X.Y`       | the same release, semver pins | on `vX.Y.Z` tag             |
+| `:rc`                  | tip of `main`                 | on every push to `main`     |
+| `:main-<short-sha>`    | a specific main commit        | on every push to `main`     |
+
 ## Three install paths
 
 ### 1. Hosted (zero install)
@@ -103,9 +147,12 @@ CI invokes `make` targets, never the underlying npm scripts directly, so the dev
 ## Deployment
 
 - Pushing to `main` triggers `.github/workflows/pages.yml`, which builds, runs `make verify`, runs the size and `file://` smoke checks, and publishes `dist/` to GitHub Pages.
-- Pushing a tag matching `v*` triggers `.github/workflows/release.yml`, which produces `dist.zip` and attaches it to the corresponding GitHub Release.
+- Pushing to `main` also triggers `.github/workflows/docker.yml`, which builds and pushes `ghcr.io/no42-org/blitsbom:rc` (and `:main-<short-sha>`).
+- Pushing a tag matching `v*` triggers `.github/workflows/release.yml` (produces `dist.zip` and attaches it to the GitHub Release) and `.github/workflows/docker.yml` (publishes `:latest`, `:X.Y.Z`, `:X.Y` to GHCR).
 
 All third-party Actions are pinned to immutable commit SHAs and kept current by Dependabot.
+
+See **[RELEASING.md](./RELEASING.md)** for the full release workflow — versioning policy, cutting a release, hotfixes, and troubleshooting.
 
 ## Project layout
 

@@ -1,0 +1,25 @@
+# VCS
+.git
+.gitignore
+.github
+
+# Build outputs (regenerated inside the image)
+node_modules
+dist
+dist.zip
+
+# Test fixtures + tooling not needed for production build
+samples
+scripts
+.agent
+.claude
+.codex
+openspec
+
+# Editor / OS noise
+.DS_Store
+*.log
+
+# Docs (the image only needs the build inputs)
+README.md
+LICENSE
