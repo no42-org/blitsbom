@@ -101,11 +101,21 @@
   function isActive(id: string): boolean {
     return store.categoryFilters.has(id as never);
   }
+
+  // When any category filter is active, the unselected categories render in
+  // a muted light grey so the active one(s) pop visually.
+  const anyActive = $derived(store.categoryFilters.size > 0);
+  const dimmedFill = 'var(--color-ink-200)';
+
+  function fillFor(id: string, colorToken: string): string {
+    if (!anyActive || isActive(id)) return `var(--${colorToken})`;
+    return dimmedFill;
+  }
 </script>
 
 {#if total > 0}
   <section class="donut" aria-label="License breakdown by category">
-    <h2 class="donut__heading">License breakdown</h2>
+    <h2 class="donut__heading">Licenses by Category</h2>
     <div class="donut__layout">
       <svg
         class="donut__svg"
@@ -118,9 +128,13 @@
           {#if meta}
             <path
               d={arc.d}
-              fill={`var(--${meta.colorToken})`}
+              fill={fillFor(meta.id, meta.colorToken)}
+              stroke="white"
+              stroke-width="1"
+              stroke-linejoin="round"
               class="donut__segment"
               class:donut__segment--active={isActive(meta.id)}
+              class:donut__segment--dimmed={anyActive && !isActive(meta.id)}
               role="button"
               tabindex="0"
               aria-pressed={isActive(meta.id)}
@@ -166,12 +180,13 @@
               type="button"
               class="legend__row"
               class:legend__row--active={isActive(entry.meta.id)}
+              class:legend__row--dimmed={anyActive && !isActive(entry.meta.id)}
               onclick={() => store.toggleCategory(entry.meta.id)}
               aria-pressed={isActive(entry.meta.id)}
             >
               <span
                 class="legend__swatch"
-                style={`background: var(--${entry.meta.colorToken});`}
+                style={`background: ${fillFor(entry.meta.id, entry.meta.colorToken)};`}
                 aria-hidden="true"
               ></span>
               <span class="legend__label">{entry.meta.label}</span>
@@ -221,8 +236,11 @@
     opacity: 0.85;
   }
   .donut__segment--active {
-    /* Slight outward bump signals the active segment. */
-    transform: scale(1.03);
+    /* Outward bump signals the active segment. */
+    transform: scale(1.08);
+  }
+  .donut__segment--dimmed {
+    transition: fill 120ms ease;
   }
   .donut__tick {
     stroke: var(--color-ink-300);
@@ -271,6 +289,10 @@
   .legend__row--active {
     background: color-mix(in srgb, var(--color-accent-500) 8%, transparent);
     border-color: color-mix(in srgb, var(--color-accent-500) 35%, transparent);
+  }
+  .legend__row--dimmed .legend__label,
+  .legend__row--dimmed .legend__count {
+    color: var(--color-ink-400);
   }
   .legend__swatch {
     width: 0.875rem;
