@@ -17,7 +17,7 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 | Artifact                                  | Source                          | Pushed by                      |
 |-------------------------------------------|---------------------------------|--------------------------------|
 | GitHub Pages site (`https://no42-org.github.io/blitsbom/`) | tip of `main`                   | `.github/workflows/pages.yml`  |
-| `dist.zip` attached to GitHub Release     | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
+| `dist.zip` + `dist.zip.sha512` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
 | `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` | every push to `main`           | `.github/workflows/docker.yml` |
 | `ghcr.io/no42-org/blitsbom:latest` / `:X.Y.Z` / `:X.Y` | the `vX.Y.Z` Git tag           | `.github/workflows/docker.yml` |
 
@@ -61,7 +61,11 @@ Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip`) and `dock
 
 After the workflows turn green:
 
-1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip` is attached and the auto-generated release notes look reasonable. Edit them in place if needed.
+1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify both `dist.zip` and `dist.zip.sha512` are attached and the auto-generated release notes look reasonable. Spot-check the checksum:
+   ```bash
+   gh release download --pattern 'dist.zip*'
+   sha512sum -c dist.zip.sha512
+   ```
 2. **GHCR images** — pull and run, sanity-check it loads:
    ```bash
    docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:0.2.0

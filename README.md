@@ -56,13 +56,16 @@ Open the GitHub Pages site for this repository — drop your `bom.json` onto the
 
 ### 2. Self-host (drop into any static server)
 
-Each tagged release publishes a `dist.zip` of the built static files.
+Each tagged release publishes a `dist.zip` of the built static files plus a `dist.zip.sha512` checksum.
 
 ```bash
-# Grab the latest release artifact
-gh release download --pattern dist.zip
+# Grab the latest release artifact + checksum
+gh release download --pattern 'dist.zip*'
 
-# Or extract into a webroot
+# Verify integrity (exits non-zero if the bundle was tampered with)
+sha512sum -c dist.zip.sha512
+
+# Extract into a webroot
 unzip dist.zip -d /var/www/blitsbom
 ```
 

@@ -40,10 +40,17 @@ jobs:
       - name: Build dist.zip
         run: make dist-zip
 
-      - name: Attach dist.zip to release
+      # Emit "<sha512>  dist.zip" — the canonical sha512sum --check format
+      # so reviewers can verify with `sha512sum -c dist.zip.sha512`.
+      - name: Generate SHA-512 checksum
+        run: sha512sum dist.zip > dist.zip.sha512
+
+      - name: Attach dist.zip + checksum to release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
-          files: dist.zip
+          files: |
+            dist.zip
+            dist.zip.sha512
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true
