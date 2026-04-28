@@ -57,7 +57,7 @@
     gap: 0.75rem;
     padding: 1.5rem;
     background: white;
-    border: 1px solid theme('colors.ink.200');
+    border: 1px solid var(--color-ink-200);
     border-radius: 12px;
   }
   .chart__heading {
@@ -66,7 +66,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
   }
   .chart__list {
     display: flex;
@@ -93,24 +93,24 @@
     transition: background-color 80ms ease, border-color 80ms ease;
   }
   .bar:hover {
-    background: theme('colors.ink.50');
+    background: var(--color-ink-50);
   }
   .bar--active {
-    background: theme('colors.accent.500 / 8%');
-    border-color: theme('colors.accent.500 / 35%');
+    background: color-mix(in srgb, var(--color-accent-500) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent-500) 35%, transparent);
   }
   .bar__label {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: theme('fontFamily.mono');
+    font-family: var(--font-mono);
     font-size: 0.875rem;
-    color: theme('colors.ink.700');
+    color: var(--color-ink-700);
   }
   .bar__track {
     position: relative;
     height: 0.5rem;
-    background: theme('colors.ink.100');
+    background: var(--color-ink-100);
     border-radius: 4px;
     overflow: hidden;
   }
@@ -118,7 +118,7 @@
     position: absolute;
     inset-block: 0;
     inset-inline-start: 0;
-    background: theme('colors.accent.500');
+    background: var(--color-accent-500);
     opacity: 0.85;
   }
   .bar--active .bar__fill {
@@ -128,6 +128,6 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
     font-size: 0.875rem;
-    color: theme('colors.ink.600');
+    color: var(--color-ink-600);
   }
 </style>

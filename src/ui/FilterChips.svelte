@@ -66,11 +66,11 @@
     gap: 0.25rem;
     padding: 0.25rem 0.5rem 0.25rem 0.625rem;
     background: white;
-    border: 1px solid theme('colors.ink.200');
+    border: 1px solid var(--color-ink-200);
     border-radius: 999px;
     font-size: 0.8125rem;
-    color: theme('colors.ink.700');
-    font-family: theme('fontFamily.mono');
+    color: var(--color-ink-700);
+    font-family: var(--font-mono);
   }
   .chip__label {
     line-height: 1.25;
@@ -81,12 +81,12 @@
     background: transparent;
     padding: 0 0.25rem;
     cursor: pointer;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
     font-size: 1rem;
     line-height: 1;
   }
   .chip__remove:hover {
-    color: theme('colors.ink.800');
+    color: var(--color-ink-800);
   }
   .chips__clear {
     appearance: none;
@@ -94,7 +94,7 @@
     background: transparent;
     padding: 0.25rem 0.5rem;
     font-size: 0.8125rem;
-    color: theme('colors.accent.600');
+    color: var(--color-accent-600);
     cursor: pointer;
   }
   .chips__clear:hover {

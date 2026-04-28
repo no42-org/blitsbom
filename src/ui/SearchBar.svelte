@@ -34,25 +34,25 @@
   .search__input {
     flex: 1;
     padding: 0.5rem 0.75rem;
-    border: 1px solid theme('colors.ink.200');
+    border: 1px solid var(--color-ink-200);
     border-radius: 8px;
     background: white;
     font-size: 0.9375rem;
-    color: theme('colors.ink.900');
+    color: var(--color-ink-900);
   }
   .search__input::placeholder {
-    color: theme('colors.ink.400');
+    color: var(--color-ink-400);
   }
   .search__clear {
     padding: 0.5rem 0.75rem;
-    border: 1px solid theme('colors.ink.200');
+    border: 1px solid var(--color-ink-200);
     border-radius: 8px;
     background: white;
     font-size: 0.875rem;
-    color: theme('colors.ink.600');
+    color: var(--color-ink-600);
     cursor: pointer;
   }
   .search__clear:hover {
-    background: theme('colors.ink.50');
+    background: var(--color-ink-50);
   }
 </style>

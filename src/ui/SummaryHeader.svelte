@@ -66,7 +66,7 @@
     gap: 1.5rem;
     padding: 2rem;
     background: white;
-    border: 1px solid theme('colors.ink.200');
+    border: 1px solid var(--color-ink-200);
     border-radius: 12px;
   }
   .summary-header__stats {
@@ -80,21 +80,21 @@
     flex-direction: column;
     gap: 0.25rem;
     padding: 1rem;
-    background: theme('colors.ink.50');
+    background: var(--color-ink-50);
     border-radius: 8px;
   }
   .stat__value {
     margin: 0;
     font-size: 1.875rem;
     font-weight: 600;
-    color: theme('colors.ink.900');
+    color: var(--color-ink-900);
     font-variant-numeric: tabular-nums;
   }
   .stat__label {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
   }
   @media (max-width: 640px) {
     .summary-header__stats {

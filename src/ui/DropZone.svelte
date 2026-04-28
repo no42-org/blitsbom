@@ -75,7 +75,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px dashed theme('colors.ink.300');
+    border: 2px dashed var(--color-ink-300);
     border-radius: 12px;
     padding: 4rem 2rem;
     background: white;
@@ -83,11 +83,11 @@
     transition: border-color 120ms ease, background-color 120ms ease;
   }
   .drop-zone:hover {
-    border-color: theme('colors.ink.400');
+    border-color: var(--color-ink-400);
   }
   .drop-zone--active {
-    border-color: theme('colors.accent.500');
-    background: theme('colors.accent.500 / 4%');
+    border-color: var(--color-accent-500);
+    background: color-mix(in srgb, var(--color-accent-500) 4%, transparent);
   }
   .sr-only {
     position: absolute;

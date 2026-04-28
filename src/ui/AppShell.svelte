@@ -95,7 +95,7 @@
     justify-content: space-between;
     gap: 0.5rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid theme('colors.ink.200');
+    border-bottom: 1px solid var(--color-ink-200);
   }
   .brand {
     display: inline-flex;
@@ -106,16 +106,16 @@
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    color: theme('colors.ink.900');
+    color: var(--color-ink-900);
   }
   .brand__tag {
     font-size: 0.875rem;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
   }
   .page__privacy {
     margin: 0;
     font-size: 0.8125rem;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
   }
   .page__main {
     display: grid;
@@ -135,16 +135,16 @@
   .page__footer {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid theme('colors.ink.200');
+    border-top: 1px solid var(--color-ink-200);
     font-size: 0.8125rem;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem 1.5rem;
     justify-content: space-between;
   }
   .page__credit a {
-    color: theme('colors.accent.600');
+    color: var(--color-accent-600);
     text-decoration: none;
   }
   .page__credit a:hover {

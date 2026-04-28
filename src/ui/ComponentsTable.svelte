@@ -137,7 +137,7 @@
 <style>
   .table-wrap {
     background: white;
-    border: 1px solid theme('colors.ink.200');
+    border: 1px solid var(--color-ink-200);
     border-radius: 12px;
     overflow: hidden;
   }
@@ -147,28 +147,28 @@
     font-size: 0.875rem;
   }
   thead {
-    background: theme('colors.ink.50');
+    background: var(--color-ink-50);
     text-align: left;
   }
   thead th {
     padding: 0.75rem 1rem;
     font-weight: 600;
-    color: theme('colors.ink.600');
-    border-bottom: 1px solid theme('colors.ink.200');
+    color: var(--color-ink-600);
+    border-bottom: 1px solid var(--color-ink-200);
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
   tbody td {
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid theme('colors.ink.100');
+    border-bottom: 1px solid var(--color-ink-100);
     vertical-align: top;
   }
   tbody tr:last-child td {
     border-bottom: 0;
   }
   tbody tr:hover {
-    background: theme('colors.ink.50 / 60%');
+    background: color-mix(in srgb, var(--color-ink-50) 60%, transparent);
   }
   .sort {
     appearance: none;
@@ -185,15 +185,15 @@
     gap: 0.25rem;
   }
   .sort:hover {
-    color: theme('colors.ink.900');
+    color: var(--color-ink-900);
   }
   .sort__arrow {
     width: 0.75rem;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
   }
   .mono {
-    font-family: theme('fontFamily.mono');
-    color: theme('colors.ink.700');
+    font-family: var(--font-mono);
+    color: var(--color-ink-700);
   }
   .purl {
     word-break: break-all;
@@ -205,51 +205,51 @@
     gap: 0.125rem;
   }
   .cell-name__group {
-    font-family: theme('fontFamily.mono');
+    font-family: var(--font-mono);
     font-size: 0.75rem;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
   }
   .cell-name__name {
     font-weight: 500;
-    color: theme('colors.ink.900');
+    color: var(--color-ink-900);
   }
   .badge {
     display: inline-block;
     padding: 0.125rem 0.5rem;
     border-radius: 999px;
-    background: theme('colors.ink.100');
-    color: theme('colors.ink.700');
+    background: var(--color-ink-100);
+    color: var(--color-ink-700);
     font-size: 0.75rem;
-    font-family: theme('fontFamily.mono');
+    font-family: var(--font-mono);
   }
   .badge--neutral {
-    background: theme('colors.ink.50');
+    background: var(--color-ink-50);
   }
   .license-pill {
     display: inline-block;
     padding: 0.125rem 0.5rem;
     border-radius: 999px;
-    background: theme('colors.accent.500 / 8%');
-    border: 1px solid theme('colors.accent.500 / 20%');
-    color: theme('colors.accent.600');
+    background: color-mix(in srgb, var(--color-accent-500) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent-500) 20%, transparent);
+    color: var(--color-accent-600);
     font-size: 0.8125rem;
-    font-family: theme('fontFamily.mono');
+    font-family: var(--font-mono);
     cursor: pointer;
   }
   .license-pill:hover {
-    background: theme('colors.accent.500 / 15%');
+    background: color-mix(in srgb, var(--color-accent-500) 15%, transparent);
   }
   .license-pill--active {
-    background: theme('colors.accent.500');
+    background: var(--color-accent-500);
     color: white;
-    border-color: theme('colors.accent.500');
+    border-color: var(--color-accent-500);
   }
   .muted {
-    color: theme('colors.ink.400');
+    color: var(--color-ink-400);
   }
   .empty {
     padding: 3rem 1rem;
     text-align: center;
-    color: theme('colors.ink.500');
+    color: var(--color-ink-500);
   }
 </style>

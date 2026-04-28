@@ -95,7 +95,7 @@ src/
   state/      Svelte store, filter combinator, URL state
   ui/         Svelte components (AppShell, DropZone, SummaryHeader, ...)
   export/     CSV writer, PDF print trigger
-  styles/     Tailwind entry + print stylesheet
+  styles/     Tailwind v4 CSS entry (@theme static design tokens) + print stylesheet
 scripts/      size-check, purity-check, file-smoke
 test-fixtures/  reference SBOM used in unit tests
 ```
