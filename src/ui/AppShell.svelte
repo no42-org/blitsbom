@@ -3,7 +3,8 @@
   import { store } from '../state/store.svelte';
   import DropZone from './DropZone.svelte';
   import SummaryHeader from './SummaryHeader.svelte';
-  import LicenseChart from './LicenseChart.svelte';
+  import LicenseDonut from './LicenseDonut.svelte';
+  import LicenseDrilldown from './LicenseDrilldown.svelte';
   import SearchBar from './SearchBar.svelte';
   import FilterChips from './FilterChips.svelte';
   import ComponentsTable from './ComponentsTable.svelte';
@@ -15,11 +16,12 @@
   });
 
   $effect(() => {
-    // Touch the four pieces of filter state so this effect re-runs on change.
+    // Touch every filter slice so this effect re-runs on change.
     store.query;
     store.licenseFilters;
     store.scopeFilters;
     store.typeFilters;
+    store.categoryFilters;
     store.syncToUrl();
   });
 </script>
@@ -43,18 +45,18 @@
     {#if !store.loadedSbom}
       <DropZone />
     {:else}
+      {@const sbom = store.loadedSbom}
       <SummaryHeader
-        sbom={store.loadedSbom}
+        sbom={sbom}
         componentCount={store.filteredComponents.length}
         licenseCount={store.licenseBreakdown.length}
-        typeCount={new Set(store.filteredComponents.map((c) => c.type)).size}
-        vulnCount={store.loadedSbom.metadata.vulnerabilityCount}
+        typeCount={store.availableTypes.length}
+        vulnCount={sbom.metadata.vulnerabilityCount}
       />
 
-      <LicenseChart
-        breakdown={store.licenseBreakdownAll}
-        totalForScale={store.components.length}
-      />
+      <LicenseDonut breakdown={store.categoryBreakdownAll} />
+
+      <LicenseDrilldown />
 
       <section class="controls">
         <div class="controls__row">

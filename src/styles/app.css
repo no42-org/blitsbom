@@ -17,6 +17,14 @@
   --color-accent-500: #2563eb;
   --color-accent-600: #1d4ed8;
 
+  /* License classification colors — see src/license/classify.ts. */
+  --color-license-undeclared: #94a3b8;       /* slate-400 — neutral grey */
+  --color-license-public-domain: #86efac;    /* light green */
+  --color-license-permissive: #16a34a;       /* darker green */
+  --color-license-copyleft: #eab308;         /* yellow */
+  --color-license-strong-copyleft: #f97316;  /* orange */
+  --color-license-proprietary: #dc2626;      /* red */
+
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;

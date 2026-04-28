@@ -2,7 +2,7 @@
 
 export type CdxSpecVersion = '1.4' | '1.5' | '1.6';
 
-export const SUPPORTED_SPEC_VERSIONS: readonly CdxSpecVersion[] = [
+export const SUPPORTED_CDX_VERSIONS: readonly CdxSpecVersion[] = [
   '1.4',
   '1.5',
   '1.6',
@@ -74,7 +74,53 @@ export interface CdxBom {
   vulnerabilities?: unknown[];
 }
 
+// SPDX 2.x raw shapes (subset relevant to v1).
+
+export interface SpdxExternalRef {
+  referenceCategory?: string;
+  referenceType?: string;
+  referenceLocator?: string;
+}
+
+export interface SpdxPackage {
+  SPDXID?: string;
+  name: string;
+  versionInfo?: string;
+  supplier?: string;
+  licenseConcluded?: string;
+  licenseDeclared?: string;
+  externalRefs?: SpdxExternalRef[];
+  primaryPackagePurpose?: string;
+}
+
+export interface SpdxExtractedLicensingInfo {
+  licenseId: string;
+  name?: string;
+  extractedText?: string;
+  seeAlsos?: string[];
+}
+
+export interface SpdxCreationInfo {
+  created?: string;
+  creators?: string[];
+}
+
+export interface SpdxDocument {
+  spdxVersion: string;
+  dataLicense?: string;
+  SPDXID?: string;
+  name?: string;
+  documentNamespace?: string;
+  creationInfo?: SpdxCreationInfo;
+  packages?: SpdxPackage[];
+  files?: unknown[];
+  hasExtractedLicensingInfos?: SpdxExtractedLicensingInfo[];
+  relationships?: unknown[];
+}
+
 // Internal normalized model.
+
+export type SbomFormat = 'CycloneDX-1.x' | 'SPDX-2.x';
 
 export type LicenseKind = 'id' | 'name' | 'expression';
 
@@ -100,7 +146,9 @@ export interface Component {
 export interface SbomMetadata {
   projectName: string | null;
   timestamp: string | null;
-  specVersion: CdxSpecVersion;
+  /** Concrete spec version string, e.g., "1.6" or "SPDX-2.3" */
+  specVersion: string;
+  sbomFormat: SbomFormat;
   vulnerabilityCount: number;
 }
 
@@ -112,3 +160,13 @@ export interface LoadedSbom {
 export type LoadResult =
   | { ok: true; sbom: LoadedSbom }
   | { ok: false; error: string };
+
+// License classification.
+
+export type LicenseCategory =
+  | 'undeclared'
+  | 'public-domain'
+  | 'permissive'
+  | 'copyleft'
+  | 'strong-copyleft'
+  | 'proprietary';

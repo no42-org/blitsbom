@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   applyFilters,
   computeLicenseBreakdown,
+  computeCategoryBreakdown,
+  licensesInCategory,
   emptyFilters,
 } from './filters';
 import type { Component } from '../types';
 
-function lib(
-  name: string,
-  overrides: Partial<Component> = {},
-): Component {
+function lib(name: string, overrides: Partial<Component> = {}): Component {
   return {
     type: 'library',
     group: null,
@@ -33,10 +32,11 @@ describe('applyFilters', () => {
       scope: 'optional',
       licenses: [{ kind: 'expression', value: '(MIT OR Apache-2.0)' }],
     }),
+    lib('gpl-thing', { licenses: [{ kind: 'id', value: 'GPL-3.0' }] }),
   ];
 
   it('returns everything with empty filters', () => {
-    expect(applyFilters(components, emptyFilters())).toHaveLength(4);
+    expect(applyFilters(components, emptyFilters())).toHaveLength(5);
   });
 
   it('matches free-text query case-insensitively', () => {
@@ -46,14 +46,7 @@ describe('applyFilters', () => {
     ]);
   });
 
-  it('filters by license (single value)', () => {
-    const filters = { ...emptyFilters(), licenses: new Set(['MIT']) };
-    expect(applyFilters(components, filters).map((c) => c.name)).toEqual([
-      'slf4j-api',
-    ]);
-  });
-
-  it('OR semantics within license facet', () => {
+  it('OR within license facet', () => {
     const filters = {
       ...emptyFilters(),
       licenses: new Set(['MIT', 'Apache-2.0']),
@@ -61,7 +54,7 @@ describe('applyFilters', () => {
     expect(applyFilters(components, filters)).toHaveLength(3);
   });
 
-  it('AND semantics across facets', () => {
+  it('AND across facets', () => {
     const filters = {
       ...emptyFilters(),
       licenses: new Set(['Apache-2.0']),
@@ -73,10 +66,39 @@ describe('applyFilters', () => {
     expect(names).toEqual(['jackson-core', 'okhttp']);
   });
 
-  it('SPDX expression matches its bucket exactly, not its decomposition', () => {
+  it('filters by license category (permissive)', () => {
     const filters = {
       ...emptyFilters(),
-      licenses: new Set(['(MIT OR Apache-2.0)']),
+      categories: new Set(['permissive' as const]),
+    };
+    const names = applyFilters(components, filters).map((c) => c.name).sort();
+    expect(names).toEqual(['jackson-core', 'okhttp', 'slf4j-api']);
+  });
+
+  it('filters by license category (strong-copyleft)', () => {
+    const filters = {
+      ...emptyFilters(),
+      categories: new Set(['strong-copyleft' as const]),
+    };
+    expect(applyFilters(components, filters).map((c) => c.name)).toEqual([
+      'gpl-thing',
+    ]);
+  });
+
+  it('OR within category facet, AND across with license filter', () => {
+    const filters = {
+      ...emptyFilters(),
+      categories: new Set(['permissive' as const, 'strong-copyleft' as const]),
+      licenses: new Set(['Apache-2.0']),
+    };
+    const names = applyFilters(components, filters).map((c) => c.name).sort();
+    expect(names).toEqual(['jackson-core', 'okhttp']);
+  });
+
+  it('classifies expressions as proprietary (and filters accordingly)', () => {
+    const filters = {
+      ...emptyFilters(),
+      categories: new Set(['proprietary' as const]),
     };
     expect(applyFilters(components, filters).map((c) => c.name)).toEqual([
       'legacy-tool',
@@ -97,42 +119,36 @@ describe('computeLicenseBreakdown', () => {
       { license: 'MIT', count: 1, kind: 'id' },
     ]);
   });
+});
 
-  it('places SPDX expressions in their own bucket', () => {
+describe('computeCategoryBreakdown', () => {
+  it('buckets components into categories sorted descending', () => {
     const components: Component[] = [
-      lib('a', { licenses: [{ kind: 'id', value: 'MIT' }] }),
-      lib('b', {
-        licenses: [{ kind: 'expression', value: '(MIT OR Apache-2.0)' }],
-      }),
+      lib('a', { licenses: [{ kind: 'id', value: 'Apache-2.0' }] }),
+      lib('b', { licenses: [{ kind: 'id', value: 'MIT' }] }),
+      lib('c', { licenses: [{ kind: 'id', value: 'GPL-3.0' }] }),
+      lib('d', { licenses: [] }),
     ];
-    const result = computeLicenseBreakdown(components);
-    const buckets = result.map((r) => r.license).sort();
-    expect(buckets).toEqual(['(MIT OR Apache-2.0)', 'MIT']);
+    const result = computeCategoryBreakdown(components);
+    const ids = result.map((r) => r.category);
+    expect(ids[0]).toBe('permissive');
+    const counts = Object.fromEntries(result.map((r) => [r.category, r.count]));
+    expect(counts.permissive).toBe(2);
+    expect(counts['strong-copyleft']).toBe(1);
+    expect(counts.undeclared).toBe(1);
   });
+});
 
-  it('sorts descending by count then ascending by name', () => {
+describe('licensesInCategory', () => {
+  it('returns distinct licenses scoped to the chosen category', () => {
     const components: Component[] = [
-      lib('a', { licenses: [{ kind: 'id', value: 'Z-License' }] }),
-      lib('b', { licenses: [{ kind: 'id', value: 'A-License' }] }),
-      lib('c', { licenses: [{ kind: 'id', value: 'A-License' }] }),
+      lib('a', { licenses: [{ kind: 'id', value: 'Apache-2.0' }] }),
+      lib('b', { licenses: [{ kind: 'id', value: 'Apache-2.0' }] }),
+      lib('c', { licenses: [{ kind: 'id', value: 'MIT' }] }),
+      lib('d', { licenses: [{ kind: 'id', value: 'GPL-3.0' }] }),
     ];
-    const result = computeLicenseBreakdown(components);
-    expect(result.map((r) => r.license)).toEqual(['A-License', 'Z-License']);
-  });
-
-  it('counts a multi-license component in each bucket', () => {
-    const components: Component[] = [
-      lib('a', {
-        licenses: [
-          { kind: 'id', value: 'Apache-2.0' },
-          { kind: 'id', value: 'MIT' },
-        ],
-      }),
-    ];
-    const result = computeLicenseBreakdown(components);
-    expect(result).toEqual([
-      { license: 'Apache-2.0', count: 1, kind: 'id' },
-      { license: 'MIT', count: 1, kind: 'id' },
-    ]);
+    const result = licensesInCategory(components, 'permissive');
+    expect(result.map((r) => r.license).sort()).toEqual(['Apache-2.0', 'MIT']);
+    expect(result.find((r) => r.license === 'Apache-2.0')!.count).toBe(2);
   });
 });

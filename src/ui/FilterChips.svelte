@@ -1,13 +1,23 @@
 <script lang="ts">
   import { store } from '../state/store.svelte';
+  import { CATEGORY_METADATA } from '../license/classify';
+  import type { LicenseCategory } from '../types';
 
-  type FacetEntry = {
-    label: string;
-    value: string;
-    facet: 'license' | 'scope' | 'type';
-  };
+  type FacetEntry =
+    | { label: string; value: string; facet: 'license' | 'scope' | 'type' }
+    | { label: string; value: LicenseCategory; facet: 'category' };
+
+  function categoryLabel(id: LicenseCategory): string {
+    const meta = CATEGORY_METADATA.find((c) => c.id === id);
+    return meta ? meta.label : id;
+  }
 
   const chips = $derived<FacetEntry[]>([
+    ...[...store.categoryFilters].sort().map((value) => ({
+      label: `category: ${categoryLabel(value)}`,
+      value,
+      facet: 'category' as const,
+    })),
     ...[...store.licenseFilters].sort().map((value) => ({
       label: value,
       value,
@@ -26,7 +36,8 @@
   ]);
 
   function remove(entry: FacetEntry) {
-    if (entry.facet === 'license') store.toggleLicense(entry.value);
+    if (entry.facet === 'category') store.toggleCategory(entry.value);
+    else if (entry.facet === 'license') store.toggleLicense(entry.value);
     else if (entry.facet === 'scope') store.toggleScope(entry.value);
     else store.toggleType(entry.value);
   }

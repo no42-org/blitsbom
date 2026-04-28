@@ -3,19 +3,17 @@
   import { store } from '../state/store.svelte';
 
   let dragging = $state(false);
-  let busy = $state(false);
 
   async function handleFile(file: File) {
-    busy = true;
-    try {
-      const result = await loadSbomFile(file);
-      if (result.ok) {
-        store.setLoaded(result.sbom);
-      } else {
-        store.setError(result.error);
-      }
-    } finally {
-      busy = false;
+    store.setIngestReading(0, file.size);
+    const result = await loadSbomFile(file, {
+      onReadProgress: (loaded, total) => store.setIngestReading(loaded, total),
+      onParseStart: () => store.setIngestParsing(),
+    });
+    if (result.ok) {
+      store.setLoaded(result.sbom);
+    } else {
+      store.setError(result.error);
     }
   }
 
@@ -41,11 +39,20 @@
   function onDragLeave() {
     dragging = false;
   }
+
+  const busy = $derived(
+    store.ingestState === 'reading' || store.ingestState === 'parsing',
+  );
+
+  function formatMb(bytes: number): string {
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
 </script>
 
 <label
   class="drop-zone"
   class:drop-zone--active={dragging}
+  class:drop-zone--busy={busy}
   ondragover={onDragOver}
   ondragleave={onDragLeave}
   ondrop={onDrop}
@@ -58,14 +65,31 @@
     disabled={busy}
   />
   <div class="text-center">
-    <p class="text-lg font-medium text-ink-800">
-      Drop your <code class="font-mono text-base">bom.json</code> here
-    </p>
-    <p class="mt-2 text-sm text-ink-500">
-      or click to browse — files never leave your browser
-    </p>
-    {#if busy}
-      <p class="mt-3 text-sm text-accent-600">Reading…</p>
+    {#if store.ingestState === 'reading'}
+      <p class="text-lg font-medium text-ink-800">Reading file…</p>
+      <p class="mt-2 text-sm text-ink-500">
+        {formatMb(store.ingestBytesLoaded)} / {formatMb(store.ingestBytesTotal)}
+      </p>
+      {#if store.ingestBytesTotal > 0}
+        <div class="progress" aria-hidden="true">
+          <div
+            class="progress__bar"
+            style={`width: ${Math.min(100, (store.ingestBytesLoaded / store.ingestBytesTotal) * 100)}%`}
+          ></div>
+        </div>
+      {/if}
+    {:else if store.ingestState === 'parsing'}
+      <p class="text-lg font-medium text-ink-800">Parsing…</p>
+      <p class="mt-2 text-sm text-ink-500">
+        Building component model — large SBOMs may take a moment.
+      </p>
+    {:else}
+      <p class="text-lg font-medium text-ink-800">
+        Drop your SBOM here
+      </p>
+      <p class="mt-2 text-sm text-ink-500">
+        CycloneDX or SPDX JSON · click to browse · files never leave your browser
+      </p>
     {/if}
   </div>
 </label>
@@ -88,6 +112,25 @@
   .drop-zone--active {
     border-color: var(--color-accent-500);
     background: color-mix(in srgb, var(--color-accent-500) 4%, transparent);
+  }
+  .drop-zone--busy {
+    cursor: wait;
+    border-color: var(--color-accent-500);
+    background: color-mix(in srgb, var(--color-accent-500) 3%, transparent);
+  }
+  .progress {
+    margin: 0.75rem auto 0;
+    width: 18rem;
+    max-width: 80%;
+    height: 0.5rem;
+    background: var(--color-ink-100);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress__bar {
+    height: 100%;
+    background: var(--color-accent-500);
+    transition: width 80ms linear;
   }
   .sr-only {
     position: absolute;

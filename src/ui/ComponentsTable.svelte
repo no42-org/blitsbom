@@ -14,6 +14,15 @@
   let sortKey = $state<SortKey>('name');
   let sortDir = $state<SortDir>('asc');
 
+  const PAGE_SIZE = 500;
+  let visibleCount = $state(PAGE_SIZE);
+
+  // Reset the cap whenever the input list shrinks (new SBOM, filter change).
+  $effect(() => {
+    components.length;
+    visibleCount = PAGE_SIZE;
+  });
+
   const sorted = $derived(
     [...components].sort((a, b) => {
       const va = sortValue(a, sortKey);
@@ -22,6 +31,9 @@
       return sortDir === 'asc' ? cmp : -cmp;
     }),
   );
+
+  const visibleRows = $derived(sorted.slice(0, visibleCount));
+  const hasMore = $derived(sorted.length > visibleRows.length);
 
   function sortValue(c: Component, key: SortKey): string {
     switch (key) {
@@ -87,7 +99,7 @@
           </td>
         </tr>
       {:else}
-        {#each sorted as c (c.purl ?? `${c.group ?? ''}:${c.name}:${c.version ?? ''}`)}
+        {#each visibleRows as c (c.purl ?? `${c.group ?? ''}:${c.name}:${c.version ?? ''}`)}
           <tr>
             <td>
               <div class="cell-name">
@@ -132,6 +144,27 @@
       {/if}
     </tbody>
   </table>
+  {#if hasMore}
+    <div class="more">
+      <span class="more__count">
+        Showing {visibleRows.length.toLocaleString()} of {sorted.length.toLocaleString()} components
+      </span>
+      <button
+        type="button"
+        class="more__btn"
+        onclick={() => (visibleCount += PAGE_SIZE)}
+      >
+        Show {Math.min(PAGE_SIZE, sorted.length - visibleRows.length).toLocaleString()} more
+      </button>
+      <button
+        type="button"
+        class="more__btn more__btn--ghost"
+        onclick={() => (visibleCount = sorted.length)}
+      >
+        Show all
+      </button>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -251,5 +284,41 @@
     padding: 3rem 1rem;
     text-align: center;
     color: var(--color-ink-500);
+  }
+  .more {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-top: 1px solid var(--color-ink-100);
+    background: var(--color-ink-50);
+    font-size: 0.8125rem;
+    color: var(--color-ink-600);
+  }
+  .more__count {
+    flex: 1;
+  }
+  .more__btn {
+    appearance: none;
+    border: 1px solid var(--color-ink-200);
+    background: white;
+    border-radius: 6px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--color-ink-800);
+    cursor: pointer;
+  }
+  .more__btn:hover {
+    background: var(--color-ink-100);
+  }
+  .more__btn--ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-ink-600);
+  }
+  .more__btn--ghost:hover {
+    background: var(--color-ink-100);
+    color: var(--color-ink-900);
   }
 </style>

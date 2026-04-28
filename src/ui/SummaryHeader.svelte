@@ -30,7 +30,9 @@
       </h1>
     {/if}
     <p class="mt-1 text-sm text-ink-500">
-      CycloneDX {sbom.metadata.specVersion}
+      {sbom.metadata.sbomFormat === 'CycloneDX-1.x'
+        ? `CycloneDX ${sbom.metadata.specVersion}`
+        : sbom.metadata.specVersion}
       {#if formattedTimestamp}
         <span aria-hidden="true">·</span>
         <time datetime={sbom.metadata.timestamp ?? ''}>

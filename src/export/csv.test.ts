@@ -65,6 +65,7 @@ describe('buildCsvFilename', () => {
       projectName: 'prometheus-remote-writer',
       timestamp: null,
       specVersion: '1.6',
+      sbomFormat: 'CycloneDX-1.x',
       vulnerabilityCount: 0,
     };
     expect(buildCsvFilename(md, fixedDate)).toBe(
@@ -77,6 +78,7 @@ describe('buildCsvFilename', () => {
       projectName: null,
       timestamp: null,
       specVersion: '1.6',
+      sbomFormat: 'CycloneDX-1.x',
       vulnerabilityCount: 0,
     };
     expect(buildCsvFilename(md, fixedDate)).toBe(
@@ -89,6 +91,7 @@ describe('buildCsvFilename', () => {
       projectName: 'My Project / Edge!',
       timestamp: null,
       specVersion: '1.6',
+      sbomFormat: 'CycloneDX-1.x',
       vulnerabilityCount: 0,
     };
     expect(buildCsvFilename(md, fixedDate)).toBe(
