@@ -10,7 +10,63 @@
 
   let { breakdown }: Props = $props();
 
-  const geom: DonutGeometry = { cx: 60, cy: 60, r: 50, rInner: 32 };
+  const geom: DonutGeometry = { cx: 80, cy: 80, r: 50, rInner: 32 };
+
+  // Tick labels: a short radial line + "count (percent%)" placed just
+  // outside each non-empty segment.
+  interface Tick {
+    line: { x1: number; y1: number; x2: number; y2: number };
+    label: { x: number; y: number };
+    anchor: 'start' | 'middle' | 'end';
+    dy: string;
+    text: string;
+  }
+
+  const ticks = $derived.by<Tick[]>(() => {
+    const total = ordered.reduce((s, o) => s + o.count, 0);
+    if (total <= 0) return [];
+    const nonEmpty = ordered.filter((o) => o.count > 0);
+    // For a single full-ring segment, the percentage is 100% and a label
+    // would crowd the donut — skip ticks entirely.
+    if (nonEmpty.length <= 1) return [];
+
+    const out: Tick[] = [];
+    let cumulative = 0;
+    for (const o of ordered) {
+      if (o.count <= 0) continue;
+      const startA = (cumulative / total) * Math.PI * 2 - Math.PI / 2;
+      cumulative += o.count;
+      const endA = (cumulative / total) * Math.PI * 2 - Math.PI / 2;
+      const midA = (startA + endA) / 2;
+
+      const cosA = Math.cos(midA);
+      const sinA = Math.sin(midA);
+
+      const tickIn = { x: geom.cx + geom.r * cosA, y: geom.cy + geom.r * sinA };
+      const tickOut = {
+        x: geom.cx + (geom.r + 6) * cosA,
+        y: geom.cy + (geom.r + 6) * sinA,
+      };
+      const labelPos = {
+        x: geom.cx + (geom.r + 9) * cosA,
+        y: geom.cy + (geom.r + 9) * sinA,
+      };
+
+      const anchor: Tick['anchor'] =
+        cosA > 0.15 ? 'start' : cosA < -0.15 ? 'end' : 'middle';
+      const dy = sinA > 0.3 ? '0.8em' : sinA < -0.3 ? '-0.1em' : '0.35em';
+
+      const pct = Math.max(1, Math.round((o.count / total) * 100));
+      out.push({
+        line: { x1: tickIn.x, y1: tickIn.y, x2: tickOut.x, y2: tickOut.y },
+        label: labelPos,
+        anchor,
+        dy,
+        text: `${o.count} (${pct}%)`,
+      });
+    }
+    return out;
+  });
 
   // Index entries in metadata order so the donut + legend ordering is stable
   // across re-renders (segments don't shuffle as filters change).
@@ -51,7 +107,7 @@
     <div class="donut__layout">
       <svg
         class="donut__svg"
-        viewBox="0 0 120 120"
+        viewBox="0 0 160 160"
         role="img"
         aria-label="License category breakdown"
       >
@@ -77,18 +133,28 @@
             />
           {/if}
         {/each}
+        {#each ticks as tick}
+          <line
+            x1={tick.line.x1}
+            y1={tick.line.y1}
+            x2={tick.line.x2}
+            y2={tick.line.y2}
+            class="donut__tick"
+          />
+          <text
+            x={tick.label.x}
+            y={tick.label.y}
+            dy={tick.dy}
+            text-anchor={tick.anchor}
+            class="donut__tick-label"
+          >{tick.text}</text>
+        {/each}
         <text
-          x="60"
-          y="58"
+          x="80"
+          y="84"
           text-anchor="middle"
           class="donut__center-count"
         >{total}</text>
-        <text
-          x="60"
-          y="72"
-          text-anchor="middle"
-          class="donut__center-label"
-        >components</text>
       </svg>
 
       <ul class="legend">
@@ -141,13 +207,13 @@
     align-items: center;
   }
   .donut__svg {
-    width: 12rem;
-    height: 12rem;
+    width: 14rem;
+    height: 14rem;
   }
   .donut__segment {
     cursor: pointer;
     transition: transform 80ms ease, opacity 80ms ease;
-    transform-origin: 60px 60px;
+    transform-origin: 80px 80px;
   }
   .donut__segment:hover {
     opacity: 0.85;
@@ -156,17 +222,21 @@
     /* Slight outward bump signals the active segment. */
     transform: scale(1.03);
   }
+  .donut__tick {
+    stroke: var(--color-ink-300);
+    stroke-width: 0.5;
+  }
+  .donut__tick-label {
+    font-size: 5px;
+    fill: var(--color-ink-700);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
   .donut__center-count {
-    font-size: 1.25rem;
+    font-size: 14px;
     font-weight: 600;
     fill: var(--color-ink-900);
     font-variant-numeric: tabular-nums;
-  }
-  .donut__center-label {
-    font-size: 0.625rem;
-    fill: var(--color-ink-500);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
   }
 
   .legend {
