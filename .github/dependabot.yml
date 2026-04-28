@@ -23,3 +23,8 @@ updates:
     labels:
       - dependencies
       - npm
+    ignore:
+      # Tailwind v4 is a rewrite (CSS-first @theme, @tailwindcss/postcss).
+      # Track major upgrades as their own change proposal, not Dependabot.
+      - dependency-name: tailwindcss
+        update-types: [version-update:semver-major]
