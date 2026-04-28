@@ -24,7 +24,7 @@
     "@tsconfig/svelte": "^5.0.4",
     "@types/node": "^25.6.0",
     "autoprefixer": "^10.4.20",
-    "jsdom": "^25.0.1",
+    "jsdom": "^29.1.0",
     "playwright": "^1.47.2",
     "postcss": "^8.4.47",
     "prettier": "^3.3.3",
