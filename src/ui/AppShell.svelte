@@ -92,7 +92,9 @@
       <a
         href="https://blog.no42.org/page/about/"
         target="_blank"
-        rel="noopener noreferrer">About Me</a>
+        rel="noopener noreferrer">About Me</a> ·
+      <a href="/imprint.html">Imprint</a> ·
+      <a href="/privacy.html">Privacy</a>
     </span>
   </footer>
 </div>
