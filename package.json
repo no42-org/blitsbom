@@ -26,7 +26,7 @@
     "autoprefixer": "^10.4.20",
     "jsdom": "^29.1.1",
     "playwright": "^1.47.2",
-    "postcss": "^8.4.47",
+    "postcss": "^8.5.14",
     "prettier": "^3.3.3",
     "prettier-plugin-svelte": "^3.2.6",
     "svelte": "^5.0.0",
