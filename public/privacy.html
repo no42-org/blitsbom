@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <title>Privacy — blitsbom</title>
+    <meta
+      name="description"
+      content="Privacy notice for blitsbom — what data is processed when you visit this site."
+    />
+    <script>
+      try {
+        var t = localStorage.getItem('blitsbom-theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.dataset.theme = t;
+        }
+      } catch (e) {}
+    </script>
+    <style>
+      :root {
+        --color-ink-50: #f8fafc;
+        --color-ink-200: #e2e8f0;
+        --color-ink-500: #64748b;
+        --color-ink-700: #334155;
+        --color-ink-900: #0f172a;
+        --color-accent-600: #1d4ed8;
+        --color-surface: #ffffff;
+        --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --color-ink-50: #0f172a;
+          --color-ink-200: #334155;
+          --color-ink-500: #94a3b8;
+          --color-ink-700: #e2e8f0;
+          --color-ink-900: #f8fafc;
+          --color-accent-600: #60a5fa;
+          --color-surface: #1e293b;
+        }
+      }
+      :root[data-theme='dark'] {
+        --color-ink-50: #0f172a;
+        --color-ink-200: #334155;
+        --color-ink-500: #94a3b8;
+        --color-ink-700: #e2e8f0;
+        --color-ink-900: #f8fafc;
+        --color-accent-600: #60a5fa;
+        --color-surface: #1e293b;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--color-ink-50);
+        color: var(--color-ink-900);
+        font-family: var(--font-sans);
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        -webkit-font-smoothing: antialiased;
+      }
+      .page {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 3rem;
+      }
+      .back {
+        display: inline-block;
+        font-size: 0.875rem;
+        color: var(--color-accent-600);
+        text-decoration: none;
+        margin-bottom: 1.5rem;
+      }
+      .back:hover {
+        text-decoration: underline;
+      }
+      h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 0 0 1rem;
+      }
+      h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 2rem 0 0.5rem;
+        color: var(--color-ink-900);
+      }
+      p,
+      ul {
+        line-height: 1.6;
+        color: var(--color-ink-700);
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      a {
+        color: var(--color-accent-600);
+      }
+      code {
+        font-family: var(--font-mono);
+        background: var(--color-surface);
+        border: 1px solid var(--color-ink-200);
+        padding: 0.05rem 0.3rem;
+        border-radius: 0.25rem;
+        font-size: 0.9em;
+      }
+      :focus-visible {
+        outline: 2px solid var(--color-accent-600);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <a href="/" class="back">← back to blitsbom</a>
+      <h1>Privacy</h1>
+      <p>
+        This notice describes what personal data is processed when you visit
+        <code>blitsbom</code>, and on what legal basis. The site is non-commercial and
+        operated by the person named in the
+        <a href="/imprint.html">imprint</a>.
+      </p>
+
+      <h2 id="summary">Summary</h2>
+      <ul>
+        <li>No cookies, no analytics, no tracking, no third-party embeds.</li>
+        <li>
+          SBOM files you load stay in your browser. They are never uploaded or transmitted
+          to any server.
+        </li>
+        <li>
+          The web server keeps standard access logs (IP address, request, user agent,
+          timestamp) for <strong>14 days</strong>, then deletes them.
+        </li>
+        <li>
+          A small theme preference is stored in your browser's
+          <code>localStorage</code> so the site remembers your light/dark choice. Nothing
+          is sent to the server.
+        </li>
+      </ul>
+
+      <h2 id="how-the-app-works">How the app works</h2>
+      <p>
+        <code>blitsbom</code> is a static single-page application. Once the HTML, CSS,
+        and JavaScript have been delivered to your browser, all SBOM parsing, filtering,
+        and rendering runs locally on your device. SBOM contents are not sent to the
+        server, and no telemetry is collected.
+      </p>
+
+      <h2 id="hosting">Hosting</h2>
+      <p>
+        This site is hosted on a virtual private server provided by
+        <strong
+          >IONOS SE, Elgendorfer Straße 57, 56410 Montabaur, Germany</strong
+        >. When you connect, IONOS necessarily processes your IP address and other
+        connection metadata to route the request. Their handling of this data is
+        described in the
+        <a
+          href="https://www.ionos.de/terms-gtc/privacy-policy/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >IONOS privacy policy</a
+        >.
+      </p>
+
+      <h2 id="server-logs">Server logs</h2>
+      <p>
+        The web server (nginx) on the VPS records standard access log entries for each
+        request:
+      </p>
+      <ul>
+        <li>IP address of the requesting client</li>
+        <li>Date and time of the request</li>
+        <li>Requested URL and HTTP method</li>
+        <li>HTTP status code and response size</li>
+        <li>User agent and referrer headers, if sent by your browser</li>
+      </ul>
+      <p>
+        These logs are used solely for operating the service — diagnosing errors,
+        investigating abuse, and protecting the integrity of the server. They are
+        <strong>retained for 14 days</strong> and then deleted automatically. They are
+        not used for analytics, profiling, or sharing with third parties.
+      </p>
+      <p>
+        Legal basis: Art. 6 (1) (f) GDPR — legitimate interest in the secure and reliable
+        operation of the service.
+      </p>
+
+      <h2 id="tls">Transport encryption (TLS)</h2>
+      <p>
+        Connections to this site are encrypted with TLS. Certificates are issued
+        automatically by
+        <a href="https://letsencrypt.org/" target="_blank" rel="noopener noreferrer"
+          >Let's Encrypt</a
+        >
+        (Internet Security Research Group). Issuing a certificate involves a public ACME
+        challenge against the server's domain; no visitor data is shared with Let's
+        Encrypt as part of normal browsing.
+      </p>
+
+      <h2 id="cookies-and-storage">Cookies and local storage</h2>
+      <p>
+        This site sets no cookies. It uses your browser's <code>localStorage</code> to
+        remember a small set of preferences (currently: light/dark theme). This data
+        stays on your device and is never sent to the server. You can clear it at any
+        time via your browser's site-data settings.
+      </p>
+
+      <h2 id="third-parties">Third parties</h2>
+      <p>
+        The site loads no third-party fonts, scripts, analytics, or embeds. The only
+        outbound network resources are those you explicitly click (for example, links to
+        GitHub or to vulnerability advisories from your SBOM).
+      </p>
+
+      <h2 id="your-rights">Your rights</h2>
+      <p>
+        Under the GDPR you have the right to information, rectification, erasure,
+        restriction of processing, data portability, and to object to processing. You
+        also have the right to lodge a complaint with a supervisory authority. To
+        exercise any of these rights, please contact the email address listed in the
+        <a href="/imprint.html">imprint</a>.
+      </p>
+
+      <h2 id="changes">Changes to this notice</h2>
+      <p>
+        This notice may change as the site evolves. The current version is always
+        published at <code>/privacy.html</code>; previous versions can be reviewed in
+        the
+        <a
+          href="https://github.com/no42-org/blitsbom"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Git history</a
+        >.
+      </p>
+    </main>
+  </body>
+</html>

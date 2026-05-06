@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <title>Imprint — blitsbom</title>
+    <meta
+      name="description"
+      content="Legal information for blitsbom per § 5 TMG and § 18 (2) MStV."
+    />
+    <script>
+      try {
+        var t = localStorage.getItem('blitsbom-theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.dataset.theme = t;
+        }
+      } catch (e) {}
+    </script>
+    <style>
+      :root {
+        --color-ink-50: #f8fafc;
+        --color-ink-200: #e2e8f0;
+        --color-ink-500: #64748b;
+        --color-ink-700: #334155;
+        --color-ink-900: #0f172a;
+        --color-accent-600: #1d4ed8;
+        --color-surface: #ffffff;
+        --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --color-ink-50: #0f172a;
+          --color-ink-200: #334155;
+          --color-ink-500: #94a3b8;
+          --color-ink-700: #e2e8f0;
+          --color-ink-900: #f8fafc;
+          --color-accent-600: #60a5fa;
+          --color-surface: #1e293b;
+        }
+      }
+      :root[data-theme='dark'] {
+        --color-ink-50: #0f172a;
+        --color-ink-200: #334155;
+        --color-ink-500: #94a3b8;
+        --color-ink-700: #e2e8f0;
+        --color-ink-900: #f8fafc;
+        --color-accent-600: #60a5fa;
+        --color-surface: #1e293b;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--color-ink-50);
+        color: var(--color-ink-900);
+        font-family: var(--font-sans);
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        -webkit-font-smoothing: antialiased;
+      }
+      .page {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 3rem;
+      }
+      .back {
+        display: inline-block;
+        font-size: 0.875rem;
+        color: var(--color-accent-600);
+        text-decoration: none;
+        margin-bottom: 1.5rem;
+      }
+      .back:hover {
+        text-decoration: underline;
+      }
+      h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 0 0 1rem;
+      }
+      h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 2rem 0 0.5rem;
+        color: var(--color-ink-900);
+      }
+      p,
+      ul {
+        line-height: 1.6;
+        color: var(--color-ink-700);
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      a {
+        color: var(--color-accent-600);
+      }
+      address {
+        font-style: normal;
+        line-height: 1.6;
+        color: var(--color-ink-700);
+      }
+      code {
+        font-family: var(--font-mono);
+        background: var(--color-surface);
+        border: 1px solid var(--color-ink-200);
+        padding: 0.05rem 0.3rem;
+        border-radius: 0.25rem;
+        font-size: 0.9em;
+      }
+      :focus-visible {
+        outline: 2px solid var(--color-accent-600);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <a href="/" class="back">← back to blitsbom</a>
+      <h1>Imprint</h1>
+      <p>
+        Information disclosed per § 5 of the German Telemediengesetz (TMG) and
+        § 18 (2) of the Medienstaatsvertrag (MStV).
+      </p>
+
+      <h2 id="operator">Operator</h2>
+      <address>
+        Ronny Trommer<br />
+        Steinsfelder Weg 22<br />
+        74199 Untergruppenbach<br />
+        Germany
+      </address>
+
+      <h2 id="contact">Contact</h2>
+      <ul>
+        <li>Email: <a href="mailto:hostmaster@no42.org">hostmaster@no42.org</a></li>
+        <li>Phone: +49 (0) 07130 5319759</li>
+        <li>
+          GitHub:
+          <a href="https://github.com/indigo423" target="_blank" rel="noopener noreferrer"
+            >Ronny Trommer</a
+          >
+        </li>
+      </ul>
+
+      <h2 id="editorial-responsibility">Editorial responsibility (§ 18 (2) MStV)</h2>
+      <p>Responsible for the editorial content of this site is the operator named above.</p>
+
+      <h2 id="about-this-site">About this site</h2>
+      <p>
+        <code>blitsbom</code> is a zero-install, browser-only viewer for CycloneDX SBOM
+        files. The project is non-commercial. Source code is available on
+        <a
+          href="https://github.com/no42-org/blitsbom"
+          target="_blank"
+          rel="noopener noreferrer"
+          >GitHub</a
+        >
+        and licensed under the
+        <a
+          href="https://github.com/no42-org/blitsbom/blob/main/LICENSE"
+          target="_blank"
+          rel="noopener noreferrer"
+          >MIT License</a
+        >.
+      </p>
+
+      <h2 id="liability-for-linked-content">Liability for linked content</h2>
+      <p>
+        External links on this site are provided for convenience. The operator assumes no
+        responsibility for the content of external sites. If you become aware of unlawful
+        content linked from this site, please contact the email address above; the link
+        will be reviewed and removed where appropriate.
+      </p>
+
+      <h2 id="data-processing">Data processing</h2>
+      <p>
+        See the <a href="/privacy.html">privacy notice</a> for details on how visitor
+        connection data is handled.
+      </p>
+    </main>
+  </body>
+</html>
