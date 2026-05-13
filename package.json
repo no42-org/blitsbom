@@ -28,7 +28,7 @@
     "playwright": "^1.47.2",
     "postcss": "^8.5.14",
     "prettier": "^3.3.3",
-    "prettier-plugin-svelte": "^3.2.6",
+    "prettier-plugin-svelte": "^3.5.2",
     "svelte": "^5.0.0",
     "svelte-check": "^4.4.7",
     "tailwindcss": "^4.2.4",
