@@ -163,22 +163,26 @@ export function matchSignature(text: string): string | null {
   return null;
 }
 
+// Host-anchored patterns: each entry requires `//` (scheme separator) plus an
+// optional subdomain chain before the canonical host. This blocks
+// prefix-injection inputs like `evil.com/apache.org/licenses/LICENSE-2.0`
+// from being mis-classified.
 const URL_MAP: Array<[RegExp, string]> = [
-  [/apache\.org\/licenses\/LICENSE-2\.0/i, 'Apache-2.0'],
-  [/opensource\.org\/licenses\/MIT/i, 'MIT'],
-  [/opensource\.org\/licenses\/BSD-3-Clause/i, 'BSD-3-Clause'],
-  [/opensource\.org\/licenses\/BSD-2-Clause/i, 'BSD-2-Clause'],
-  [/opensource\.org\/licenses\/ISC/i, 'ISC'],
-  [/gnu\.org\/licenses\/agpl(?:-3\.0)?/i, 'AGPL-3.0'],
-  [/gnu\.org\/licenses\/lgpl-3\.0/i, 'LGPL-3.0'],
-  [/gnu\.org\/licenses\/lgpl-2\.1/i, 'LGPL-2.1'],
-  [/gnu\.org\/licenses\/lgpl/i, 'LGPL-3.0'],
-  [/gnu\.org\/licenses\/gpl-3\.0/i, 'GPL-3.0'],
-  [/gnu\.org\/licenses\/gpl-2\.0/i, 'GPL-2.0'],
-  [/gnu\.org\/licenses\/gpl/i, 'GPL-3.0'],
-  [/mozilla\.org\/MPL\/2\.0/i, 'MPL-2.0'],
-  [/eclipse\.org\/legal\/epl-2\.0/i, 'EPL-2.0'],
-  [/eclipse\.org\/legal\/epl-v10/i, 'EPL-1.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*apache\.org\/licenses\/LICENSE-2\.0/i, 'Apache-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/MIT/i, 'MIT'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-3-Clause/i, 'BSD-3-Clause'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-2-Clause/i, 'BSD-2-Clause'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/ISC/i, 'ISC'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/agpl(?:-3\.0)?/i, 'AGPL-3.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-3\.0/i, 'LGPL-3.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-2\.1/i, 'LGPL-2.1'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl/i, 'LGPL-3.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl-3\.0/i, 'GPL-3.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl-2\.0/i, 'GPL-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl/i, 'GPL-3.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/2\.0/i, 'MPL-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-2\.0/i, 'EPL-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-v10/i, 'EPL-1.0'],
 ];
 
 export function matchUrl(url: string): string | null {

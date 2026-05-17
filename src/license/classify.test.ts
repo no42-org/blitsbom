@@ -137,6 +137,24 @@ describe('classifyLicense — URLs', () => {
       }),
     ).toBe('copyleft');
   });
+
+  it('does not mis-classify an embedded canonical host as the host itself', () => {
+    // CodeQL js/regex/missing-regexp-anchor: an unanchored URL pattern would
+    // classify `evil.com/apache.org/licenses/LICENSE-2.0` as Apache-2.0
+    // (permissive). The host must sit at a real scheme/host boundary.
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'https://evil.com/apache.org/licenses/LICENSE-2.0',
+      }),
+    ).toBe('unrecognized');
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'https://evilapache.org/licenses/LICENSE-2.0',
+      }),
+    ).toBe('unrecognized');
+  });
 });
 
 describe('classifyLicense — compound expressions', () => {
