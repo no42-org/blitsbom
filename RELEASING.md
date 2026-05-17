@@ -16,7 +16,7 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 
 | Artifact                                  | Source                          | Pushed by                      |
 |-------------------------------------------|---------------------------------|--------------------------------|
-| `dist.zip` + `dist.zip.sha512` + `dist.zip.sig` + `dist.zip.pem` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
+| `dist.zip` + `dist.zip.sha512` + `dist.zip.sigstore` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
 | `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` (cosign-signed, SBOM-attested) | every push to `main`           | `.github/workflows/docker.yml` |
 | `ghcr.io/no42-org/blitsbom:latest` / `:X.Y.Z` / `:X.Y` (cosign-signed, SBOM-attested) | the `vX.Y.Z` Git tag           | `.github/workflows/docker.yml` |
 
@@ -60,13 +60,12 @@ Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip` + checksum
 
 After the workflows turn green:
 
-1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, `dist.zip.sig`, and `dist.zip.pem` are all attached and the auto-generated release notes look reasonable. Spot-check the checksum and the Sigstore signature:
+1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, and `dist.zip.sigstore` are all attached and the auto-generated release notes look reasonable. Spot-check the checksum and the Sigstore signature:
    ```bash
    gh release download --pattern 'dist.zip*'
    sha512sum -c dist.zip.sha512
    cosign verify-blob dist.zip \
-     --signature dist.zip.sig \
-     --certificate dist.zip.pem \
+     --bundle dist.zip.sigstore \
      --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/release\.yml@refs/tags/v' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com
    ```
