@@ -11,6 +11,9 @@ on:
 
 permissions:
   contents: write
+  # Required for keyless cosign signing via Sigstore (Fulcio short-lived cert
+  # tied to this workflow's OIDC identity, Rekor transparency-log entry).
+  id-token: write
 
 jobs:
   release:
@@ -45,12 +48,32 @@ jobs:
       - name: Generate SHA-512 checksum
         run: sha512sum dist.zip > dist.zip.sha512
 
-      - name: Attach dist.zip + checksum to release
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+
+      # Keyless blob signing: Sigstore exchanges the workflow's OIDC token
+      # for a short-lived Fulcio cert, records the signature in Rekor, and
+      # writes `dist.zip.sig` (signature) + `dist.zip.pem` (cert chain).
+      # Verify with:
+      #   cosign verify-blob dist.zip \
+      #     --signature dist.zip.sig --certificate dist.zip.pem \
+      #     --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Sign dist.zip with cosign (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --output-signature dist.zip.sig \
+            --output-certificate dist.zip.pem \
+            dist.zip
+
+      - name: Attach dist.zip + checksum + cosign signature to release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           files: |
             dist.zip
             dist.zip.sha512
+            dist.zip.sig
+            dist.zip.pem
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true

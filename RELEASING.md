@@ -16,14 +16,15 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 
 | Artifact                                  | Source                          | Pushed by                      |
 |-------------------------------------------|---------------------------------|--------------------------------|
-| `dist.zip` + `dist.zip.sha512` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
-| `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` | every push to `main`           | `.github/workflows/docker.yml` |
-| `ghcr.io/no42-org/blitsbom:latest` / `:X.Y.Z` / `:X.Y` | the `vX.Y.Z` Git tag           | `.github/workflows/docker.yml` |
+| `dist.zip` + `dist.zip.sha512` + `dist.zip.sig` + `dist.zip.pem` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
+| `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` (cosign-signed, SBOM-attested) | every push to `main`           | `.github/workflows/docker.yml` |
+| `ghcr.io/no42-org/blitsbom:latest` / `:X.Y.Z` / `:X.Y` (cosign-signed, SBOM-attested) | the `vX.Y.Z` Git tag           | `.github/workflows/docker.yml` |
 
 Notes:
 
 - GHCR's `:rc` tag is overwritten on every push to `main`. Use `:main-<sha>` if you need to pin to a specific commit.
 - GHCR's `:latest` is moved on every release; use `:X.Y.Z` to pin to a specific version.
+- **Cosign signing is keyless via Sigstore OIDC** — no private keys are stored in the repo or as secrets. Each signature carries a Fulcio short-lived cert whose subject is the GitHub Actions workflow identity (`https://github.com/no42-org/blitsbom/.github/workflows/<workflow>.yml@refs/tags/vX.Y.Z`), and the signing event is recorded in the Rekor public transparency log. Verification commands are in [Verifying the release](#verifying-the-release).
 
 ## Cutting a release
 
@@ -59,10 +60,15 @@ Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip` + checksum
 
 After the workflows turn green:
 
-1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify both `dist.zip` and `dist.zip.sha512` are attached and the auto-generated release notes look reasonable. Spot-check the checksum:
+1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, `dist.zip.sig`, and `dist.zip.pem` are all attached and the auto-generated release notes look reasonable. Spot-check the checksum and the Sigstore signature:
    ```bash
    gh release download --pattern 'dist.zip*'
    sha512sum -c dist.zip.sha512
+   cosign verify-blob dist.zip \
+     --signature dist.zip.sig \
+     --certificate dist.zip.pem \
+     --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/release\.yml@refs/tags/v' \
+     --certificate-oidc-issuer https://token.actions.githubusercontent.com
    ```
 2. **GHCR images** — pull and run, sanity-check it loads:
    ```bash
@@ -70,6 +76,19 @@ After the workflows turn green:
    open http://localhost:8080
    ```
    Then load one of the sample SBOMs end-to-end and confirm the donut + table render.
+3. **Container signature + SBOM attestation** — verify the image is signed by this repo's release workflow, and pull the attached CycloneDX SBOM:
+   ```bash
+   IMAGE=ghcr.io/no42-org/blitsbom:0.2.0
+   cosign verify "$IMAGE" \
+     --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/docker\.yml@refs/tags/v' \
+     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+   cosign verify-attestation "$IMAGE" \
+     --type cyclonedx \
+     --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/docker\.yml@refs/tags/v' \
+     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+     | jq -r '.payload | @base64d | fromjson | .predicate' > sbom.cdx.json
+   ```
+   The `:rc` and `:main-<sha>` images carry the same signature shape but with `@refs/heads/main` instead of `@refs/tags/v…` — adjust the `--certificate-identity-regexp` accordingly when verifying those.
 
 ## Hotfixes
 
