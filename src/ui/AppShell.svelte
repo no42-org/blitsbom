@@ -84,6 +84,7 @@
     <span>
       <a
         href="https://github.com/no42-org/blitsbom"
+        title={`v${__APP_VERSION__}`}
         target="_blank"
         rel="noopener noreferrer">blitsbom</a> · runs entirely in your browser
     </span>
