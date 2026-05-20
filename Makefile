@@ -15,7 +15,7 @@ help:
 	@echo "  smoke           Run the file:// headless-Chromium smoke test"
 	@echo "  e2e             Full file:// end-to-end UX check (upload, filter, export)"
 	@echo "  dist-zip        Build and zip dist/ as dist.zip"
-	@echo "  docker-build    Build the Alpine-based Docker image (tag: blitsbom:latest)"
+	@echo "  docker-build    Build the BusyBox-httpd-based Docker image (tag: blitsbom:latest)"
 	@echo "  docker-run      Run the image locally on http://localhost:8080"
 	@echo "  ci              build + verify + size-check + smoke + e2e (used by CI)"
 	@echo "  clean           Remove dist/ and node_modules/"
@@ -63,7 +63,7 @@ docker-build:
 	docker build -t blitsbom:latest .
 
 docker-run:
-	docker run --rm -p 8080:80 blitsbom:latest
+	docker run --rm --init -p 8080:3000 blitsbom:latest
 
 ci: build verify size-check smoke e2e
 
