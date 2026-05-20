@@ -48,7 +48,9 @@ The image is a static nginx serving the built bundle — no telemetry, no outbou
 | `:rc`                  | tip of `main`                                | on every push to `main`                                    |
 | `:main-<short-sha>`    | a specific main commit                       | on every push to `main`                                    |
 
-`:latest` is re-tagged from the released `:X.Y.Z` (same digest, same cosign signature) — it is **not** moved on every tag push. Prereleases and out-of-order hotfix tags do not clobber it.
+All published images are **multi-arch manifest lists** with binaries for `linux/amd64` and `linux/arm64`. `docker pull` automatically selects the right architecture; consumers on Apple Silicon, ARM-based AWS Graviton, Raspberry Pi 4/5, or AMD64 servers all use the same tag.
+
+`:latest` is re-tagged from the released `:X.Y.Z` (same manifest list digest, same cosign signature) — it is **not** moved on every tag push. Prereleases and out-of-order hotfix tags do not clobber it.
 
 ## Two install paths
 
