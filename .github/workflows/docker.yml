@@ -88,6 +88,22 @@ jobs:
             type=raw,value=rc,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=main-,enable=${{ github.ref == 'refs/heads/main' }}
 
+      # Refuse to build when no tag would be produced — this happens if an
+      # operator dispatches this workflow against a non-main, non-tag ref
+      # with an empty promote_tag. Without this guard, build-push-action
+      # fails with a non-obvious "no tags specified" error several minutes
+      # into the build.
+      - name: Guard against empty tag list
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          if [ -z "$(echo "$TAGS" | tr -d '[:space:]')" ]; then
+            echo "::error::metadata-action produced no tags for ref '${GITHUB_REF}'. This usually means workflow_dispatch was invoked against a non-main, non-tag ref with an empty promote_tag."
+            exit 1
+          fi
+          echo "Tags to push:"
+          printf '%s\n' "$TAGS"
+
       - name: Build and push image
         id: build-push
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
@@ -200,9 +216,11 @@ jobs:
 
           # release.yml dispatches this workflow in parallel with the build,
           # so the source tag may not be resolvable for ~30-60s. Wait up to
-          # ~5 minutes rather than failing the run on a transient race.
-          attempts=30
-          delay=10
+          # ~10 minutes — slow QEMU-emulated linux/arm64 builds can blow past
+          # 5 min on a busy runner. Small jitter on the delay avoids slamming
+          # the registry in lock-step.
+          attempts=40
+          base_delay=15
           for i in $(seq 1 "$attempts"); do
             if docker buildx imagetools inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
               echo "Source tag ${IMAGE}:${VERSION} is available"
@@ -212,6 +230,7 @@ jobs:
               echo "::error::Source tag ${IMAGE}:${VERSION} never became available after ${attempts} attempts"
               exit 1
             fi
+            delay=$((base_delay + RANDOM % 5))
             echo "Source tag not yet available (attempt $i/$attempts), retrying in ${delay}s..."
             sleep "$delay"
           done
@@ -220,4 +239,14 @@ jobs:
             --tag "${IMAGE}:latest" \
             "${IMAGE}:${VERSION}"
 
-          echo "Promoted ${IMAGE}:latest → digest of ${IMAGE}:${VERSION}"
+          # Verify the create actually moved `:latest`. `imagetools create`
+          # can return success on registry quirks while leaving the manifest
+          # pointer unchanged; we'd rather fail loudly than silently ship
+          # a stale `:latest`.
+          SRC_DIGEST="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')"
+          DST_DIGEST="$(docker buildx imagetools inspect "${IMAGE}:latest"   --format '{{.Manifest.Digest}}')"
+          if [ -z "$SRC_DIGEST" ] || [ -z "$DST_DIGEST" ] || [ "$SRC_DIGEST" != "$DST_DIGEST" ]; then
+            echo "::error::Promote verification failed: ${IMAGE}:latest digest ('$DST_DIGEST') does not match ${IMAGE}:${VERSION} ('$SRC_DIGEST')"
+            exit 1
+          fi
+          echo "Promoted ${IMAGE}:latest → ${DST_DIGEST}"

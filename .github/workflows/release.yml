@@ -122,15 +122,49 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
+          set -euo pipefail
           if [ -z "$TAG_NAME" ]; then
             echo "::error::TAG_NAME is empty — refusing to dispatch promote-latest"
             exit 1
           fi
           VERSION="${TAG_NAME#v}"
-          echo "Dispatching docker.yml with promote_tag=${VERSION}"
+
+          # Snapshot the most recent docker.yml run ID before dispatching so
+          # we can detect that a new run actually got enqueued (gh CLI can
+          # return 200 while GitHub silently drops the dispatch).
+          PRE_RUN_ID="$(gh run list --workflow=docker.yml --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+          echo "Most recent docker.yml run before dispatch: ${PRE_RUN_ID}"
+
           # --ref "$TAG_NAME" so the promote-latest job runs against the
           # workflow definition at the tagged commit. Using --ref main would
           # break releases cut from a hotfix branch or any non-main ref.
-          gh workflow run docker.yml \
-            --ref "$TAG_NAME" \
-            -f promote_tag="${VERSION}"
+          # Retry transient gh API failures.
+          attempts=3
+          delay=10
+          for i in $(seq 1 "$attempts"); do
+            if gh workflow run docker.yml --ref "$TAG_NAME" -f promote_tag="${VERSION}"; then
+              echo "Dispatched docker.yml with promote_tag=${VERSION}"
+              break
+            fi
+            if [ "$i" = "$attempts" ]; then
+              echo "::error::gh workflow run failed after ${attempts} attempts"
+              exit 1
+            fi
+            echo "gh workflow run failed (attempt $i/$attempts), retrying in ${delay}s..."
+            sleep "$delay"
+          done
+
+          # Confirm a new docker.yml run was actually enqueued (poll up to 30s).
+          echo "Confirming new docker.yml run was enqueued..."
+          for i in 1 2 3 4 5 6; do
+            CURRENT_RUN_ID="$(gh run list --workflow=docker.yml --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+            if [ "$CURRENT_RUN_ID" -gt "$PRE_RUN_ID" ]; then
+              echo "docker.yml run enqueued: ${CURRENT_RUN_ID}"
+              exit 0
+            fi
+            if [ "$i" = "6" ]; then
+              echo "::error::No new docker.yml run was enqueued within 30s after dispatch"
+              exit 1
+            fi
+            sleep 5
+          done
