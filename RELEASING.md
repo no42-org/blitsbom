@@ -18,13 +18,14 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 |-------------------------------------------|---------------------------------|--------------------------------|
 | `dist.zip` + `dist.zip.sha512` + `dist.zip.sigstore` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
 | `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` (cosign-signed, SBOM-attested) | every push to `main`           | `.github/workflows/docker.yml` |
-| `ghcr.io/no42-org/blitsbom:latest` / `:X.Y.Z` / `:X.Y` (cosign-signed, SBOM-attested) | the `vX.Y.Z` Git tag           | `.github/workflows/docker.yml` |
+| `ghcr.io/no42-org/blitsbom:X.Y.Z` / `:X.Y` (cosign-signed, SBOM-attested) | the `vX.Y.Z` Git tag            | `.github/workflows/docker.yml` (`build-and-push` job) |
+| `ghcr.io/no42-org/blitsbom:latest` (re-tag of the released `:X.Y.Z`, same digest, same signature) | a non-prerelease GitHub Release being published | `.github/workflows/release.yml` dispatches `.github/workflows/docker.yml` (`promote-latest` job) via `gh workflow run` |
 
 Notes:
 
 - GHCR's `:rc` tag is overwritten on every push to `main`. Use `:main-<sha>` if you need to pin to a specific commit.
-- GHCR's `:latest` is moved on every release; use `:X.Y.Z` to pin to a specific version.
-- **Cosign signing is keyless via Sigstore OIDC** — no private keys are stored in the repo or as secrets. Each signature carries a Fulcio short-lived cert whose subject is the GitHub Actions workflow identity (`https://github.com/no42-org/blitsbom/.github/workflows/<workflow>.yml@refs/tags/vX.Y.Z`), and the signing event is recorded in the Rekor public transparency log. Verification commands are in [Verifying the release](#verifying-the-release).
+- GHCR's `:latest` is moved by `release.yml` only after a non-prerelease GitHub Release has been published. The mechanism is a `workflow_dispatch` call: release.yml runs `gh workflow run docker.yml -f promote_tag=<version>`, which fires docker.yml's `promote-latest` job. (The `release: [released]` event is *not* used — GitHub suppresses downstream events triggered by GITHUB_TOKEN to prevent recursive workflows, but `workflow_dispatch` is exempt.) Net effect: prereleases never move `:latest` (release.yml skips the dispatch when `prerelease == true`), and the same `workflow_dispatch` entry point doubles as a manual emergency-promote affordance — `gh workflow run docker.yml --ref main -f promote_tag=0.2.8`. Pin to `:X.Y.Z` for stable references.
+- **Cosign signing is keyless via Sigstore OIDC** — no private keys are stored in the repo or as secrets. Each signature carries a Fulcio short-lived cert whose subject is the GitHub Actions workflow identity (`https://github.com/no42-org/blitsbom/.github/workflows/<workflow>.yml@refs/tags/vX.Y.Z`), and the signing event is recorded in the Rekor public transparency log. The `promote-latest` re-tag does not re-sign — cosign signatures bind to the image digest, which is unchanged. Verification commands are in [Verifying the release](#verifying-the-release).
 
 ## Cutting a release
 
@@ -54,7 +55,7 @@ git push origin main
 git push origin v0.2.0
 ```
 
-Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip` + checksum) and `docker.yml` (`:latest`, `:0.2.0`, `:0.2` in GHCR). The corresponding push to `main` fires `docker.yml` separately for the `:rc` tag.
+Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip` + checksum + Sigstore bundle) and `docker.yml` (`:0.2.0`, `:0.2` in GHCR — note: not yet `:latest`). After `release.yml` publishes the GitHub Release as a non-prerelease, its final step calls `gh workflow run docker.yml -f promote_tag=0.2.0`, which fires a third workflow run — docker.yml's `promote-latest` job — that re-tags the already-built `:0.2.0` image as `:latest` via `docker buildx imagetools create` (no rebuild, same digest, same cosign signature). The corresponding push to `main` from the version-bump commit fires `docker.yml` separately for the `:rc` tag.
 
 ## Verifying the release
 

@@ -14,6 +14,9 @@ permissions:
   # Required for keyless cosign signing via Sigstore (Fulcio short-lived cert
   # tied to this workflow's OIDC identity, Rekor transparency-log entry).
   id-token: write
+  # Required for the final `gh workflow run docker.yml` step that dispatches
+  # the :latest promotion. Without this, the dispatch fails with 403.
+  actions: write
 
 jobs:
   release:
@@ -64,6 +67,26 @@ jobs:
             --bundle dist.zip.sigstore \
             dist.zip
 
+      # Detect prerelease from the tag suffix. Anything matching
+      # `vX.Y.Z-<alphanumeric>` (e.g. v1.0.0-rc.1, v0.2.0-beta.3) is published
+      # as a prerelease, which keeps GitHub's "Latest release" badge — and
+      # therefore the Docker `:latest` retag in docker.yml — pointing at the
+      # most recent stable release.
+      - name: Detect prerelease from tag
+        id: prerelease
+        env:
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-[A-Za-z0-9] ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # `make_latest: legacy` lets GitHub decide which non-prerelease release
+      # is "Latest" using its built-in semver date logic — so a hotfix tag
+      # pushed against an older minor line won't clobber the Latest badge of
+      # a newer tag.
       - name: Attach dist.zip + checksum + cosign bundle to release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
@@ -74,3 +97,22 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          make_latest: legacy
+
+      # Promote the just-released image to `:latest` in GHCR by dispatching
+      # docker.yml's promote-latest job. We can't rely on the `release:
+      # [released]` event because GitHub deliberately suppresses downstream
+      # events triggered by GITHUB_TOKEN — but `workflow_dispatch` is exempt
+      # from that suppression. Skipped for prereleases.
+      - name: Promote :latest in GHCR
+        if: steps.prerelease.outputs.is_prerelease == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          VERSION="${TAG_NAME#v}"
+          echo "Dispatching docker.yml with promote_tag=${VERSION}"
+          gh workflow run docker.yml \
+            --ref main \
+            -f promote_tag="${VERSION}"

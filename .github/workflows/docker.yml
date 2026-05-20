@@ -1,10 +1,31 @@
 name: Docker Image
 
+# Two-mode flow:
+#   push to main / vX.Y.Z              → build-and-push job builds and pushes
+#                                        the image with version-specific tags
+#                                        only (no `:latest`).
+#   workflow_dispatch + promote_tag    → promote-latest job re-tags the
+#                                        existing image as `:latest`. This is
+#                                        the path release.yml takes after
+#                                        creating a non-prerelease GitHub
+#                                        Release, and the same path a human
+#                                        can take to manually re-promote.
+#
+# The `release: [released]` event is NOT used: when softprops/action-gh-release
+# creates a release with the default GITHUB_TOKEN, GitHub deliberately
+# suppresses the resulting release event to prevent recursive workflow loops.
+# `workflow_dispatch` is the documented exception — it fires even when
+# triggered by GITHUB_TOKEN-authenticated `gh workflow run` calls.
 on:
   push:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      promote_tag:
+        description: 'Version to promote to :latest (e.g. 0.2.8). Empty = run build-and-push as normal.'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -19,6 +40,9 @@ env:
 
 jobs:
   build-and-push:
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.promote_tag == '')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,17 +60,20 @@ jobs:
 
       # Compute the image tags from the Git ref:
       #   - push to main          → :rc and :main-<short-sha>
-      #   - push of vX.Y.Z tag    → :latest, :X.Y.Z, :X.Y
+      #   - push of vX.Y.Z tag    → :X.Y.Z and :X.Y (NOT :latest — that is
+      #                             handled by the promote-latest job below
+      #                             when the GitHub Release is marked Latest)
       #   - workflow_dispatch     → :rc (treated like main)
-      # Branch/tag matchers are gated via `enable=` so the wrong tags don't
-      # leak between flows.
+      # `flavor: latest=false` disables metadata-action's auto-latest behavior;
+      # we control `:latest` strictly via the release event.
       - name: Compute image tags
         id: meta
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf  # v6.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
           tags: |
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=rc,enable=${{ github.ref == 'refs/heads/main' }}
@@ -97,3 +124,58 @@ jobs:
             --predicate sbom.cdx.json \
             --type cyclonedx \
             "$IMAGE"
+
+  # Promote `:latest` to point at the released version. Triggered explicitly
+  # via `gh workflow run docker.yml -f promote_tag=X.Y.Z` from release.yml
+  # after it publishes a non-prerelease GitHub Release, or manually by an
+  # operator for emergency recovery. The image is re-tagged via
+  # `docker buildx imagetools create`, which only writes a new manifest
+  # pointer — no rebuild, and the existing cosign signature on the digest
+  # continues to apply.
+  promote-latest:
+    if: |
+      github.event_name == 'workflow_dispatch' && inputs.promote_tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote :latest to point at the released version
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          PROMOTE_TAG: ${{ inputs.promote_tag }}
+        run: |
+          set -euo pipefail
+          VERSION="${PROMOTE_TAG#v}"
+          echo "Promoting ${IMAGE}:${VERSION} to ${IMAGE}:latest"
+
+          # release.yml dispatches this workflow in parallel with the build,
+          # so the source tag may not be resolvable for ~30-60s. Wait up to
+          # ~5 minutes rather than failing the run on a transient race.
+          attempts=30
+          delay=10
+          for i in $(seq 1 "$attempts"); do
+            if docker buildx imagetools inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
+              echo "Source tag ${IMAGE}:${VERSION} is available"
+              break
+            fi
+            if [ "$i" = "$attempts" ]; then
+              echo "::error::Source tag ${IMAGE}:${VERSION} never became available after ${attempts} attempts"
+              exit 1
+            fi
+            echo "Source tag not yet available (attempt $i/$attempts), retrying in ${delay}s..."
+            sleep "$delay"
+          done
+
+          docker buildx imagetools create \
+            --tag "${IMAGE}:latest" \
+            "${IMAGE}:${VERSION}"
+
+          echo "Promoted ${IMAGE}:latest → digest of ${IMAGE}:${VERSION}"
