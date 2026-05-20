@@ -4,11 +4,31 @@ A zero-install, browser-only viewer for [CycloneDX](https://cyclonedx.org/) SBOM
 
 > **Privacy:** every byte stays in your browser. No upload, no phone-home, no telemetry. The page works with the network cable unplugged.
 
-## Quick start (Docker)
+## Quick start
 
-The fastest way to run blitsbom in your own environment — Alpine-based image, ~50 MB, no runtime dependencies.
+### Just run it locally
 
-### Pull a published image from GHCR
+The fastest way to run blitsbom in your own environment.
+
+```plain
+# Grab the latest release artifact + checksum
+mkdir blitsbom && cd blitsbom
+curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip
+curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip.sha512
+
+# Verify integrity (exits non-zero if the bundle was tampered with)
+sha512sum -c dist.zip.sha512
+```
+
+```plain
+unzip dist.zip
+open index.html      # macOS
+xdg-open index.html  # Linux
+```
+
+It runs straight from a `file://` URL with no server. The bundle includes everything it needs — no CDNs, no fetched fonts, no external resources.
+
+### Run in a container
 
 ```bash
 # Stable release
@@ -23,7 +43,7 @@ docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:rc
 
 Then open <http://localhost:8080> and drop your `bom.json` / `sbom.json` onto the page.
 
-### Build it yourself
+## Build it yourself
 
 ```bash
 make docker-build   # build the local image
@@ -36,53 +56,6 @@ Equivalent without Make:
 docker build -t blitsbom:latest .
 docker run --rm -p 8080:80 blitsbom:latest
 ```
-
-The image is a static nginx serving the built bundle — no telemetry, no outbound calls, safe behind air-gapped firewalls.
-
-### Image tags
-
-| Tag                    | Source                                       | When pushed                                                |
-|------------------------|----------------------------------------------|------------------------------------------------------------|
-| `:latest`              | the release GitHub marks as "Latest"         | when a GitHub Release is published as non-prerelease       |
-| `:X.Y.Z`, `:X.Y`       | a specific tagged release, semver pins       | on `vX.Y.Z` tag                                            |
-| `:rc`                  | tip of `main`                                | on every push to `main`                                    |
-| `:main-<short-sha>`    | a specific main commit                       | on every push to `main`                                    |
-
-All published images are **multi-arch manifest lists** with binaries for `linux/amd64` and `linux/arm64`. `docker pull` automatically selects the right architecture; consumers on Apple Silicon, ARM-based AWS Graviton, Raspberry Pi 4/5, or AMD64 servers all use the same tag.
-
-`:latest` is re-tagged from the released `:X.Y.Z` (same manifest list digest, same cosign signature) — it is **not** moved on every tag push. Prereleases skip the promote-latest step entirely. Out-of-order hotfix tags are handled by GitHub's own "Latest release" algorithm (the GitHub Release that is marked "Latest" is what we promote to `:latest`), so it is GitHub — not this workflow — that decides whether an older hotfix supersedes a newer release. Pin to `:X.Y.Z` if you need certainty.
-
-## Two install paths
-
-### 1. Self-host (drop into any static server)
-
-Each tagged release publishes a `dist.zip` of the built static files plus a `dist.zip.sha512` checksum.
-
-```bash
-# Grab the latest release artifact + checksum
-curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip
-curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip.sha512
-
-# Verify integrity (exits non-zero if the bundle was tampered with)
-sha512sum -c dist.zip.sha512
-
-# Extract into a webroot
-unzip dist.zip -d /var/www/blitsbom
-```
-
-Any static server works: nginx, Apache, S3 + CloudFront, Caddy, `python -m http.server`. blitsbom uses relative asset paths, so it runs from any subdirectory.
-
-### 2. Air-gapped (double-click `index.html`)
-
-For regulated or offline environments:
-
-```bash
-unzip dist.zip
-open dist/index.html   # macOS
-xdg-open dist/index.html  # Linux
-```
-
-It runs straight from a `file://` URL with no server. The bundle includes everything it needs — no CDNs, no fetched fonts, no external resources.
 
 ## Supported input
 
