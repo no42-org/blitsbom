@@ -219,19 +219,40 @@ jobs:
           # ~10 minutes — slow QEMU-emulated linux/arm64 builds can blow past
           # 5 min on a busy runner. Small jitter on the delay avoids slamming
           # the registry in lock-step.
+          #
+          # CRITICAL: buildx pushes multi-arch tags non-atomically — the tag
+          # can resolve while only linux/amd64 has been uploaded, before
+          # linux/arm64 finishes. If we re-tag at that instant, `:latest`
+          # ends up pinned to the amd64-only intermediate state and arm64
+          # consumers get "no matching manifest" errors. Require BOTH
+          # expected platforms to appear in the manifest list before
+          # proceeding.
+          required_platforms="linux/amd64 linux/arm64"
           attempts=40
           base_delay=15
           for i in $(seq 1 "$attempts"); do
-            if docker buildx imagetools inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
-              echo "Source tag ${IMAGE}:${VERSION} is available"
-              break
+            inspect_output="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>/dev/null || true)"
+            if [ -n "$inspect_output" ]; then
+              missing=""
+              for p in $required_platforms; do
+                if ! echo "$inspect_output" | grep -qF "Platform:    $p"; then
+                  missing="${missing} ${p}"
+                fi
+              done
+              if [ -z "$missing" ]; then
+                echo "Source tag ${IMAGE}:${VERSION} has all required platforms: ${required_platforms}"
+                break
+              fi
+              echo "Source tag exists but is missing platforms:${missing} (attempt $i/$attempts)"
+            else
+              echo "Source tag not yet available (attempt $i/$attempts)"
             fi
             if [ "$i" = "$attempts" ]; then
-              echo "::error::Source tag ${IMAGE}:${VERSION} never became available after ${attempts} attempts"
+              echo "::error::Source tag ${IMAGE}:${VERSION} never became complete (all of: ${required_platforms}) after ${attempts} attempts"
               exit 1
             fi
             delay=$((base_delay + RANDOM % 5))
-            echo "Source tag not yet available (attempt $i/$attempts), retrying in ${delay}s..."
+            echo "Retrying in ${delay}s..."
             sleep "$delay"
           done
 
