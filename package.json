@@ -26,14 +26,14 @@
     "autoprefixer": "^10.4.20",
     "jsdom": "^29.1.1",
     "playwright": "^1.60.0",
-    "postcss": "^8.5.14",
+    "postcss": "^8.5.15",
     "prettier": "^3.3.3",
     "prettier-plugin-svelte": "^3.5.2",
-    "svelte": "^5.55.8",
+    "svelte": "^5.55.9",
     "svelte-check": "^4.4.8",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.13",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   }
 }
