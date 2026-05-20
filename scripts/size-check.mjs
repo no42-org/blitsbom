@@ -1,49 +1,36 @@
 #!/usr/bin/env node
-// Fail if combined gzipped JS in dist/assets/*.js exceeds the budget.
+// Fail if the gzipped single-file `dist/index.html` exceeds the budget.
+// vite-plugin-singlefile inlines all JS and CSS into index.html, so the
+// HTML size IS the bundle size for both air-gapped (file://) and Docker
+// deployments. The budget covers the full inlined payload.
 import { gzipSync } from 'node:zlib';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BUDGET_BYTES = 60 * 1024;
-const ASSETS_DIR = join(process.cwd(), 'dist', 'assets');
+const INDEX_HTML = join(process.cwd(), 'dist', 'index.html');
 
-function listJsFiles(dir) {
-  try {
-    return readdirSync(dir)
-      .filter((f) => f.endsWith('.js'))
-      .map((f) => join(dir, f))
-      .filter((p) => statSync(p).isFile());
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
+try {
+  statSync(INDEX_HTML);
+} catch (err) {
+  if (err.code === 'ENOENT') {
+    console.error(`size-check: ${INDEX_HTML} not found — did you run \`make build\` first?`);
+    process.exit(1);
   }
+  throw err;
 }
 
-const files = listJsFiles(ASSETS_DIR);
-if (files.length === 0) {
-  console.error(`size-check: no JS files found in ${ASSETS_DIR}`);
-  process.exit(1);
-}
-
-let total = 0;
-const breakdown = [];
-for (const file of files) {
-  const raw = readFileSync(file);
-  const gz = gzipSync(raw, { level: 9 });
-  total += gz.length;
-  breakdown.push({ file, raw: raw.length, gz: gz.length });
-}
+const raw = readFileSync(INDEX_HTML);
+const gz = gzipSync(raw, { level: 9 });
 
 const fmt = (n) => `${(n / 1024).toFixed(2)} KB`;
-console.log('JS bundle size (gzip level 9):');
-for (const b of breakdown) {
-  console.log(`  ${b.file}  raw=${fmt(b.raw)}  gz=${fmt(b.gz)}`);
-}
-console.log(`  total gz=${fmt(total)} / budget=${fmt(BUDGET_BYTES)}`);
+console.log('Single-file bundle size (gzip level 9):');
+console.log(`  ${INDEX_HTML}  raw=${fmt(raw.length)}  gz=${fmt(gz.length)}`);
+console.log(`  budget=${fmt(BUDGET_BYTES)}`);
 
-if (total > BUDGET_BYTES) {
+if (gz.length > BUDGET_BYTES) {
   console.error(
-    `\nFAIL: gzipped JS total ${fmt(total)} exceeds budget ${fmt(BUDGET_BYTES)}.`,
+    `\nFAIL: gzipped index.html ${fmt(gz.length)} exceeds budget ${fmt(BUDGET_BYTES)}.`,
   );
   process.exit(1);
 }
