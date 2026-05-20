@@ -32,13 +32,13 @@ It runs straight from a `file://` URL with no server. The bundle includes everyt
 
 ```bash
 # Stable release
-docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:latest
+docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:latest
 
 # A specific version
-docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:0.1.0
+docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:0.1.0
 
 # Bleeding-edge build from main (release-candidate)
-docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:rc
+docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:rc
 ```
 
 Then open <http://localhost:8080> and drop your `bom.json` / `sbom.json` onto the page.
@@ -54,7 +54,7 @@ Equivalent without Make:
 
 ```bash
 docker build -t blitsbom:latest .
-docker run --rm -p 8080:80 blitsbom:latest
+docker run --rm -p 8080:3000 blitsbom:latest
 ```
 
 ## Supported input
@@ -174,9 +174,9 @@ The footer links in the app (`src/ui/AppShell.svelte`) point at `/imprint.html` 
 Operators who want to keep their personal version out of source control can override the files at runtime — for example with a Docker bind mount:
 
 ```bash
-docker run --rm -p 8080:80 \
-  -v ./my-imprint.html:/usr/share/nginx/html/imprint.html:ro \
-  -v ./my-privacy.html:/usr/share/nginx/html/privacy.html:ro \
+docker run --rm -p 8080:3000 \
+  -v ./my-imprint.html:/home/static/imprint.html:ro \
+  -v ./my-privacy.html:/home/static/privacy.html:ro \
   ghcr.io/no42-org/blitsbom:latest
 ```
 
