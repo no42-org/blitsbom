@@ -180,6 +180,27 @@ All third-party Actions are pinned to immutable commit SHAs and kept current by 
 
 See **[RELEASING.md](./RELEASING.md)** for the full release workflow — versioning policy, cutting a release, hotfixes, and troubleshooting.
 
+## Legal pages (operator-supplied)
+
+`public/imprint.html` and `public/privacy.html` ship as **anonymised templates with `[PLACEHOLDER]` fields and a visible "Placeholder — replace before deploying" banner.** They are not legally valid as-is.
+
+Before serving blitsbom publicly, the operator of the deployment must:
+
+1. Replace every `[PLACEHOLDER]` in both files with the operator's own details (name, address, contact, hosting provider, log retention period, certificate authority, applicable legal basis, etc.).
+2. Adapt the section structure to the applicable jurisdiction. The templates follow the structure typically required by German law (§ 5 TMG, § 18 (2) MStV, GDPR); operators elsewhere should add, remove, or rename sections as needed.
+3. Remove the yellow "Placeholder" banner once the content has been verified.
+
+The footer links in the app (`src/ui/AppShell.svelte`) point at `/imprint.html` and `/privacy.html`, so no code change is needed — just edit the two HTML files.
+
+Operators who want to keep their personal version out of source control can override the files at runtime — for example with a Docker bind mount:
+
+```bash
+docker run --rm -p 8080:80 \
+  -v ./my-imprint.html:/usr/share/nginx/html/imprint.html:ro \
+  -v ./my-privacy.html:/usr/share/nginx/html/privacy.html:ro \
+  ghcr.io/no42-org/blitsbom:latest
+```
+
 ## Project layout
 
 ```

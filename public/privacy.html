@@ -13,7 +13,7 @@
     <title>Privacy — blitsbom</title>
     <meta
       name="description"
-      content="Privacy notice for blitsbom — what data is processed when you visit this site."
+      content="Privacy notice template for blitsbom. Operator-supplied — replace before deploying."
     />
     <script>
       try {
@@ -32,6 +32,9 @@
         --color-ink-900: #0f172a;
         --color-accent-600: #1d4ed8;
         --color-surface: #ffffff;
+        --color-warn-bg: #fef3c7;
+        --color-warn-border: #f59e0b;
+        --color-warn-ink: #78350f;
         --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
           'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -45,6 +48,9 @@
           --color-ink-900: #f8fafc;
           --color-accent-600: #60a5fa;
           --color-surface: #1e293b;
+          --color-warn-bg: #422006;
+          --color-warn-border: #b45309;
+          --color-warn-ink: #fde68a;
         }
       }
       :root[data-theme='dark'] {
@@ -55,6 +61,9 @@
         --color-ink-900: #f8fafc;
         --color-accent-600: #60a5fa;
         --color-surface: #1e293b;
+        --color-warn-bg: #422006;
+        --color-warn-border: #b45309;
+        --color-warn-ink: #fde68a;
       }
       html,
       body {
@@ -69,6 +78,20 @@
         max-width: 48rem;
         margin: 0 auto;
         padding: 2rem 1.5rem 3rem;
+      }
+      .placeholder-banner {
+        background: var(--color-warn-bg);
+        border: 1px solid var(--color-warn-border);
+        color: var(--color-warn-ink);
+        padding: 0.75rem 1rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin-bottom: 1.5rem;
+      }
+      .placeholder-banner strong {
+        display: block;
+        margin-bottom: 0.25rem;
       }
       .back {
         display: inline-block;
@@ -120,60 +143,73 @@
   <body>
     <main class="page">
       <a href="/" class="back">← back to blitsbom</a>
+
+      <div class="placeholder-banner" role="note">
+        <strong>Placeholder — replace before deploying.</strong>
+        This page ships with the blitsbom repository as a template. The operator
+        running this instance is responsible for supplying a privacy notice
+        that accurately reflects how their deployment processes visitor data.
+        Remove this banner once the content below has been verified and
+        completed.
+      </div>
+
       <h1>Privacy</h1>
       <p>
         This notice describes what personal data is processed when you visit
-        <code>blitsbom</code>, and on what legal basis. The site is non-commercial and
-        operated by the person named in the
-        <a href="/imprint.html">imprint</a>.
+        this <code>blitsbom</code> deployment, and on what legal basis. The
+        site is operated by the entity named in the
+        <a href="/imprint.html">imprint</a>. Operators must adapt this notice
+        to their own hosting setup, retention policy, and applicable law before
+        publishing it.
       </p>
 
       <h2 id="summary">Summary</h2>
       <ul>
-        <li>No cookies, no analytics, no tracking, no third-party embeds.</li>
         <li>
-          SBOM files you load stay in your browser. They are never uploaded or transmitted
-          to any server.
+          No cookies, no analytics, no tracking, no third-party embeds are
+          shipped by the blitsbom application itself.
         </li>
         <li>
-          The web server keeps standard access logs (IP address, request, user agent,
-          timestamp) for <strong>14 days</strong>, then deletes them.
+          SBOM files you load stay in your browser. They are never uploaded or
+          transmitted to any server by the application.
+        </li>
+        <li>
+          The web server keeps standard access logs (IP address, request, user
+          agent, timestamp) for <strong>[RETENTION PERIOD]</strong>, then
+          deletes them.
         </li>
         <li>
           A small theme preference is stored in your browser's
-          <code>localStorage</code> so the site remembers your light/dark choice. Nothing
-          is sent to the server.
+          <code>localStorage</code> so the site remembers your light/dark
+          choice. Nothing is sent to the server.
         </li>
       </ul>
 
       <h2 id="how-the-app-works">How the app works</h2>
       <p>
-        <code>blitsbom</code> is a static single-page application. Once the HTML, CSS,
-        and JavaScript have been delivered to your browser, all SBOM parsing, filtering,
-        and rendering runs locally on your device. SBOM contents are not sent to the
-        server, and no telemetry is collected.
+        <code>blitsbom</code> is a static single-page application. Once the
+        HTML, CSS, and JavaScript have been delivered to your browser, all
+        SBOM parsing, filtering, and rendering runs locally on your device.
+        SBOM contents are not sent to the server, and no telemetry is
+        collected by the application.
       </p>
 
       <h2 id="hosting">Hosting</h2>
       <p>
-        This site is hosted on a virtual private server provided by
-        <strong
-          >IONOS SE, Elgendorfer Straße 57, 56410 Montabaur, Germany</strong
-        >. When you connect, IONOS necessarily processes your IP address and other
-        connection metadata to route the request. Their handling of this data is
-        described in the
-        <a
-          href="https://www.ionos.de/terms-gtc/privacy-policy/"
-          target="_blank"
-          rel="noopener noreferrer"
-          >IONOS privacy policy</a
+        This site is hosted by
+        <strong>[HOSTING PROVIDER NAME AND ADDRESS]</strong>. When you connect,
+        the hosting provider necessarily processes your IP address and other
+        connection metadata to route the request. Their handling of this data
+        is described in
+        <a href="[HOSTING PROVIDER PRIVACY POLICY URL]" target="_blank" rel="noopener noreferrer"
+          >their privacy policy</a
         >.
       </p>
 
       <h2 id="server-logs">Server logs</h2>
       <p>
-        The web server (nginx) on the VPS records standard access log entries for each
-        request:
+        The web server on the hosting infrastructure records standard access
+        log entries for each request. These may include:
       </p>
       <ul>
         <li>IP address of the requesting client</li>
@@ -183,63 +219,62 @@
         <li>User agent and referrer headers, if sent by your browser</li>
       </ul>
       <p>
-        These logs are used solely for operating the service — diagnosing errors,
-        investigating abuse, and protecting the integrity of the server. They are
-        <strong>retained for 14 days</strong> and then deleted automatically. They are
-        not used for analytics, profiling, or sharing with third parties.
+        These logs are used solely for operating the service — diagnosing
+        errors, investigating abuse, and protecting the integrity of the
+        server. They are
+        <strong>retained for [RETENTION PERIOD]</strong> and then deleted.
+        They are not used for analytics, profiling, or sharing with third
+        parties.
       </p>
       <p>
-        Legal basis: Art. 6 (1) (f) GDPR — legitimate interest in the secure and reliable
-        operation of the service.
+        Legal basis (where the GDPR applies): Art. 6 (1) (f) GDPR — legitimate
+        interest in the secure and reliable operation of the service.
+        Operators outside the EU/EEA should replace this section with the
+        applicable legal basis for their jurisdiction.
       </p>
 
       <h2 id="tls">Transport encryption (TLS)</h2>
       <p>
-        Connections to this site are encrypted with TLS. Certificates are issued
-        automatically by
-        <a href="https://letsencrypt.org/" target="_blank" rel="noopener noreferrer"
-          >Let's Encrypt</a
-        >
-        (Internet Security Research Group). Issuing a certificate involves a public ACME
-        challenge against the server's domain; no visitor data is shared with Let's
-        Encrypt as part of normal browsing.
+        Connections to this site are encrypted with TLS. Certificates are
+        issued by
+        <strong>[CERTIFICATE AUTHORITY OR ACME PROVIDER]</strong>. No visitor
+        data is shared with the certificate authority as part of normal
+        browsing.
       </p>
 
       <h2 id="cookies-and-storage">Cookies and local storage</h2>
       <p>
-        This site sets no cookies. It uses your browser's <code>localStorage</code> to
-        remember a small set of preferences (currently: light/dark theme). This data
-        stays on your device and is never sent to the server. You can clear it at any
-        time via your browser's site-data settings.
+        The blitsbom application sets no cookies. It uses your browser's
+        <code>localStorage</code> to remember a small set of preferences
+        (currently: light/dark theme). This data stays on your device and is
+        never sent to the server. You can clear it at any time via your
+        browser's site-data settings.
       </p>
 
       <h2 id="third-parties">Third parties</h2>
       <p>
-        The site loads no third-party fonts, scripts, analytics, or embeds. The only
-        outbound network resources are those you explicitly click (for example, links to
-        GitHub or to vulnerability advisories from your SBOM).
+        The blitsbom application loads no third-party fonts, scripts,
+        analytics, or embeds. The only outbound network resources are those
+        you explicitly click (for example, links to GitHub or to vulnerability
+        advisories from your SBOM). If the operator of this deployment adds
+        additional third-party services (for example, a reverse proxy, CDN,
+        or analytics layer), they must be listed here.
       </p>
 
       <h2 id="your-rights">Your rights</h2>
       <p>
-        Under the GDPR you have the right to information, rectification, erasure,
-        restriction of processing, data portability, and to object to processing. You
-        also have the right to lodge a complaint with a supervisory authority. To
-        exercise any of these rights, please contact the email address listed in the
-        <a href="/imprint.html">imprint</a>.
+        Where applicable law (such as the GDPR) grants you rights to
+        information, rectification, erasure, restriction of processing, data
+        portability, and objection to processing, you may exercise these
+        rights by contacting the email address listed in the
+        <a href="/imprint.html">imprint</a>. You may also have the right to
+        lodge a complaint with a supervisory authority.
       </p>
 
       <h2 id="changes">Changes to this notice</h2>
       <p>
-        This notice may change as the site evolves. The current version is always
-        published at <code>/privacy.html</code>; previous versions can be reviewed in
-        the
-        <a
-          href="https://github.com/no42-org/blitsbom"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Git history</a
-        >.
+        This notice may change as the deployment evolves. The current version
+        is always published at <code>/privacy.html</code>.
       </p>
     </main>
   </body>
