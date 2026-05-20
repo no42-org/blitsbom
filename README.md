@@ -50,7 +50,7 @@ The image is a static nginx serving the built bundle — no telemetry, no outbou
 
 All published images are **multi-arch manifest lists** with binaries for `linux/amd64` and `linux/arm64`. `docker pull` automatically selects the right architecture; consumers on Apple Silicon, ARM-based AWS Graviton, Raspberry Pi 4/5, or AMD64 servers all use the same tag.
 
-`:latest` is re-tagged from the released `:X.Y.Z` (same manifest list digest, same cosign signature) — it is **not** moved on every tag push. Prereleases and out-of-order hotfix tags do not clobber it.
+`:latest` is re-tagged from the released `:X.Y.Z` (same manifest list digest, same cosign signature) — it is **not** moved on every tag push. Prereleases skip the promote-latest step entirely. Out-of-order hotfix tags are handled by GitHub's own "Latest release" algorithm (the GitHub Release that is marked "Latest" is what we promote to `:latest`), so it is GitHub — not this workflow — that decides whether an older hotfix supersedes a newer release. Pin to `:X.Y.Z` if you need certainty.
 
 ## Two install paths
 
@@ -179,7 +179,7 @@ CI invokes `make` targets, never the underlying npm scripts directly, so the dev
 
 - Pushing to `main` triggers `.github/workflows/docker.yml`, which builds and pushes `ghcr.io/no42-org/blitsbom:rc` (and `:main-<short-sha>`).
 - Pushing a tag matching `v*` triggers `.github/workflows/release.yml` (produces `dist.zip` + `dist.zip.sha512` and attaches them to the GitHub Release) and `.github/workflows/docker.yml` (publishes `:X.Y.Z` and `:X.Y` to GHCR — not yet `:latest`).
-- After `release.yml` publishes the GitHub Release as a non-prerelease (via `make_latest: legacy`), its final step calls `gh workflow run docker.yml -f promote_tag=X.Y.Z` to dispatch the `promote-latest` job. That job re-tags the already-pushed `:X.Y.Z` image as `:latest` — no rebuild, same digest, same cosign signature. (We use `workflow_dispatch` rather than the `release: [released]` event because GitHub suppresses downstream events triggered by GITHUB_TOKEN; `workflow_dispatch` is the documented exception.)
+- `release.yml` is triggered by the `v*` tag push: in a single job it builds the bundle, attaches `dist.zip` + checksum + Sigstore bundle to a freshly-created GitHub Release (`make_latest: legacy` defers to GitHub's Latest-release algorithm), and — when the tag is not a prerelease — its final step calls `gh workflow run docker.yml --ref <tag> -f promote_tag=X.Y.Z` to dispatch the `promote-latest` job. That job re-tags the already-pushed `:X.Y.Z` image as `:latest` — no rebuild, same digest, same cosign signature. (We use `workflow_dispatch` rather than the `release: [released]` event because GitHub suppresses downstream events triggered by GITHUB_TOKEN; `workflow_dispatch` is the documented exception.)
 
 All third-party Actions are pinned to immutable commit SHAs and kept current by Dependabot.
 

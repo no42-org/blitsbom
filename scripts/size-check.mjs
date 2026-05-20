@@ -4,23 +4,34 @@
 // HTML size IS the bundle size for both air-gapped (file://) and Docker
 // deployments. The budget covers the full inlined payload.
 import { gzipSync } from 'node:zlib';
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BUDGET_BYTES = 60 * 1024;
-const INDEX_HTML = join(process.cwd(), 'dist', 'index.html');
+const DIST_DIR = join(process.cwd(), 'dist');
+const INDEX_HTML = join(DIST_DIR, 'index.html');
+const ASSETS_DIR = join(DIST_DIR, 'assets');
 
-try {
-  statSync(INDEX_HTML);
-} catch (err) {
-  if (err.code === 'ENOENT') {
-    console.error(`size-check: ${INDEX_HTML} not found — did you run \`make build\` first?`);
-    process.exit(1);
-  }
-  throw err;
+if (!existsSync(INDEX_HTML)) {
+  console.error(`size-check: ${INDEX_HTML} not found — did you run \`make build\` first?`);
+  process.exit(1);
+}
+
+// Guard against vite-plugin-singlefile silently failing to inline an asset.
+// If any sibling chunk lands in dist/assets/, the file:// air-gapped path is
+// broken and the budget below is meaningless.
+if (existsSync(ASSETS_DIR) && readdirSync(ASSETS_DIR).length > 0) {
+  console.error(
+    `size-check: ${ASSETS_DIR} is non-empty — vite-plugin-singlefile did not inline everything.`,
+  );
+  process.exit(1);
 }
 
 const raw = readFileSync(INDEX_HTML);
+if (raw.length === 0) {
+  console.error(`size-check: ${INDEX_HTML} is zero bytes`);
+  process.exit(1);
+}
 const gz = gzipSync(raw, { level: 9 });
 
 const fmt = (n) => `${(n / 1024).toFixed(2)} KB`;

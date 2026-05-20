@@ -9,7 +9,16 @@ export default defineConfig({
   // air-gapped "double-click index.html via file://" path works in every
   // browser — including Safari, which refuses to load sibling file:// assets
   // for cross-origin reasons under its strict null-origin policy.
-  plugins: [svelte(), viteSingleFile()],
+  // The explicit options harden Vite's defaults: drop the module-loader
+  // shim (we don't ship dynamic imports), and apply the plugin's
+  // recommended build tweaks so module-preload <link>s are not emitted.
+  plugins: [
+    svelte(),
+    viteSingleFile({
+      removeViteModuleLoader: true,
+      useRecommendedBuildConfig: true,
+    }),
+  ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
