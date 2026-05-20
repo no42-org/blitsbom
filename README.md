@@ -60,7 +60,8 @@ Each tagged release publishes a `dist.zip` of the built static files plus a `dis
 
 ```bash
 # Grab the latest release artifact + checksum
-gh release download --pattern 'dist.zip*'
+curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip
+curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip.sha512
 
 # Verify integrity (exits non-zero if the bundle was tampered with)
 sha512sum -c dist.zip.sha512
