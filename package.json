@@ -22,7 +22,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tailwindcss/postcss": "^4.3.0",
     "@tsconfig/svelte": "^5.0.4",
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.2",
     "autoprefixer": "^10.4.20",
     "jsdom": "^29.1.1",
     "playwright": "^1.60.0",
