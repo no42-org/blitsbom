@@ -33,7 +33,7 @@
     "svelte-check": "^4.7.1",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.1.4",
     "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.9"
   }
