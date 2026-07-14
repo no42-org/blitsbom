@@ -19,7 +19,7 @@
     "e2e": "node scripts/e2e.mjs"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^7.1.4",
+    "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "@tailwindcss/postcss": "^4.3.2",
     "@tsconfig/svelte": "^5.0.4",
     "@types/node": "^26.1.0",
