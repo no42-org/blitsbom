@@ -18,10 +18,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Same gates PRs must pass. Previously this workflow re-implemented a weaker
+  # subset inline (no smoke, no e2e), so a regression CI would have caught on a
+  # PR could still ship in a tagged release.
+  gates:
+    uses: ./.github/workflows/gates.yml
+    permissions:
+      contents: read
+
   release:
+    needs: gates
     runs-on: ubuntu-24.04
-    # Build + verify + size-check + dist-zip + sign + upload, then poll up to
-    # 30s for the docker.yml dispatch to be enqueued.
+    # dist-zip + sign + upload, then poll up to 30s for the docker.yml
+    # dispatch to be enqueued.
     timeout-minutes: 30
     permissions:
       contents: write
@@ -55,15 +64,11 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Build
-        run: make build
-
-      - name: Verify
-        run: make verify
-
-      - name: Bundle size check
-        run: make size-check
-
+      # No verify/size-check step here: the `gates` job above already ran the
+      # full `make ci`, and this job cannot start unless it passed. This job
+      # only needs to reproduce the artifact — gate jobs run on separate
+      # runners and share no filesystem, so dist/ has to be rebuilt.
+      # `dist-zip` depends on `build`, so it is a single step.
       - name: Build dist.zip
         run: make dist-zip
 
