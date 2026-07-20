@@ -1,0 +1,76 @@
+name: Bug report
+description: Something does not work the way it should
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Do not report security vulnerabilities here** — see [SECURITY.md](https://github.com/no42-org/blitsbom/blob/main/SECURITY.md) for private reporting.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+      placeholder: I loaded an SPDX file and the components table stayed empty, but the summary header said 412 components.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample SBOM
+      description: |
+        The single most useful thing you can attach. Redact whatever you need to — a trimmed file with three components that still misbehaves beats a description of a 30 MB one we cannot run. Drag the file in, or paste a minimal excerpt.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: blitsbom version
+      description: The release tag, container image tag, or commit SHA you are running.
+      placeholder: v0.3.7
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how-served
+    attributes:
+      label: How are you running it?
+      description: The `file://` path bypasses a lot of browser machinery, so this genuinely changes the diagnosis.
+      options:
+        - Opened index.html directly (file://)
+        - Served over http/https (own web server)
+        - Container image (ghcr.io/no42-org/blitsbom)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Firefox 141 / Chrome 139 / Safari 18.2
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console errors
+      description: Anything red in the browser devtools console. Rendered as a code block, no backticks needed.
+      render: text
+    validations:
+      required: false

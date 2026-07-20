@@ -1,0 +1,10 @@
+# Discussions are not enabled, so issues are the only channel — but security
+# reports must never arrive as a public issue.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/no42-org/blitsbom/security/advisories/new
+    about: Privately report a vulnerability to the maintainers. Never open a public issue for this.
+  - name: Usage question or help
+    url: https://github.com/no42-org/blitsbom/blob/main/SUPPORT.md
+    about: Where to ask, and what to include so the answer arrives faster.
