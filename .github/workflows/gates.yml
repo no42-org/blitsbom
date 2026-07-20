@@ -1,0 +1,78 @@
+name: Gates
+
+# The single definition of "is this tree good?". Called by ci.yml (every PR
+# and push to main), release.yml (before publishing a tag) and docker.yml
+# (before pushing an image), so a release can never publish through a weaker
+# bar than the one PRs are held to.
+#
+# Callers reference this as `./.github/workflows/gates.yml`, which resolves to
+# the calling commit — no SHA pin needed or possible.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    # `make ci` runs build + verify + size-check + smoke + e2e; the e2e pass
+    # walks the ~29 MB opennms-core fixture. ~1 min when healthy — 30 min is
+    # a hang detector, not a budget.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          # No step here pushes, so leaving GITHUB_TOKEN in .git/config would
+          # only widen the blast radius of a compromised build dependency.
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run CI target
+        run: make ci
+
+  # Enforce the workflow hygiene rules mechanically rather than by review:
+  # actionlint catches YAML/expression/shell errors, zizmor catches supply-chain
+  # smells (unpinned actions, template injection, credential persistence).
+  lint-workflows:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Run actionlint
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7  # v2.2.0
+        with:
+          fail-on-error: true
+
+      # `advanced-security: false` keeps this job at `contents: read` — the
+      # SARIF upload path would require `security-events: write`. Findings
+      # surface as inline PR annotations instead, which is where a reviewer
+      # is already looking. The zizmor version is pinned so a new release
+      # can't turn a green PR red without a deliberate bump.
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@6599ee8b7a49aef6a770f63d261d214911a7ce02  # v0.6.0
+        with:
+          version: 1.27.0
+          config: zizmor.yml
+          advanced-security: false
+          annotations: true

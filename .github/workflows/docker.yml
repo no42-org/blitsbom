@@ -38,7 +38,21 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Gate the image build on the same checks PRs must pass — previously this
+  # workflow had no `needs:` at all, so a red build on main still pushed a
+  # signed `:rc` to GHCR. Skipped on the promote path (see promote-latest):
+  # re-tagging an existing manifest builds nothing, so there is nothing to
+  # gate, and build-and-push is skipped there anyway.
+  gates:
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.promote_tag == '')
+    uses: ./.github/workflows/gates.yml
+    permissions:
+      contents: read
+
   build-and-push:
+    needs: gates
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.promote_tag == '')
