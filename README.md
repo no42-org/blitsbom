@@ -196,6 +196,14 @@ scripts/      size-check, purity-check, file-smoke, e2e
 samples/      Real-world SBOMs used as test corpus (not bundled into dist/)
 ```
 
+## Contributing and support
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — development setup, commit conventions, DCO sign-off and the AI-assistance policy.
+- [SUPPORT.md](./SUPPORT.md) — where to ask a question, and what to include so it gets answered.
+- [SECURITY.md](./SECURITY.md) — how to report a vulnerability privately. Please do not open a public issue for one.
+- [RELEASING.md](./RELEASING.md) — how releases are cut and how to verify the signatures.
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant 2.1.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
