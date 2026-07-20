@@ -1,0 +1,13 @@
+# zizmor configuration — https://docs.zizmor.sh/configuration/
+#
+# Everything zizmor reports is treated as a CI failure; this file is the only
+# place a finding may be waived, and every entry needs a reason. Keep it short.
+rules:
+  superfluous-actions:
+    ignore:
+      # zizmor suggests replacing softprops/action-gh-release with a `gh
+      # release` script step. Declined: the action gives us
+      # `fail_on_unmatched_files`, `make_latest: legacy` and idempotent
+      # re-runs, which we would have to reimplement (and keep correct) in
+      # shell. Revisit if the action becomes unmaintained.
+      - release.yml

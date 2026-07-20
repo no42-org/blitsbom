@@ -11,9 +11,18 @@ on:
 
 permissions: {}
 
+# Never cancel a release mid-flight: a cancellation between "attach artifacts"
+# and "promote :latest" publishes half a release. Queue instead.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # Build + verify + size-check + dist-zip + sign + upload, then poll up to
+    # 30s for the docker.yml dispatch to be enqueued.
+    timeout-minutes: 30
     permissions:
       contents: write
       # Required for keyless cosign signing via Sigstore (Fulcio short-lived cert
@@ -25,12 +34,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          # Nothing here pushes via git: softprops/action-gh-release and the
+          # `gh workflow run` dispatch both take GITHUB_TOKEN explicitly.
+          persist-credentials: false
 
+      # Caching is explicitly OFF here. Omitting `cache:` is NOT enough —
+      # setup-node v5+ caches automatically whenever package.json names a
+      # package manager, so `package-manager-cache: false` is the actual
+      # opt-out. Rationale: the npm cache is writable from PR-triggered CI
+      # runs, so restoring it in the workflow that signs and publishes
+      # artifacts would let a poisoned cache entry reach a release.
+      # `npm ci` from scratch costs ~20s — cheap insurance on a tag build.
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false
 
       - name: Install dependencies
         run: make install

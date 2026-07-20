@@ -27,12 +27,11 @@ on:
         required: false
         default: ''
 
+# Workflow-level default is read-only; the write scopes are granted per job
+# (build-and-push needs packages+id-token, promote-latest only packages) so a
+# compromised step in one job cannot use the other's privileges.
 permissions:
   contents: read
-  packages: write
-  # Required for keyless cosign signing via Sigstore (Fulcio short-lived cert
-  # tied to this workflow's OIDC identity, Rekor transparency-log entry).
-  id-token: write
 
 env:
   REGISTRY: ghcr.io
@@ -43,10 +42,29 @@ jobs:
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.promote_tag == '')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # QEMU-emulated linux/arm64 builds are slow; 60 min leaves headroom on a
+    # cold GHA cache while still bounding a hung build.
+    timeout-minutes: 60
+    # Serialize per ref, and never cancel: this job pushes images, signs the
+    # digest, and attests an SBOM. A cancellation between the push and the
+    # signature leaves an unsigned image in GHCR.
+    concurrency:
+      group: docker-build-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+      # Required for keyless cosign signing via Sigstore (Fulcio short-lived cert
+      # tied to this workflow's OIDC identity, Rekor transparency-log entry).
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          # Only the Docker build reads the tree; pushes to GHCR authenticate
+          # via docker/login-action, not the git credential helper.
+          persist-credentials: false
 
       # Multi-arch builds: QEMU emulates linux/arm64 binaries on the
       # amd64 runner so the build stage can cross-build for both targets.
@@ -167,7 +185,10 @@ jobs:
   promote-latest:
     if: |
       github.event_name == 'workflow_dispatch' && inputs.promote_tag != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # The wait loop polls for both platforms for up to ~10 min (40 × ~15s)
+    # before failing on its own; 20 bounds the job if the loop itself wedges.
+    timeout-minutes: 20
     # Serialize promote-latest dispatches so two parallel runs (e.g. a hotfix
     # release racing the main release) cannot finish out of order and leave
     # `:latest` pinned to the older version.
