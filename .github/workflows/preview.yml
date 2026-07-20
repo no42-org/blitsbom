@@ -1,0 +1,127 @@
+name: Preview Release
+
+# Publishes a rolling `preview` prerelease from main, so unreleased fixes can
+# be tested without building from source. The image side of this is docker.yml's
+# `:rc` tag; this is the same idea for the dist.zip artifact.
+#
+# The `preview` release and its tag are recreated on every green build — it is
+# a moving target by design, and always corresponds to the current tip of main.
+# It is never "Latest" (prereleases cannot be) and never moves a version tag.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Do not cancel: this deletes and recreates a release, and being interrupted
+# between the two leaves no preview at all. Superseded runs queue and the last
+# one wins, which is the correct end state.
+concurrency:
+  group: preview-release
+  cancel-in-progress: false
+
+jobs:
+  # Same bar as everything else. A preview is still something people download,
+  # so it does not publish on red.
+  gates:
+    uses: ./.github/workflows/gates.yml
+    permissions:
+      contents: read
+
+  preview:
+    needs: gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      # Keyless cosign signing, same as a real release — a preview artifact
+      # that cannot be verified teaches people to skip verification.
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      # Caching is off for the same reason as release.yml: the npm cache is
+      # writable from PR-triggered CI runs, and this job signs and publishes
+      # an artifact. `package-manager-cache: false` is the real opt-out —
+      # omitting `cache:` is not enough on setup-node v5+.
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Build dist.zip
+        run: make dist-zip
+
+      - name: Generate SHA-512 checksum
+        run: sha512sum dist.zip > dist.zip.sha512
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+
+      - name: Sign dist.zip with cosign (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --bundle dist.zip.sigstore \
+            dist.zip
+
+      # Delete-then-recreate rather than editing in place: it is the only way
+      # to move the `preview` tag onto the new commit, and it keeps the release
+      # body and assets from accumulating stale entries across builds.
+      - name: Refresh the preview release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          SHORT="${SHA:0:7}"
+
+          # `|| true`: there is no preview release on the very first run, and
+          # "not found" is a success condition here.
+          gh release delete preview --yes --cleanup-tag || true
+
+          # Belt and braces: if the release is gone but the tag survived (a
+          # half-failed previous run, or a tag created by hand), `gh release
+          # create` would silently reuse that stale tag and ignore --target,
+          # pinning `preview` to an old commit forever.
+          gh api -X DELETE "repos/${GH_REPO}/git/refs/tags/preview" >/dev/null 2>&1 || true
+
+          cat > notes.md <<EOF
+          Rolling preview built from the current tip of \`main\` — **not a release**.
+
+          | | |
+          | --- | --- |
+          | Commit | [\`${SHORT}\`](https://github.com/${GH_REPO}/commit/${SHA}) |
+          | Container | \`ghcr.io/${GH_REPO}:rc\` |
+
+          Unstable by definition: this is replaced on every push to \`main\`, and
+          the \`preview\` tag moves with it. For anything you intend to keep, use
+          the [latest release](https://github.com/${GH_REPO}/releases/latest).
+
+          Verify the artifact (cosign v3 or newer):
+
+          \`\`\`bash
+          cosign verify-blob dist.zip \\
+            --bundle dist.zip.sigstore \\
+            --certificate-identity-regexp '^https://github\.com/${GH_REPO}/\.github/workflows/preview\.yml@refs/heads/main$' \\
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          \`\`\`
+          EOF
+
+          gh release create preview \
+            --prerelease \
+            --target "$SHA" \
+            --title "Preview (main@${SHORT})" \
+            --notes-file notes.md \
+            dist.zip dist.zip.sha512 dist.zip.sigstore
+
+          echo "Preview refreshed at ${SHORT}" >> "$GITHUB_STEP_SUMMARY"
