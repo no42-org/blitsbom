@@ -40,19 +40,31 @@ make size-check   # gzipped JS budget (60 KB)
 make e2e          # full file:// UX check across all sample SBOMs
 ```
 
-If everything is green, decide on the next version (`MAJOR.MINOR.PATCH`) based on what's landed since the last tag. Then:
+If everything is green, decide on the next version (`MAJOR.MINOR.PATCH`) based on what's landed since the last tag.
+
+`main` is protected and requires the `gates / verify` and `gates / lint-workflows` checks, so the version bump lands via a PR — it cannot be pushed directly. **Tag the merged bump commit, not your local one**: squash-merging creates a new commit, so a tag made before the merge points at a commit that is not on `main`.
 
 ```bash
-# Bump package.json (recorded in the bundle for diagnostics).
+# Bump package.json (recorded in the bundle for diagnostics) on a branch.
+git checkout -b chore/release-v0.2.0
 npm version --no-git-tag-version 0.2.0   # adjust to the chosen version
 
 # Commit the version bump using the conventional-commits style.
 git add package.json package-lock.json
-git commit -m "chore(release): v0.2.0"
+git commit -s -m "chore(release): v0.2.0"
+git push -u origin chore/release-v0.2.0
+gh pr create --fill
+```
 
-# Create the annotated tag and push everything.
+Once the checks are green, merge it and tag what actually landed:
+
+```bash
+gh pr merge --squash --delete-branch
+git checkout main
+git pull --ff-only            # fast-forward onto the squashed bump commit
+
+# Create the annotated tag on the merged commit and push it.
 git tag -a v0.2.0 -m "v0.2.0"
-git push origin main
 git push origin v0.2.0
 ```
 
@@ -97,12 +109,14 @@ For a patch release off the latest tag (e.g. `v0.2.0` is broken; we want `v0.2.1
 
 ```bash
 git checkout -b hotfix/0.2.1 v0.2.0
-# fix the bug, commit
-git checkout main
-git merge --no-ff hotfix/0.2.1
-git push origin main
-# then cut v0.2.1 the normal way (npm version + tag + push)
+# fix the bug, commit with -s
+git push -u origin hotfix/0.2.1
+gh pr create --fill
+gh pr merge --squash --delete-branch   # once gates are green
+# then cut v0.2.1 the normal way (bump PR + tag the merged commit)
 ```
+
+`git merge --no-ff` into `main` is no longer possible: `main` requires linear history and the repo is squash-merge only, so the fix reaches `main` as a single squashed commit via PR like anything else.
 
 If you need to abandon a broken tag entirely, **delete it** rather than re-pointing — moving an already-fetched tag is unkind to anyone who pinned to it:
 
@@ -128,4 +142,14 @@ Per the project's [Conventional Commits](https://www.conventionalcommits.org/) p
 - `ci: …` — workflow or pipeline changes.
 - `docs(releasing): …` — updates to this file.
 
-Every Claude-assisted commit must include the `Assisted-by:` trailer; **never** include `Signed-off-by` for AI-generated changes (only humans certify the DCO).
+Every commit carries two trailers, in this order:
+
+```
+Assisted-by: ClaudeCode:claude-opus-4-8
+Signed-off-by: Ronny Trommer <ronny@no42.org>
+```
+
+- `Assisted-by:` names the agent and model for AI-assisted changes. Omit it for changes written entirely by hand.
+- `Signed-off-by:` is added by `git commit -s` and always carries the **human** committer's identity, never an AI name.
+
+An AI-assisted commit still gets a human sign-off — that is the point of the DCO. The signer is certifying that they reviewed the change and vouch for its provenance and license compliance, which is a statement only a person can make. Dropping the sign-off would not make the claim more honest, it would just leave the commit uncertified.
