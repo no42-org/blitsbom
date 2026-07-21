@@ -74,6 +74,13 @@ jobs:
       id-token: write
       # Required by actions/attest-build-provenance to record the attestation.
       attestations: write
+      # The attest action also creates a "storage record" linking the
+      # attestation to the artifact — `create-storage-record` defaults to true
+      # and activates because we set `push-to-registry: true`. Without this
+      # scope that step warns "Failed to persist storage record: no artifacts
+      # found" on every image build. The attestation itself was always created
+      # and verifiable; only the record was failing.
+      artifact-metadata: write
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
