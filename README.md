@@ -94,7 +94,7 @@ CycloneDX and SPDX both accept compound expressions like `(MIT OR Apache-2.0)` a
 
 ### LicenseRef-* resolution (SPDX)
 
-SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasExtractedLicensingInfos` block. blitsbom resolves these by matching the actual extracted text against signature regexes for ~13 common licenses (Apache-2.0, MIT, BSD-*, GPL-*, LGPL-*, AGPL-3.0, MPL-2.0, EPL-*, CDDL-1.0, ISC), falling back to canonical license URLs in `seeAlsos` and to encoded ids in the LicenseRef name itself. Anything that can't be recognized stays as a verbatim name and classifies as Proprietary.
+SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasExtractedLicensingInfos` block. blitsbom resolves these by matching the actual extracted text against signature regexes for ~13 common licenses (Apache-2.0, MIT, `BSD-*`, `GPL-*`, `LGPL-*`, AGPL-3.0, MPL-2.0, `EPL-*`, CDDL-1.0, ISC), falling back to canonical license URLs in `seeAlsos` and to encoded ids in the LicenseRef name itself. Anything that can't be recognized stays as a verbatim name and classifies as Proprietary.
 
 ## Vulnerabilities (VEX)
 
