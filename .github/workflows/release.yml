@@ -1,8 +1,31 @@
 name: Release
 
+# Two entry points:
+#   push of a vX.Y.Z tag  → build, sign, and create a DRAFT release with the
+#                           artifacts attached. Nothing is public yet; the
+#                           maintainer curates the notes and publishes.
+#   release [released]    → the maintainer published that draft, so promote
+#                           `:latest` in GHCR to match.
+#
+# Splitting it this way keeps `:latest` equal to the most recent *released*
+# version. Promoting at tag time would point `:latest` at a version whose
+# release is still an unpublished draft, and leave it silently wrong if that
+# draft were abandoned.
+#
+# The `released` event fires only for non-prereleases (publishing a prerelease
+# fires `prereleased` instead), so prereleases never move `:latest` and no
+# explicit check is needed. GitHub suppresses release events raised by
+# GITHUB_TOKEN, but a human publishing via the UI or their own token is not
+# GITHUB_TOKEN, so this fires normally. If it ever does not, the manual
+# fallback still works:
+#   gh workflow run docker.yml --ref vX.Y.Z -f promote_tag=X.Y.Z
 on:
   push:
-    tags: ['v*']
+    # Full SemVer only. 'v*' also matched v0.3, vfoo and vNEXT — the
+    # prerelease-detect step rejected those, but the run should not start.
+    tags: ['v*.*.*']
+  release:
+    types: [released]
   workflow_dispatch:
     inputs:
       tag:
@@ -11,10 +34,10 @@ on:
 
 permissions: {}
 
-# Never cancel a release mid-flight: a cancellation between "attach artifacts"
-# and "promote :latest" publishes half a release. Queue instead.
+# Never cancel a release mid-flight: a cancellation between building the
+# artifacts and attaching them leaves a half-populated draft. Queue instead.
 concurrency:
-  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  group: release-${{ github.event.release.tag_name || github.event.inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -22,11 +45,13 @@ jobs:
   # subset inline (no smoke, no e2e), so a regression CI would have caught on a
   # PR could still ship in a tagged release.
   gates:
+    if: github.event_name != 'release'
     uses: ./.github/workflows/gates.yml
     permissions:
       contents: read
 
   release:
+    if: github.event_name != 'release'
     needs: gates
     runs-on: ubuntu-24.04
     # dist-zip + sign + upload, then poll up to 30s for the docker.yml
@@ -120,11 +145,15 @@ jobs:
             exit 1
           fi
 
+      # Created as a DRAFT: nothing is visible until the maintainer curates the
+      # notes and publishes. `generate_release_notes` still runs, so the draft
+      # opens with the raw commit list as raw material rather than a blank box.
+      #
       # `make_latest: legacy` lets GitHub decide which non-prerelease release
       # is "Latest" using its built-in semver date logic — so a hotfix tag
       # pushed against an older minor line won't clobber the Latest badge of
       # a newer tag.
-      - name: Attach dist.zip + checksum + cosign bundle to release
+      - name: Attach dist.zip + checksum + cosign bundle to draft release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
         with:
           files: |
@@ -134,19 +163,49 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true
+          draft: true
           prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
           make_latest: legacy
 
-      # Promote the just-released image to `:latest` in GHCR by dispatching
-      # docker.yml's promote-latest job. We can't rely on the `release:
-      # [released]` event because GitHub deliberately suppresses downstream
-      # events triggered by GITHUB_TOKEN — but `workflow_dispatch` is exempt
-      # from that suppression. Skipped for prereleases.
+      - name: Summarise next step
+        env:
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          {
+            echo "### Draft release created for \`${TAG_NAME}\`"
+            echo
+            echo "Artifacts are attached and signed. Nothing is public yet."
+            echo
+            echo "1. Curate the notes (highlights, breaking changes, fixes)."
+            echo "2. Publish:"
+            echo
+            echo '```'
+            echo "gh release edit ${TAG_NAME} --notes-file notes.md --draft=false"
+            echo '```'
+            echo
+            echo "Publishing fires the \`released\` event, which promotes \`:latest\` in GHCR."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Fires when the maintainer publishes the draft above, which is the moment
+  # `:latest` should start pointing at this version. Only `released` is
+  # subscribed, so publishing a prerelease does not reach this job at all.
+  #
+  # This job builds nothing and needs no gates: it dispatches a re-tag of a
+  # manifest that was already built and gated at tag time.
+  promote-latest:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      # Only to dispatch docker.yml. No contents/packages write: the re-tag
+      # itself happens in docker.yml under its own narrower permissions.
+      actions: write
+    steps:
       - name: Promote :latest in GHCR
-        if: steps.prerelease.outputs.is_prerelease == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           if [ -z "$TAG_NAME" ]; then

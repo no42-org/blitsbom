@@ -16,16 +16,22 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 
 | Artifact                                  | Source                          | Pushed by                      |
 |-------------------------------------------|---------------------------------|--------------------------------|
-| `dist.zip` + `dist.zip.sha512` + `dist.zip.sigstore` attached to GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
+| `dist.zip` + `dist.zip.sha512` + `dist.zip.sigstore` attached to a **draft** GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
+| The same three files on the rolling `preview` prerelease | every green push to `main`      | `.github/workflows/preview.yml` |
 | `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` (cosign-signed, SBOM-attested) | every push to `main`           | `.github/workflows/docker.yml` |
 | `ghcr.io/no42-org/blitsbom:X.Y.Z` / `:X.Y` (cosign-signed, SBOM-attested) | the `vX.Y.Z` Git tag            | `.github/workflows/docker.yml` (`build-and-push` job) |
-| `ghcr.io/no42-org/blitsbom:latest` (re-tag of the released `:X.Y.Z`, same digest, same signature) | a non-prerelease tag push (skipped for prereleases) | `.github/workflows/release.yml` dispatches `.github/workflows/docker.yml` (`promote-latest` job) via `gh workflow run` |
+| `ghcr.io/no42-org/blitsbom:latest` (re-tag of the released `:X.Y.Z`, same digest, same signature) | **publishing** the draft release | `.github/workflows/release.yml` (`promote-latest` job) dispatches `.github/workflows/docker.yml` |
 
 Notes:
 
+- **A tag push does not publish anything user-visible.** It creates a *draft* release with the artifacts attached. The release becomes public only when you curate the notes and publish it — see [Cutting a release](#cutting-a-release).
 - GHCR's `:rc` tag is overwritten on every push to `main`. Use `:main-<sha>` if you need to pin to a specific commit.
-- GHCR's `:latest` is moved by `release.yml` after it creates a non-prerelease GitHub Release. The mechanism is a `workflow_dispatch` call: release.yml runs `gh workflow run docker.yml --ref <tag> -f promote_tag=<version>`, which fires docker.yml's `promote-latest` job at the workflow definition pinned to that tag. (The `release: [released]` event is *not* used — GitHub suppresses downstream events triggered by GITHUB_TOKEN to prevent recursive workflows, but `workflow_dispatch` is exempt.) Net effect: prereleases never move `:latest` (release.yml skips the dispatch when `prerelease == true`), and the same `workflow_dispatch` entry point doubles as a manual emergency-promote affordance — `gh workflow run docker.yml --ref v0.2.8 -f promote_tag=0.2.8`. Pin to `:X.Y.Z` for stable references. The `promote-latest` job is serialized via a `concurrency: promote-latest` group so two parallel dispatches (e.g. a hotfix release racing the main release) cannot finish out of order and leave `:latest` pinned to the older version.
-- `make_latest: legacy` (passed to `softprops/action-gh-release`) defers the "Latest release" decision to GitHub's own algorithm rather than forcing this release to be Latest. GitHub itself decides which non-prerelease release is "Latest"; `release.yml` honors that decision by skipping the promote-latest dispatch entirely for prereleases. If GitHub does not mark the just-published release as Latest (e.g. an older-hotfix scenario), the promote-latest dispatch is still fired with that version's `promote_tag` — confirm in the GitHub Releases UI which tag is marked "Latest" before relying on `:latest` to point at a specific version.
+- The `preview` release is deleted and recreated on every green push to `main`, so its tag moves. It is always a prerelease, so it never becomes "Latest". Use it to test an unreleased fix; never pin to it.
+- GHCR's `:latest` moves when you **publish** the release, not when you push the tag. `release.yml` subscribes to `release: [released]` and dispatches docker.yml's `promote-latest` job. Two consequences worth knowing:
+  - Only `released` is subscribed, and publishing a *prerelease* fires `prereleased` instead — so prereleases never move `:latest`, with no explicit check needed.
+  - GitHub suppresses release events raised by `GITHUB_TOKEN`, but you publishing via the UI or your own token is not `GITHUB_TOKEN`, so the event fires normally. If it ever fails to, promote manually: `gh workflow run docker.yml --ref v0.2.8 -f promote_tag=0.2.8`. That same entry point is the emergency-repromote path.
+  - `promote-latest` in docker.yml is serialized via a `concurrency: promote-latest` group, so two promotions (e.g. a hotfix racing a main release) cannot finish out of order and leave `:latest` on the older version.
+- `make_latest: legacy` (passed to `softprops/action-gh-release`) defers the "Latest release" decision to GitHub's own algorithm rather than forcing this release to be Latest — so a hotfix on an older minor line will not clobber the Latest badge of a newer tag. Note that `:latest` in GHCR is promoted for **any** published non-prerelease, so if you publish an older-line hotfix, GHCR's `:latest` will point at it even where GitHub's Latest badge does not. Check the Releases UI before relying on `:latest` meaning "newest version".
 - **Cosign signing is keyless via Sigstore OIDC** — no private keys are stored in the repo or as secrets. Each signature carries a Fulcio short-lived cert whose subject is the GitHub Actions workflow identity (`https://github.com/no42-org/blitsbom/.github/workflows/<workflow>.yml@refs/tags/vX.Y.Z`), and the signing event is recorded in the Rekor public transparency log. The `promote-latest` re-tag does not re-sign — cosign signatures bind to the image digest, which is unchanged, so `cosign verify ghcr.io/no42-org/blitsbom:latest` resolves to the same signed digest as `:X.Y.Z`. (Tag-listing tools such as `crane ls` will not show a `.sig` companion next to `:latest` itself; verification works because cosign resolves the tag to its digest first.) Verification commands are in [Verifying the release](#verifying-the-release).
 
 ## Cutting a release
@@ -68,7 +74,32 @@ git tag -a v0.2.0 -m "v0.2.0"
 git push origin v0.2.0
 ```
 
-Pushing the tag fires both `release.yml` (GitHub Release + `dist.zip` + checksum + Sigstore bundle) and `docker.yml` (`:0.2.0`, `:0.2` in GHCR — note: not yet `:latest`). When the tag is not a prerelease, `release.yml`'s final step calls `gh workflow run docker.yml --ref v0.2.0 -f promote_tag=0.2.0`, which fires a third workflow run — docker.yml's `promote-latest` job — that re-tags the already-built `:0.2.0` image as `:latest` via `docker buildx imagetools create` (no rebuild, same digest, same cosign signature). The corresponding push to `main` from the version-bump commit fires `docker.yml` separately for the `:rc` tag.
+Pushing the tag fires `release.yml` (which builds, signs, and creates a **draft** release with `dist.zip` + checksum + Sigstore bundle attached) and `docker.yml` (`:0.2.0`, `:0.2` in GHCR — note: not yet `:latest`). The tag matching glob is `v*.*.*`, so a malformed tag like `v0.3` or `vNEXT` starts nothing at all.
+
+Nothing is public yet. **The draft is the point at which you write the release notes.**
+
+### Writing the notes
+
+Do not ship the auto-generated commit dump. It is there as raw material — read it, then write for someone deciding whether to upgrade:
+
+- `## Highlights` — 1–5 bullets of user-facing impact in plain sentences, linking the PR or issue (`#123`).
+- `## Breaking changes` — only if any, and always with the migration path.
+- `## Fixes` — one line each.
+
+Leave out CI churn, refactors, and dependency bumps (collapse those to a single line if any of them mattered). If a user cannot act on it, it does not belong in the notes.
+
+### Publishing
+
+```bash
+gh release view v0.2.0                                   # check the artifacts are attached
+gh release edit v0.2.0 --notes-file notes.md --draft=false
+```
+
+Publishing fires the `released` event, which runs `release.yml`'s `promote-latest` job. That dispatches docker.yml's `promote-latest`, re-tagging the already-built `:0.2.0` image as `:latest` via `docker buildx imagetools create` — no rebuild, same digest, same cosign signature.
+
+For a prerelease (`v0.2.0-rc.1`), publish with `--prerelease` instead. That fires `prereleased` rather than `released`, so `:latest` is left alone.
+
+The version-bump commit's own push to `main` separately fires `docker.yml` for the `:rc` tag and `preview.yml` for the rolling `preview` prerelease.
 
 ## Verifying the release
 
