@@ -18,6 +18,23 @@ updates:
       - dependencies
       - github-actions
 
+  # Keeps the digest pins in the Dockerfile current. Without this, pinning by
+  # digest would trade one problem (mutable tags) for another (base images that
+  # silently never receive security updates).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'build'
+      include: scope
+    labels:
+      - dependencies
+      - docker
+
   - package-ecosystem: npm
     directory: /
     schedule:
