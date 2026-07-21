@@ -72,6 +72,8 @@ jobs:
       # Required for keyless cosign signing via Sigstore (Fulcio short-lived cert
       # tied to this workflow's OIDC identity, Rekor transparency-log entry).
       id-token: write
+      # Required by actions/attest-build-provenance to record the attestation.
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -188,6 +190,21 @@ jobs:
             --predicate sbom.cdx.json \
             --type cyclonedx \
             "$IMAGE"
+
+      # SLSA build provenance for the image, pushed to GHCR alongside it so it
+      # travels with the image rather than living only in GitHub's attestation
+      # store. Verify with:
+      #   gh attestation verify oci://ghcr.io/no42-org/blitsbom:X.Y.Z \
+      #     --repo no42-org/blitsbom
+      #
+      # The subject is the digest, so the attestation stays valid when :latest
+      # or :X.Y are re-tagged onto it — the same reason cosign signs the digest.
+      - name: Attest build provenance for the image
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-push.outputs.digest }}
+          push-to-registry: true
 
   # Promote `:latest` to point at the released version. Triggered explicitly
   # via `gh workflow run docker.yml -f promote_tag=X.Y.Z` from release.yml

@@ -62,9 +62,11 @@ jobs:
       # Required for keyless cosign signing via Sigstore (Fulcio short-lived cert
       # tied to this workflow's OIDC identity, Rekor transparency-log entry).
       id-token: write
-      # Required for the final `gh workflow run docker.yml` step that dispatches
-      # the :latest promotion. Without this, the dispatch fails with 403.
-      actions: write
+      # Required by actions/attest-build-provenance to record the attestation.
+      attestations: write
+      # NOTE: `actions: write` was dropped here. It existed for the `gh workflow
+      # run` promote dispatch, which moved to the promote-latest job — this job
+      # has not dispatched anything since.
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -118,6 +120,33 @@ jobs:
             --bundle dist.zip.sigstore \
             dist.zip
 
+      # An SBOM of the image already ships as an attestation on the container,
+      # but the primary artifact for the zero-install path is dist.zip, and it
+      # had none. syft scans the repo (package-lock.json) rather than the built
+      # bundle: dist/ is a single inlined index.html, so scanning it would find
+      # nothing — the meaningful inventory is the npm tree the bundle was
+      # compiled from.
+      - name: Generate CycloneDX SBOM of the source tree
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist.zip.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      # SLSA build provenance for both files, verifiable with:
+      #   gh attestation verify dist.zip --repo no42-org/blitsbom
+      # Listing the SBOM as a second subject means one attestation covers both,
+      # rather than the SBOM arriving as an unvouched-for file next to a signed
+      # artifact.
+      - name: Attest build provenance for dist.zip + SBOM
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
+        with:
+          subject-path: |
+            dist.zip
+            dist.zip.cdx.json
+
       # Detect prerelease from the tag suffix. Anything matching
       # `vX.Y.Z-<alphanumeric>` (e.g. v1.0.0-rc.1, v0.2.0-beta.3) is published
       # as a prerelease, which keeps GitHub's "Latest release" badge — and
@@ -160,6 +189,7 @@ jobs:
             dist.zip
             dist.zip.sha512
             dist.zip.sigstore
+            dist.zip.cdx.json
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true
