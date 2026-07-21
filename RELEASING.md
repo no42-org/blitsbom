@@ -76,6 +76,17 @@ git push origin v0.2.0
 
 Pushing the tag fires `release.yml` (which builds, signs, and creates a **draft** release with `dist.zip` + checksum + Sigstore bundle attached) and `docker.yml` (`:0.2.0`, `:0.2` in GHCR — note: not yet `:latest`). The tag matching glob is `v*.*.*`, so a malformed tag like `v0.3` or `vNEXT` starts nothing at all.
 
+**The draft is not created until the tagged image exists.** `release.yml` has an `images` job that waits for `ghcr.io/no42-org/blitsbom:X.Y.Z` to appear in GHCR carrying *both* `linux/amd64` and `linux/arm64`, and the release job depends on it. Two reasons for the strictness:
+
+- `docker.yml` is a separate workflow triggered by the same tag push, so nothing else connects them. In [#93](https://github.com/no42-org/blitsbom/issues/93) that push never produced a `docker.yml` run at all — `v0.3.7` published with no container images and `:latest` sat a version behind for a week, the only symptom being a red run nobody read.
+- buildx pushes a multi-arch tag non-atomically, so the tag resolves while only `linux/amd64` has uploaded. Requiring both platforms avoids blessing a release whose arm64 image does not exist yet.
+
+If the image never arrives the release run fails and **no draft appears**, so there is nothing to publish by mistake. The job fails fast when the latest `docker.yml` run for that commit has already failed, and otherwise waits up to ~40 minutes. If it times out with no `docker.yml` run at all, that is the #93 signature — re-run the build against the tag:
+
+```bash
+gh workflow run docker.yml --ref v0.2.0
+```
+
 Nothing is public yet. **The draft is the point at which you write the release notes.**
 
 ### Writing the notes

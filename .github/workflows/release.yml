@@ -50,9 +50,106 @@ jobs:
     permissions:
       contents: read
 
+  # Refuse to create the draft until the tagged image actually exists in GHCR.
+  #
+  # docker.yml is a separate workflow triggered by the same tag push, so the
+  # two run in parallel and nothing connected them. In #93 that push never
+  # produced a docker.yml run at all — GitHub delivered the event to release.yml
+  # and not to docker.yml — so v0.3.7 published with no container images and
+  # `:latest` sat a version behind for a week. The only symptom was a red
+  # promote-latest run nobody read.
+  #
+  # Blocking the draft rather than checking afterwards: the draft is what a
+  # human acts on. If the images are missing there is nothing to publish by
+  # mistake, and the tag's release run is red where it will be seen.
+  images:
+    if: github.event_name != 'release'
+    # Gated too: if the tree is bad, docker.yml will not build either, and
+    # waiting 40 minutes for an image that was never coming is a poor way to
+    # report a failing test.
+    needs: gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+      # For `gh run list`, to fail fast when docker.yml has already failed.
+      actions: read
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0  # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for the tagged image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG_NAME#v}"
+
+          # Both platforms, not just any manifest: buildx pushes a multi-arch
+          # tag non-atomically, so the tag resolves while only linux/amd64 has
+          # uploaded. Accepting that would green-light a release whose arm64
+          # image does not exist yet.
+          required_platforms="linux/amd64 linux/arm64"
+          attempts=80
+          delay=30
+
+          for i in $(seq 1 "$attempts"); do
+            out="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>/dev/null || true)"
+            if [ -n "$out" ]; then
+              missing=""
+              for p in $required_platforms; do
+                echo "$out" | grep -qF "Platform:    $p" || missing="${missing} ${p}"
+              done
+              if [ -z "$missing" ]; then
+                echo "✅ ${IMAGE}:${VERSION} present with ${required_platforms}"
+                exit 0
+              fi
+              echo "tag present but missing:${missing} (attempt $i/$attempts)"
+            else
+              echo "tag not yet available (attempt $i/$attempts)"
+            fi
+
+            # Fail fast rather than burning the full budget when the build has
+            # already given up.
+            #
+            # Only the MOST RECENT run counts, matched exactly. Scanning several
+            # runs for the substring "failure" would fire on a historical
+            # failure that was since re-run successfully — which is precisely
+            # the repair path taken for #93, where a failed run and a later
+            # successful one both exist for the same commit. An empty
+            # conclusion means still in progress: that is the normal case we
+            # are waiting on, so it must not match.
+            concl="$(gh run list --workflow=docker.yml --commit "$SHA" --limit 1 \
+                       --json conclusion --jq '.[0].conclusion // ""' 2>/dev/null || true)"
+            case "$concl" in
+              failure|cancelled|timed_out)
+                echo "::error::the latest docker.yml run for ${SHA} concluded '${concl}' — the image will not appear. Fix the build and re-push the tag."
+                exit 1
+                ;;
+            esac
+
+            sleep "$delay"
+          done
+
+          echo "::error::${IMAGE}:${VERSION} never appeared with all of: ${required_platforms}."
+          echo "::error::If no docker.yml run exists for ${SHA} at all, the tag push did not reach that workflow (this is what happened in #93). Re-run it manually: gh workflow run docker.yml --ref ${TAG_NAME}"
+          exit 1
+
   release:
     if: github.event_name != 'release'
-    needs: gates
+    needs: [gates, images]
     runs-on: ubuntu-24.04
     # dist-zip + sign + upload, then poll up to 30s for the docker.yml
     # dispatch to be enqueued.
