@@ -27,6 +27,16 @@ Three constraints are enforced mechanically and will fail your build:
 
 Architecture notes and the non-obvious gotchas live in [AGENTS.md](./AGENTS.md) — worth a read even if you are not an AI.
 
+### Tests come with the change
+
+Anything that adds or alters behaviour should arrive with tests covering it, in the same PR. This is not box-ticking: `src/parse/` and `src/state/` hold the logic every other part of the app leans on, so a gap there surfaces as a broken table or a wrong licence classification rather than a stack trace.
+
+- **Bug fixes need a regression test** — one that fails without the fix. Write it first and watch it fail; a test that passes before your change is testing something else.
+- **Parser changes** should consider hostile input, not just valid input. `src/parse/robustness.test.ts` holds property-based tests asserting the parsers return a tagged error rather than throwing. They found three crashes on their first run, each reachable by dropping a file with a `null` in an array — those are pinned there as explicit cases. Run a deeper sweep with `FUZZ_RUNS=25000 npx vitest run src/parse/robustness.test.ts`.
+- **UI changes** are covered by the `file://` smoke and e2e scripts (`make smoke`, `make e2e`), which run the real bundle against the sample SBOMs.
+
+Run a single test file with `npx vitest run src/parse/spdx.test.ts`, or a single case by adding `-t 'name fragment'`.
+
 ## Commits
 
 We use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `ci:`, `chore:`, and so on. Breaking changes get a `!` or a `BREAKING CHANGE:` footer. The version number is derived from these, so the prefix matters.
