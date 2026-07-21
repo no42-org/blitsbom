@@ -6,7 +6,7 @@ import type {
   SpdxDocument,
   SpdxPackage,
 } from '../types';
-import { isNoAssertion, emptyToNull } from './util';
+import { isNoAssertion, emptyToNull, isRecord } from './util';
 import { buildLicenseRefMap } from './licenseRef';
 import { normalizeLicenseValue } from './licenseValue';
 import { canonicalizePurl } from './purlMatch';
@@ -22,7 +22,10 @@ export function isSpdxDocument(value: unknown): value is SpdxDocument {
 export function normalizeSpdxDocument(doc: SpdxDocument): LoadedSbom {
   const licenseRefMap = buildLicenseRefMap(doc);
   const packages = Array.isArray(doc.packages) ? doc.packages : [];
-  const components = packages.map((p) => normalizeSpdxPackage(p, licenseRefMap));
+  // See normalizeCdxBom: skip malformed entries instead of throwing.
+  const components = packages
+    .filter((p): p is SpdxPackage => isRecord(p))
+    .map((p) => normalizeSpdxPackage(p, licenseRefMap));
   return { metadata: normalizeSpdxMetadata(doc), components };
 }
 

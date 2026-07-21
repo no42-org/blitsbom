@@ -132,6 +132,15 @@ function pickAdvisoryUrl(raw: CdxVulnerability): string | undefined {
 export function normalizeCdxVulnerability(
   raw: CdxVulnerability,
 ): Vulnerability | null {
+  // `vulnerabilities: [null]` is valid JSON and reachable from any dropped
+  // file. This function already returns null for entries it cannot use, so a
+  // malformed one takes the same path rather than throwing.
+  //
+  // Checked inline rather than via the shared `isRecord`: that helper is a type
+  // predicate, so it would narrow `raw` to an intersection whose properties all
+  // become `unknown`, breaking every field access below. Here we only need the
+  // runtime guard, not the narrowing.
+  if (typeof raw !== 'object' || raw === null) return null;
   const id = typeof raw.id === 'string' ? raw.id.trim() : '';
   if (!id) return null;
   const { severity, cvssScore, cvssVector } = pickSeverityAndScore(raw.ratings);
