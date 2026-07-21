@@ -8,7 +8,7 @@ import type {
   SbomMetadata,
 } from '../types';
 import { SUPPORTED_CDX_VERSIONS } from '../types';
-import { emptyToNull, notNull } from './util';
+import { emptyToNull, notNull, isRecord } from './util';
 import { normalizeLicenseValue } from './licenseValue';
 import { canonicalizePurl } from './purlMatch';
 
@@ -27,7 +27,12 @@ export function isSupportedCdxVersion(v: string): boolean {
 }
 
 export function normalizeCdxBom(bom: CdxBom): LoadedSbom {
-  const components = (bom.components ?? []).map(normalizeCdxComponent);
+  // Drop non-object entries rather than throwing: `components: [null]` is
+  // valid JSON, and a viewer should render the components it can read rather
+  // than fail the whole file over one bad element.
+  const components = (bom.components ?? [])
+    .filter((c): c is CdxComponent => isRecord(c))
+    .map(normalizeCdxComponent);
   const metadata = normalizeCdxMetadata(bom);
   return { metadata, components };
 }
