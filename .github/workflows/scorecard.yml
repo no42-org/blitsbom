@@ -43,6 +43,16 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
+          # The default GITHUB_TOKEN cannot read admin-enforcement settings, so
+          # Scorecard reports fields it cannot see as disabled — it claimed
+          # "branch protection settings apply to administrators is disabled"
+          # while enforce_admins was true and an admin push was being rejected
+          # (see #100). A fine-grained PAT with admin:read fixes the reading.
+          #
+          # Falls back to github.token when the secret is absent, so the
+          # workflow keeps running and simply reports the understated score
+          # rather than failing.
+          repo_token: ${{ secrets.SCORECARD_TOKEN || github.token }}
           # Publishing makes the score available to the Scorecard badge and the
           # public API. It publishes only the score and check results, which are
           # all derived from this repo's already-public metadata.
