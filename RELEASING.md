@@ -103,9 +103,22 @@ The version-bump commit's own push to `main` separately fires `docker.yml` for t
 
 ## Verifying the release
 
+> [!IMPORTANT]
+> **Use cosign v3.0.0 or newer.** The pipeline signs with cosign v3, which no
+> longer writes the legacy `sha256-<digest>.sig` tag that cosign v2 looks for.
+> Running these commands under cosign v2 reports
+>
+> ```
+> Error: no signatures found
+> ```
+>
+> on a perfectly good signature. That is a version mismatch, not evidence of
+> tampering — check `cosign version` before concluding anything. If you have a
+> genuine verification failure, report it privately: see [SECURITY.md](./SECURITY.md).
+
 After the workflows turn green:
 
-1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, and `dist.zip.sigstore` are all attached and the auto-generated release notes look reasonable. Spot-check the checksum and the Sigstore signature:
+1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, `dist.zip.sigstore` and `dist.zip.cdx.json` are all attached, and that you have curated the notes. Spot-check the checksum and the Sigstore signature:
    ```bash
    gh release download --pattern 'dist.zip*'
    sha512sum -c dist.zip.sha512
@@ -114,13 +127,18 @@ After the workflows turn green:
      --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/release\.yml@refs/tags/v' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com
    ```
-2. **GHCR images** — pull and run, sanity-check it loads:
+2. **Build provenance** — proves the artifact was built by this repo's workflow from this commit, not assembled elsewhere. The SBOM is covered by the same attestation:
    ```bash
-   docker run --rm -p 8080:80 ghcr.io/no42-org/blitsbom:0.2.0
+   gh attestation verify dist.zip --repo no42-org/blitsbom
+   gh attestation verify dist.zip.cdx.json --repo no42-org/blitsbom
+   ```
+3. **GHCR images** — pull and run, sanity-check it loads. The image serves on **port 3000** (BusyBox httpd as the unprivileged `static` user), so map to that, not 80:
+   ```bash
+   docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:0.2.0
    open http://localhost:8080
    ```
    Then load one of the sample SBOMs end-to-end and confirm the donut + table render.
-3. **Container signature + SBOM attestation** — verify the image is signed by this repo's release workflow, and pull the attached CycloneDX SBOM:
+4. **Container signature, SBOM attestation and provenance** — verify the image is signed by this repo's release workflow, pull the attached CycloneDX SBOM, and check its provenance:
    ```bash
    IMAGE=ghcr.io/no42-org/blitsbom:0.2.0
    cosign verify "$IMAGE" \
@@ -131,8 +149,12 @@ After the workflows turn green:
      --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/docker\.yml@refs/tags/v' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
      | jq -r '.payload | @base64d | fromjson | .predicate' > sbom.cdx.json
+
+   gh attestation verify "oci://${IMAGE}" --repo no42-org/blitsbom
    ```
-   The `:rc` and `:main-<sha>` images carry the same signature shape but with `@refs/heads/main` instead of `@refs/tags/v…` — adjust the `--certificate-identity-regexp` accordingly when verifying those.
+   The `:rc` and `:main-<sha>` images carry the same signature shape but with `@refs/heads/main` instead of `@refs/tags/v…` — adjust the `--certificate-identity-regexp` accordingly when verifying those. The `preview` artifact uses `@refs/heads/main` on `preview.yml`.
+
+   Signatures and attestations bind to the image **digest**, so `:latest` and `:X.Y` verify as the digest they point at — a re-tag never invalidates them.
 
 ## Hotfixes
 

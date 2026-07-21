@@ -24,3 +24,31 @@ jobs:
     uses: ./.github/workflows/gates.yml
     permissions:
       contents: read
+
+  # Flags vulnerable or license-incompatible dependencies in the PR's diff,
+  # before they land. PR-only: it compares two commits, so there is nothing
+  # for it to diff on a push to main. It lives here rather than in gates.yml
+  # for that reason — gates.yml is also called by release and docker, where
+  # there is no base ref.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
+        with:
+          # Block on high+ severity. Moderate findings still appear in the
+          # summary but do not fail the PR — this is a browser-only app with
+          # no runtime dependencies, so a moderate advisory in a build tool
+          # is rarely a reason to stop work.
+          fail-on-severity: high
+          # MIT project: reject copyleft licences that would conflict.
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0

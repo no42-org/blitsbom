@@ -1,0 +1,55 @@
+name: Scorecard
+
+# OpenSSF Scorecard grades much of the same ground as the maintainer audit
+# (branch protection, pinned actions, signed releases, dangerous workflow
+# patterns) from the outside. Treat a dropping score as audit input rather
+# than as a number to chase.
+on:
+  branch_protection_rule:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, Monday 07:23 UTC. Offset off the hour to avoid the cron storm,
+    # and after the CodeQL scan at 06:17 so the two do not overlap.
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scorecard-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  analysis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Upload the SARIF result to the Security tab.
+      security-events: write
+      # Scorecard reads branch-protection and workflow-run data via OIDC.
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a  # v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publishing makes the score available to the Scorecard badge and the
+          # public API. It publishes only the score and check results, which are
+          # all derived from this repo's already-public metadata.
+          publish_results: true
+
+      - name: Upload SARIF to the Security tab
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4.37.0
+        with:
+          sarif_file: results.sarif
+          category: scorecard
