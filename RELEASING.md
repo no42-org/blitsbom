@@ -46,7 +46,15 @@ make size-check   # gzipped JS budget (60 KB)
 make e2e          # full file:// UX check across all sample SBOMs
 ```
 
-If everything is green, decide on the next version (`MAJOR.MINOR.PATCH`) based on what's landed since the last tag.
+If everything is green, decide on the next version (`MAJOR.MINOR.PATCH`) based on what's landed since the last release:
+
+```bash
+# The last released version. NOT `git describe --tags --abbrev=0`: that
+# returns the rolling `preview` tag (refreshed on every push to main), which
+# sorts ahead of the version tags. Filter to `v*` and sort by version.
+git tag -l 'v*' --sort=-v:refname | head -1
+git log "$(git tag -l 'v*' --sort=-v:refname | head -1)"..HEAD --oneline
+```
 
 `main` is protected and requires the `gates / verify` and `gates / lint-workflows` checks, so the version bump lands via a PR — it cannot be pushed directly. **Tag the merged bump commit, not your local one**: squash-merging creates a new commit, so a tag made before the merge points at a commit that is not on `main`.
 
