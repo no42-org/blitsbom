@@ -1,5 +1,9 @@
 # blitsbom
 
+[![CI](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/no42-org/blitsbom?sort=semver&logo=github)](https://github.com/no42-org/blitsbom/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
 A zero-install, browser-only viewer for [CycloneDX](https://cyclonedx.org/) SBOM files. Drop a `bom.json`, get a clean searchable view of your dependencies, hand it to legal as a CSV or PDF.
 
 > **Privacy:** every byte stays in your browser. No upload, no phone-home, no telemetry. The page works with the network cable unplugged.
@@ -90,7 +94,7 @@ CycloneDX and SPDX both accept compound expressions like `(MIT OR Apache-2.0)` a
 
 ### LicenseRef-* resolution (SPDX)
 
-SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasExtractedLicensingInfos` block. blitsbom resolves these by matching the actual extracted text against signature regexes for ~13 common licenses (Apache-2.0, MIT, BSD-*, GPL-*, LGPL-*, AGPL-3.0, MPL-2.0, EPL-*, CDDL-1.0, ISC), falling back to canonical license URLs in `seeAlsos` and to encoded ids in the LicenseRef name itself. Anything that can't be recognized stays as a verbatim name and classifies as Proprietary.
+SPDX documents can use `LicenseRef-*` identifiers backed by the document's `hasExtractedLicensingInfos` block. blitsbom resolves these by matching the actual extracted text against signature regexes for ~13 common licenses (Apache-2.0, MIT, `BSD-*`, `GPL-*`, `LGPL-*`, AGPL-3.0, MPL-2.0, `EPL-*`, CDDL-1.0, ISC), falling back to canonical license URLs in `seeAlsos` and to encoded ids in the LicenseRef name itself. Anything that can't be recognized stays as a verbatim name and classifies as Proprietary.
 
 ## Vulnerabilities (VEX)
 
