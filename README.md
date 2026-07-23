@@ -68,10 +68,11 @@ Turn an SBOM into a **single self-contained HTML file** you can attach to a rele
 ### In a GitHub Actions workflow
 
 ```yaml
-- uses: no42-org/blitsbom/report@v1
+- uses: no42-org/blitsbom/report@v0.4.0
   id: sbom-report
   with:
     sbom: bom.json          # path to your CycloneDX or SPDX SBOM
+    image: ghcr.io/no42-org/blitsbom:report-0.4.0   # pin the generator image to match
     # version/project/commit/build-url default from the workflow context
 - uses: actions/upload-artifact@v4
   with:
@@ -79,12 +80,18 @@ Turn an SBOM into a **single self-contained HTML file** you can attach to a rele
     path: ${{ steps.sbom-report.outputs.report }}
 ```
 
+Pin the action and its image to a release tag (`@v0.4.0` / `:report-0.4.0`) for reproducible runs. The Action defaults its `image` to `:report-rc`, which tracks `main` — convenient, but a moving target.
+
 ### With the container image directly (any CI, or a laptop)
 
 ```bash
-docker run --rm -v "$PWD:/work" ghcr.io/no42-org/blitsbom:report-rc \
+# A specific release (reproducible)
+docker run --rm -v "$PWD:/work" ghcr.io/no42-org/blitsbom:report-0.4.0 \
   /work/bom.json --project acme-platform --version 2.4.1 \
   --output /work/acme-platform-2.4.1-sbom.html
+
+# Bleeding-edge build from main
+# ghcr.io/no42-org/blitsbom:report-rc
 ```
 
 The generator exits non-zero (and writes nothing) if the SBOM does not parse, so a broken SBOM fails the pipeline instead of shipping a report that greets the recipient with an error. It applies **no** policy judgment — no license or severity gate; that is deliberately left to tools like grype or osv-scanner.
