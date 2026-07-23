@@ -1,0 +1,73 @@
+name: blitsbom SBOM report
+description: >-
+  Generate a self-contained, offline HTML SBOM report from a CycloneDX or SPDX
+  SBOM using the blitsbom report generator image. Provenance defaults are taken
+  from the workflow context.
+
+inputs:
+  sbom:
+    description: Path to the source SBOM (JSON), relative to the workspace.
+    required: true
+  output:
+    description: Output HTML path, relative to the workspace.
+    required: false
+    default: sbom-report.html
+  vex:
+    description: Optional CycloneDX VEX to merge, relative to the workspace.
+    required: false
+    default: ''
+  compress:
+    description: Payload encoding — auto | always | never.
+    required: false
+    default: auto
+  project:
+    description: Product name (defaults to the repository name).
+    required: false
+    default: ${{ github.event.repository.name }}
+  version:
+    description: Product version (defaults to the ref name, leading v stripped).
+    required: false
+    default: ''
+  image:
+    description: Report generator image to run.
+    required: false
+    default: ghcr.io/no42-org/blitsbom:report-rc
+
+outputs:
+  report:
+    description: Path to the generated report (equal to the `output` input).
+    value: ${{ steps.generate.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    - id: generate
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        SBOM: ${{ inputs.sbom }}
+        OUTPUT: ${{ inputs.output }}
+        VEX: ${{ inputs.vex }}
+        COMPRESS: ${{ inputs.compress }}
+        PROJECT: ${{ inputs.project }}
+        VERSION_IN: ${{ inputs.version }}
+        REF_NAME: ${{ github.ref_name }}
+        COMMIT: ${{ github.sha }}
+        BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+
+        # Default the version to the ref name with a leading 'v' stripped, so a
+        # tag push of v2.4.1 yields "2.4.1".
+        VERSION="${VERSION_IN:-${REF_NAME#v}}"
+
+        args=("/work/${SBOM}" --output "/work/${OUTPUT}" --compress "${COMPRESS}")
+        [ -n "${VEX}" ] && args+=(--vex "/work/${VEX}")
+        [ -n "${PROJECT}" ] && args+=(--project "${PROJECT}")
+        [ -n "${VERSION}" ] && args+=(--version "${VERSION}")
+        [ -n "${COMMIT}" ] && args+=(--commit "${COMMIT}")
+        [ -n "${BUILD_URL}" ] && args+=(--build-url "${BUILD_URL}")
+
+        docker run --rm -v "${GITHUB_WORKSPACE}:/work" -w /work "${IMAGE}" "${args[@]}"
+
+        echo "report=${OUTPUT}" >> "${GITHUB_OUTPUT}"

@@ -1,0 +1,48 @@
+name: Report action smoke
+
+# Exercises the report generator image and the composite action end to end on
+# every change, without depending on a published image: the image is built
+# locally with `--target report` and passed to the action via its `image`
+# input. Asserts a report is produced and carries the embedded payload.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Build the report generator image locally
+        run: docker build --target report -t blitsbom-report:ci .
+
+      - name: Generate a report via the composite action
+        id: report
+        uses: ./report
+        with:
+          sbom: samples/opennms/prometheus-remote-writer.json
+          output: ci-report.html
+          project: blitsbom
+          version: 0.0.0-ci
+          image: blitsbom-report:ci
+
+      - name: Assert the report was produced and is self-contained
+        env:
+          REPORT: ${{ steps.report.outputs.report }}
+        run: |
+          set -euo pipefail
+          test -n "$REPORT" || { echo "action produced no report output"; exit 1; }
+          test -f "$REPORT" || { echo "report file $REPORT missing"; exit 1; }
+          grep -q 'id="blitsbom-report-meta"' "$REPORT" || { echo "no provenance block"; exit 1; }
+          grep -q 'id="blitsbom-sbom"' "$REPORT" || { echo "no sbom block"; exit 1; }
+          grep -q 'id="app"' "$REPORT" || { echo "app mount node missing — template not embedded"; exit 1; }
+          echo "OK: $REPORT ($(wc -c < "$REPORT") bytes)"

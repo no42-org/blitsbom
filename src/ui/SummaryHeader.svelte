@@ -34,12 +34,21 @@
         {#if sbom.metadata.projectName}
           <h1 class="text-2xl font-semibold text-ink-900">
             {sbom.metadata.projectName}
+            {#if sbom.metadata.productVersion}
+              <span class="summary-header__version"
+                >{sbom.metadata.productVersion}</span
+              >
+            {/if}
           </h1>
         {/if}
         <p class="mt-1 text-sm text-ink-500">
           {sbom.metadata.sbomFormat === 'CycloneDX-1.x'
             ? `CycloneDX ${sbom.metadata.specVersion}`
             : sbom.metadata.specVersion}
+          {#if sbom.metadata.sbomTool}
+            <span aria-hidden="true">·</span>
+            <span title="Tool that generated this SBOM">{sbom.metadata.sbomTool}</span>
+          {/if}
           {#if formattedTimestamp}
             <span aria-hidden="true">·</span>
             <time datetime={sbom.metadata.timestamp ?? ''}>
@@ -49,7 +58,11 @@
         </p>
       </div>
       <div class="summary-header__title-actions">
-        <LoadVexButton />
+        <!-- A report is a fixed document; overlaying a different VEX after
+             the fact is out of scope, so the affordance is hidden. -->
+        {#if !store.reportMode}
+          <LoadVexButton />
+        {/if}
         {#if store.hasVex && store.suppressedVulnCount > 0}
           <button
             type="button"
@@ -147,6 +160,10 @@
   .summary-header__title-text {
     min-width: 0;
     flex: 1 1 auto;
+  }
+  .summary-header__version {
+    font-weight: 500;
+    color: var(--color-ink-500);
   }
   .summary-header__title-actions {
     display: inline-flex;

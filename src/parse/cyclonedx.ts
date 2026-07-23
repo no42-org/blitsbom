@@ -2,6 +2,8 @@ import type {
   CdxBom,
   CdxComponent,
   CdxLicenseChoice,
+  CdxToolComponent,
+  CdxToolsObject,
   Component,
   License,
   LoadedSbom,
@@ -90,11 +92,48 @@ function normalizeCdxLicense(choice: CdxLicenseChoice): License | null {
 function normalizeCdxMetadata(bom: CdxBom): SbomMetadata {
   return {
     projectName: bom.metadata?.component?.name ?? null,
+    productVersion: emptyToNull(bom.metadata?.component?.version),
     timestamp: bom.metadata?.timestamp ?? null,
     specVersion: bom.specVersion,
     sbomFormat: 'CycloneDX-1.x',
+    sbomTool: extractCdxTool(bom.metadata?.tools),
     vulnerabilityCount: Array.isArray(bom.vulnerabilities)
       ? bom.vulnerabilities.length
       : 0,
   };
+}
+
+/**
+ * Identify the tool that produced the SBOM from `metadata.tools`, which has
+ * two shapes across the supported spec range:
+ *
+ *   1.4  array form:   `tools: [{ vendor, name, version }, …]`
+ *   1.5+ object form:  `tools: { components: [{ name, version }, …], … }`
+ *
+ * Returns a `"name version"` (optionally `"vendor name version"`) string for
+ * the first usable entry, or null when none identifies a tool.
+ */
+function extractCdxTool(
+  tools: CdxToolComponent[] | CdxToolsObject | undefined,
+): string | null {
+  if (!tools) return null;
+  const list: CdxToolComponent[] = Array.isArray(tools)
+    ? tools
+    : Array.isArray(tools.components)
+      ? tools.components
+      : [];
+  for (const t of list) {
+    if (!isRecord(t)) continue;
+    const label = formatToolLabel(t);
+    if (label) return label;
+  }
+  return null;
+}
+
+function formatToolLabel(t: CdxToolComponent): string | null {
+  const name = emptyToNull(t.name);
+  if (!name) return null;
+  const vendor = emptyToNull(t.vendor);
+  const version = emptyToNull(t.version);
+  return [vendor, name, version].filter(notNull).join(' ');
 }

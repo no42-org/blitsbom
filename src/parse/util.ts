@@ -17,6 +17,18 @@ export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+/** Lowercase, filesystem-safe slug for filenames. Returns '' for input with no
+ * usable characters, so callers supply their own fallback. Shared by the
+ * browser download path and the node generator so both derive the same name. */
+export function slugify(value: string, maxLen = 80): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, maxLen);
+}
+
 export const NOASSERTION = 'NOASSERTION';
 
 export function isNoAssertion(v: string | undefined | null): boolean {

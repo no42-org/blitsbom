@@ -12,7 +12,15 @@ make ci           # what CI runs: build + verify + size-check + smoke + e2e
 make verify       # lint + test + purity-check
 make test         # vitest run
 make dev          # Vite dev server
+make report SBOM=bom.json [VERSION=x OUT=report.html VEX=vex.json]  # CI HTML report
 ```
+
+The **CI report generator** (`src/generator/`) is a second Vite build
+(`make build-generator` → `dist-generator/blitsbom-report.mjs`) that imports the
+app's own parser from `src/parse` so a report can never disagree with the
+drag-and-drop view. It embeds the SBOM into `dist/index.html` and the app
+hydrates from that payload (`src/parse/payload.ts`). Keep the generator free of
+DOM assumptions; keep the payload reader free of Node assumptions.
 
 Single test file: `npx vitest run src/parse/spdx.test.ts`. Single test: add `-t 'name fragment'`.
 
