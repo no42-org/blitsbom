@@ -17,7 +17,7 @@
 import { gzipSync } from 'node:zlib';
 import { parseSbomText, parseAsVex } from '../parse/load';
 import { buildPayloadScripts } from '../parse/payload';
-import { slugify } from '../parse/util';
+import { artifactBaseName } from '../parse/util';
 import type { PayloadEncoding, ReportProvenance, SbomMetadata } from '../types';
 
 /** SBOMs below this on-disk size embed as raw JSON (human-inspectable);
@@ -97,14 +97,14 @@ export function buildReport(input: BuildReportInput): BuildReportResult {
     setIfPresent(provenance, 'vexFilename', input.vexFilename);
   }
 
-  const sbomEncoding = chooseEncoding(input.sbomText, compress);
+  const sbomEncoding = resolveEncoding(input.sbomText, compress);
   const scripts = buildPayloadScripts(
     compressIfGzip(input.sbomText, sbomEncoding),
     sbomEncoding,
     provenance,
     input.vexText !== undefined
       ? (() => {
-          const vexEncoding = chooseEncoding(input.vexText!, compress);
+          const vexEncoding = resolveEncoding(input.vexText!, compress);
           return {
             payload: compressIfGzip(input.vexText!, vexEncoding),
             encoding: vexEncoding,
@@ -145,6 +145,32 @@ export function chooseEncoding(
     : 'raw';
 }
 
+/**
+ * Encoding actually used, after the size choice. A raw payload embeds the JSON
+ * with every `<` escaped to `<` and reversed on read; that reversal is not
+ * byte-exact if the source itself already contains the literal text `<`
+ * (as Go's `encoding/json` emits for `<`), because the two are indistinguishable
+ * once escaped. Rather than corrupt the downloadable original, compress such a
+ * source instead — gzip+base64 is always lossless. `--compress never` is an
+ * explicit override and is left untouched.
+ */
+export function resolveEncoding(
+  text: string,
+  mode: CompressMode,
+): PayloadEncoding {
+  const chosen = chooseEncoding(text, mode);
+  if (chosen === 'raw' && mode !== 'never' && !rawRoundTrips(text)) {
+    return 'gzip+base64';
+  }
+  return chosen;
+}
+
+/** A raw embed round-trips byte-for-byte unless the source already contains a
+ * literal `<` sequence, which the `<`→`<` escape cannot disambiguate. */
+function rawRoundTrips(text: string): boolean {
+  return !text.includes('\\u003c');
+}
+
 function spliceBeforeBody(template: string, scripts: string): string {
   const marker = '</body>';
   const idx = template.lastIndexOf(marker);
@@ -160,8 +186,7 @@ export function defaultFilename(
   project: string | undefined,
   version: string | undefined,
 ): string {
-  const base = [project, version].filter(Boolean).join('-');
-  return `${slugify(base) || 'sbom'}-sbom.html`;
+  return `${artifactBaseName(project, version)}-sbom.html`;
 }
 
 function buildSummary(

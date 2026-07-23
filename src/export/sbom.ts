@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 import type { ReportProvenance, SbomMetadata } from '../types';
-import { slugify } from '../parse/util';
+import { artifactBaseName } from '../parse/util';
 
 /**
  * Offer the verbatim embedded SBOM as a file download. Produced entirely
@@ -39,6 +39,5 @@ export function originalSbomFilename(
   if (provenance?.sourceFilename) return provenance.sourceFilename;
   const project = provenance?.project ?? metadata?.projectName ?? null;
   const version = provenance?.version ?? metadata?.productVersion ?? null;
-  const base = [project, version].filter(Boolean).join('-');
-  return `${slugify(base) || 'sbom'}-sbom.json`;
+  return `${artifactBaseName(project, version)}-sbom.json`;
 }

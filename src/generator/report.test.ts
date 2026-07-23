@@ -105,6 +105,28 @@ describe('original SBOM is recoverable byte-for-byte', () => {
     expect(payload.sbomText).toBe(source);
     expect(sha256(payload.sbomText)).toBe(report.provenance.sourceDigest);
   });
+
+  it('preserves a source containing literal \\u003c (Go-escaped JSON) via gzip fallback', async () => {
+    // Go's encoding/json escapes '<' as <, so the raw file bytes contain
+    // the six-char sequence. The '<'→escape transform cannot round-trip that,
+    // so the generator must fall back to gzip (lossless) rather than corrupt it.
+    const source =
+      '{"bomFormat":"CycloneDX","specVersion":"1.6","components":' +
+      '[{"type":"library","name":"x","author":"A \\u003ca@b.co\\u003e"}]}';
+    const report = buildReport({
+      templateHtml: TEMPLATE,
+      sbomText: source,
+      sourceDigest: sha256(source),
+    });
+    // Not embedded raw — that would corrupt it.
+    expect(report.summary).toContain('gzip+base64');
+    const doc = new DOMParser().parseFromString(report.html, 'text/html');
+    const payload = await readEmbeddedPayload(doc);
+    expect(payload.kind).toBe('ok');
+    if (payload.kind !== 'ok') return;
+    expect(payload.sbomText).toBe(source);
+    expect(sha256(payload.sbomText)).toBe(report.provenance.sourceDigest);
+  });
 });
 
 describe('validation failures', () => {

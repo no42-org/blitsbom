@@ -52,14 +52,21 @@ runs:
         PROJECT: ${{ inputs.project }}
         VERSION_IN: ${{ inputs.version }}
         REF_NAME: ${{ github.ref_name }}
+        REF_TYPE: ${{ github.ref_type }}
         COMMIT: ${{ github.sha }}
         BUILD_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         set -euo pipefail
 
-        # Default the version to the ref name with a leading 'v' stripped, so a
-        # tag push of v2.4.1 yields "2.4.1".
-        VERSION="${VERSION_IN:-${REF_NAME#v}}"
+        # Version precedence: the explicit input, else the tag name with a
+        # leading 'v' stripped (v2.4.1 → 2.4.1). Only derive from the ref when
+        # it is actually a tag — on a branch or PR run github.ref_name is
+        # "main" or "123/merge", which is not a version. When neither applies,
+        # leave it empty so the report falls back to the SBOM's own version.
+        VERSION="${VERSION_IN}"
+        if [ -z "${VERSION}" ] && [ "${REF_TYPE}" = "tag" ]; then
+          VERSION="${REF_NAME#v}"
+        fi
 
         args=("/work/${SBOM}" --output "/work/${OUTPUT}" --compress "${COMPRESS}")
         [ -n "${VEX}" ] && args+=(--vex "/work/${VEX}")

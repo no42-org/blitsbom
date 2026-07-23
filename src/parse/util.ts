@@ -29,6 +29,16 @@ export function slugify(value: string, maxLen = 80): string {
     .slice(0, maxLen);
 }
 
+/** `<project>-<version>` slug used as the base of a report artifact filename,
+ * falling back to 'sbom' when neither is known. Callers append the extension
+ * (`.html` for the report, `.json` for the original-SBOM download). */
+export function artifactBaseName(
+  project: string | null | undefined,
+  version: string | null | undefined,
+): string {
+  return slugify([project, version].filter(Boolean).join('-')) || 'sbom';
+}
+
 export const NOASSERTION = 'NOASSERTION';
 
 export function isNoAssertion(v: string | undefined | null): boolean {

@@ -49,11 +49,12 @@ export function escapeJsonForScript(json: string): string {
  * `JSON.parse`. This matters because the recovered text is what the report
  * offers as the downloadable "original SBOM" and what its `sha256` must match.
  *
- * The transform is exact for any text with no literal `<` sequence, which
- * is every JSON an SBOM tool emits (JSON never requires escaping `<`, so tools
- * write the raw byte). A source that itself contained the six characters
- * `<` would not round-trip byte-for-byte, but no real generator produces
- * that.
+ * The transform is exact for any text with no literal `<` sequence. A
+ * source that itself contains those six characters (e.g. Go's `encoding/json`
+ * escapes `<` that way) cannot be disambiguated from a real `<` once escaped,
+ * so the generator never uses the raw encoding for such a source — it falls
+ * back to gzip+base64, which is lossless (see `resolveEncoding`). Every raw
+ * payload that reaches this function therefore round-trips byte-for-byte.
  */
 export function unescapeJsonFromScript(text: string): string {
   return text.replace(/\\u003c/g, '<');
