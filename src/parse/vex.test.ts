@@ -31,9 +31,11 @@ function sbom(components: Component[]): LoadedSbom {
   return {
     metadata: {
       projectName: 'test',
+      productVersion: null,
       timestamp: null,
       specVersion: '1.6',
       sbomFormat: 'CycloneDX-1.x',
+      sbomTool: null,
       vulnerabilityCount: 0,
     },
     components,

@@ -1,10 +1,20 @@
 <script lang="ts">
   import { store } from '../state/store.svelte';
   import { downloadCsv } from '../export/csv';
+  import { downloadOriginalSbom } from '../export/sbom';
 
   function onCsv() {
     if (!store.loadedSbom) return;
     downloadCsv(store.filteredComponents, store.loadedSbom.metadata);
+  }
+
+  function onDownloadSbom() {
+    if (!store.reportSourceText) return;
+    downloadOriginalSbom(
+      store.reportSourceText,
+      store.reportProvenance,
+      store.loadedSbom?.metadata ?? null,
+    );
   }
 
   function onReset() {
@@ -15,10 +25,21 @@
 </script>
 
 <div class="toolbar">
-  <button type="button" class="btn btn--ghost" onclick={onReset}>
-    Load another file
-  </button>
+  <!-- A report has no "other file" to go back to; the reset affordance is
+       only meaningful for the drop-zone flow. -->
+  {#if !store.reportMode}
+    <button type="button" class="btn btn--ghost" onclick={onReset}>
+      Load another file
+    </button>
+  {:else}
+    <span></span>
+  {/if}
   <div class="toolbar__exports">
+    {#if store.reportMode && store.reportSourceText}
+      <button type="button" class="btn" onclick={onDownloadSbom}>
+        Download original SBOM
+      </button>
+    {/if}
     <button type="button" class="btn btn--primary" onclick={onCsv}>
       Export CSV
     </button>

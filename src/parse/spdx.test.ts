@@ -232,4 +232,64 @@ describe('SPDX parser — synthetic edge cases', () => {
     expect(lic.kind).toBe('name');
     expect(lic.value).toBe('LicenseRef-mystery');
   });
+
+  it('extracts product version from the package matching the document name', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'acme-platform',
+      packages: [
+        { name: 'some-dep', versionInfo: '9.9.9' },
+        { name: 'acme-platform', versionInfo: '2.4.1' },
+      ],
+    };
+    const result = parseSbomText(JSON.stringify(doc));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sbom.metadata.productVersion).toBe('2.4.1');
+  });
+
+  it('leaves product version null when no package matches the document name', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'acme-platform',
+      packages: [{ name: 'some-dep', versionInfo: '9.9.9' }],
+    };
+    const result = parseSbomText(JSON.stringify(doc));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sbom.metadata.productVersion).toBeNull();
+  });
+
+  it('extracts the Tool creator, ignoring Person and Organization', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'tiny',
+      creationInfo: {
+        created: '2026-07-23T10:00:00Z',
+        creators: [
+          'Person: Jane Doe',
+          'Organization: Acme Inc',
+          'Tool: syft-1.18.1',
+        ],
+      },
+      packages: [{ name: 'foo', versionInfo: '1.0.0' }],
+    };
+    const result = parseSbomText(JSON.stringify(doc));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sbom.metadata.sbomTool).toBe('syft-1.18.1');
+  });
+
+  it('leaves sbomTool null when creators carry no Tool entry', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'tiny',
+      creationInfo: { creators: ['Person: Jane Doe'] },
+      packages: [{ name: 'foo', versionInfo: '1.0.0' }],
+    };
+    const result = parseSbomText(JSON.stringify(doc));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sbom.metadata.sbomTool).toBeNull();
+  });
 });

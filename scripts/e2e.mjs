@@ -6,7 +6,9 @@
 import { chromium } from 'playwright';
 import { pathToFileURL } from 'node:url';
 import { join, dirname } from 'node:path';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -261,6 +263,102 @@ console.log(`  vuln drilldown rows: ${drilldownVulnRows}`);
 // Reload the page (URL stays) — VEX state is in-memory only, the tile
 // should be gone after a fresh load. Skipping that explicit assertion
 // here to keep the e2e fast; covered by unit tests.
+
+// --- CI report mode ---
+// Generate a self-contained report from the small CycloneDX sample, open it
+// from file://, and assert it hydrates with no drop zone, filters, exposes
+// provenance, and hands back the original SBOM byte-identically.
+console.log(`\n--- CI report mode ---`);
+const GENERATOR = join(ROOT, 'dist-generator', 'blitsbom-report.mjs');
+if (!existsSync(GENERATOR)) {
+  fail(`report: ${GENERATOR} not found — run \`make build-generator\` first.`);
+}
+const REPORT_DIR = mkdtempSync(join(tmpdir(), 'blitsbom-e2e-report-'));
+const REPORT_HTML = join(REPORT_DIR, 'report.html');
+// Generate from a source that contains '<' (the ubiquitous "Name <email>"
+// pattern plus </script> markers) so the byte-for-byte download assertion
+// below actually exercises the script-tag escape/unescape round-trip. A
+// sample without '<' would pass the assertion without testing anything.
+const REPORT_SOURCE = join(REPORT_DIR, 'source-with-lt.json');
+writeFileSync(
+  REPORT_SOURCE,
+  JSON.stringify(
+    {
+      bomFormat: 'CycloneDX',
+      specVersion: '1.6',
+      metadata: { component: { name: 'acme', version: '2.4.1' } },
+      components: [
+        {
+          type: 'library',
+          name: 'permissive-lib',
+          version: '1.0.0',
+          'bom-ref': 'ref-a',
+          author: 'Jane Roe <jane@example.com>',
+          description: 'contains </script> and <!-- comment --> markers',
+          licenses: [{ license: { id: 'MIT' } }],
+        },
+      ],
+    },
+    null,
+    2,
+  ),
+);
+execFileSync('node', [
+  GENERATOR,
+  REPORT_SOURCE,
+  '--template',
+  DIST_HTML,
+  '--project',
+  'acme-platform',
+  '--version',
+  '2.4.1',
+  '--commit',
+  'abc1234',
+  '--output',
+  REPORT_HTML,
+]);
+const reportUrl = pathToFileURL(REPORT_HTML).toString();
+
+// URL filter state must still apply to a report.
+await page.goto(`${reportUrl}?category=permissive`, { waitUntil: 'load' });
+await page.waitForSelector('.summary-header', { timeout: 60_000 });
+
+// No drop zone in report mode.
+if ((await page.locator('.drop-zone').count()) !== 0) {
+  fail('report: drop zone rendered in report mode');
+}
+// Provenance header with the source digest is present.
+await page.waitForSelector('.provenance');
+const digestText = await page.textContent('.provenance__digest');
+if (!/^sha256:[0-9a-f]{64}$/.test(digestText?.trim() ?? '')) {
+  fail(`report: provenance digest missing or malformed: ${digestText}`);
+}
+// The imprint/privacy footer links are suppressed.
+if ((await page.locator('.page__credit a').count()) !== 0) {
+  fail('report: site-relative footer links present in report mode');
+}
+// URL filter applied → table narrowed to the permissive set.
+const reportRows = await page.locator('tbody tr').count();
+if (reportRows === 0) fail('report: URL category filter produced no rows');
+console.log(`  provenance + URL filter: ${reportRows} rows (ok)`);
+
+// Original-SBOM download round-trips byte-identically.
+const sbomDownloadPromise = page.waitForEvent('download', { timeout: 30_000 });
+await page.locator('button', { hasText: 'Download original SBOM' }).click();
+const sbomDownload = await sbomDownloadPromise;
+const sbomPath = await sbomDownload.path();
+if (!sbomPath) fail('report: original-SBOM download path missing');
+const downloaded = readFileSync(sbomPath, 'utf8');
+if (downloaded !== readFileSync(REPORT_SOURCE, 'utf8')) {
+  fail('report: downloaded SBOM does not match the source byte-for-byte');
+}
+console.log(`  original SBOM download: ${downloaded.length} bytes (matches source)`);
+
+// CSV export still works in report mode.
+const reportCsvPromise = page.waitForEvent('download', { timeout: 30_000 });
+await page.locator('button', { hasText: 'Export CSV' }).click();
+await reportCsvPromise;
+console.log('  CSV export in report mode (ok)');
 
 if (externalRequests.length > 0) {
   console.error('\ne2e: unexpected external requests:');

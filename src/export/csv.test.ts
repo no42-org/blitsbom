@@ -154,9 +154,11 @@ describe('buildCsvFilename', () => {
   it('includes project name and ISO date', () => {
     const md: SbomMetadata = {
       projectName: 'prometheus-remote-writer',
+      productVersion: null,
       timestamp: null,
       specVersion: '1.6',
       sbomFormat: 'CycloneDX-1.x',
+      sbomTool: null,
       vulnerabilityCount: 0,
     };
     expect(buildCsvFilename(md, fixedDate)).toBe(
@@ -167,9 +169,11 @@ describe('buildCsvFilename', () => {
   it('falls back to blitsbom-export when project name is missing', () => {
     const md: SbomMetadata = {
       projectName: null,
+      productVersion: null,
       timestamp: null,
       specVersion: '1.6',
       sbomFormat: 'CycloneDX-1.x',
+      sbomTool: null,
       vulnerabilityCount: 0,
     };
     expect(buildCsvFilename(md, fixedDate)).toBe(
@@ -180,9 +184,11 @@ describe('buildCsvFilename', () => {
   it('slugifies project names with unsafe characters', () => {
     const md: SbomMetadata = {
       projectName: 'My Project / Edge!',
+      productVersion: null,
       timestamp: null,
       specVersion: '1.6',
       sbomFormat: 'CycloneDX-1.x',
+      sbomTool: null,
       vulnerabilityCount: 0,
     };
     expect(buildCsvFilename(md, fixedDate)).toBe(

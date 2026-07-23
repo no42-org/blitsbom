@@ -1,5 +1,6 @@
 # Build artifacts
 dist/
+dist-generator/
 dist.zip
 .vite/
 

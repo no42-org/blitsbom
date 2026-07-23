@@ -213,6 +213,49 @@ jobs:
           subject-digest: ${{ steps.build-push.outputs.digest }}
           push-to-registry: true
 
+      # ---- Report generator image (`--target report`) ----------------------
+      # A second image, tagged `report-<version>` / `report-rc`, built from the
+      # same commit and the same build cache. It never receives `:latest`: the
+      # promote job moves only the serving image, and a report tag carries the
+      # `report-` prefix so the two never collide.
+      - name: Compute report image tags
+        id: meta-report
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+            prefix=report-,onlatest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=rc,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push report image
+        id: build-push-report
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          target: report
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta-report.outputs.tags }}
+          labels: ${{ steps.meta-report.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Sign published report image with cosign (keyless)
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build-push-report.outputs.digest }}
+        run: cosign sign --yes "$IMAGE"
+
+      - name: Attest build provenance for the report image
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-push-report.outputs.digest }}
+          push-to-registry: true
+
   # Promote `:latest` to point at the released version. Triggered explicitly
   # via `gh workflow run docker.yml -f promote_tag=X.Y.Z` from release.yml
   # after it publishes a non-prerelease GitHub Release, or manually by an

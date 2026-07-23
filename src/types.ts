@@ -58,9 +58,25 @@ export interface CdxMetadataComponent {
   version?: string;
 }
 
+/** A tool entry in either the legacy 1.4 array form (`{vendor,name,version}`)
+ * or an entry of the 1.5+ `tools.components[]` array (`{name,version}`). */
+export interface CdxToolComponent {
+  vendor?: string;
+  name?: string;
+  version?: string;
+}
+
+/** CycloneDX 1.5+ object form of `metadata.tools`. */
+export interface CdxToolsObject {
+  components?: CdxToolComponent[];
+  services?: CdxToolComponent[];
+}
+
 export interface CdxMetadata {
   timestamp?: string;
   component?: CdxMetadataComponent;
+  /** 1.4 legacy array form, or 1.5+ object form with a `components` array. */
+  tools?: CdxToolComponent[] | CdxToolsObject;
 }
 
 export interface CdxBom {
@@ -254,10 +270,18 @@ export interface VexMetadata {
 
 export interface SbomMetadata {
   projectName: string | null;
+  /** Version of the product the SBOM describes — CycloneDX
+   * `metadata.component.version` or the SPDX document package's
+   * `versionInfo`. Null when the source declares none. */
+  productVersion: string | null;
   timestamp: string | null;
   /** Concrete spec version string, e.g., "1.6" or "SPDX-2.3" */
   specVersion: string;
   sbomFormat: SbomFormat;
+  /** Human-readable identification of the tool that produced the SBOM —
+   * CycloneDX `metadata.tools` or the SPDX `creationInfo.creators`
+   * `Tool:` entry. Null when the source identifies none. */
+  sbomTool: string | null;
   vulnerabilityCount: number;
 }
 
@@ -272,6 +296,50 @@ export interface LoadedSbom {
 export type LoadResult =
   | { ok: true; sbom: LoadedSbom }
   | { ok: false; error: string };
+
+// Embedded report payload (CI-generated single-file report).
+
+/** How the embedded SBOM bytes are encoded in the `blitsbom-sbom` element. */
+export type PayloadEncoding = 'raw' | 'gzip+base64';
+
+/**
+ * Release provenance stamped into a generated report. Everything here is
+ * either supplied by the pipeline (which the SBOM cannot know) or the digest
+ * of the embedded source. Absent fields are OMITTED, never recorded as an
+ * empty string or "unknown", so the header can render only what is known.
+ */
+export interface ReportProvenance {
+  /** Envelope format version, for forward compatibility. */
+  reportFormat: 1;
+  project?: string;
+  version?: string;
+  commit?: string;
+  /** URL identifying the CI run that produced the report. */
+  buildUrl?: string;
+  /** ISO-8601 build timestamp. */
+  builtAt?: string;
+  /** `sha256:<hex>` of the source SBOM bytes as read from disk. Always set. */
+  sourceDigest: string;
+  sourceFilename?: string;
+  /** Set only when a VEX was merged at generation time. */
+  vexDigest?: string;
+  vexFilename?: string;
+}
+
+/** Result of reading and decoding an embedded payload from the document.
+ * `vexText`, when present, is a CycloneDX VEX to merge onto the SBOM after
+ * parsing — mirroring the drop-SBOM-then-drop-VEX flow, so the embedded SBOM
+ * stays byte-identical to the source (and downloadable) while the report
+ * still shows the vulnerabilities. */
+export type EmbeddedPayload =
+  | { kind: 'none' }
+  | {
+      kind: 'ok';
+      sbomText: string;
+      vexText?: string;
+      provenance: ReportProvenance;
+    }
+  | { kind: 'error'; error: string };
 
 // License classification.
 

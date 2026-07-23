@@ -32,12 +32,50 @@ export function normalizeSpdxDocument(doc: SpdxDocument): LoadedSbom {
 function normalizeSpdxMetadata(doc: SpdxDocument): SbomMetadata {
   return {
     projectName: emptyToNull(doc.name),
+    productVersion: extractSpdxProductVersion(doc),
     timestamp: emptyToNull(doc.creationInfo?.created),
     specVersion: doc.spdxVersion,
     sbomFormat: 'SPDX-2.x',
+    sbomTool: extractSpdxTool(doc.creationInfo?.creators),
     // SPDX 2.x has no first-class vulnerabilities concept; report 0.
     vulnerabilityCount: 0,
   };
+}
+
+/**
+ * Version of the product the document describes. SPDX has no dedicated
+ * field for it; the pragmatic signal is the `versionInfo` of the package
+ * whose `name` matches the document `name` (tools such as syft name the
+ * document after the primary package). Null when no such package exists or
+ * it carries no version.
+ */
+function extractSpdxProductVersion(doc: SpdxDocument): string | null {
+  const name = emptyToNull(doc.name);
+  if (!name) return null;
+  const packages = Array.isArray(doc.packages) ? doc.packages : [];
+  for (const p of packages) {
+    if (!isRecord(p)) continue;
+    if (p.name === name && !isNoAssertion(p.versionInfo)) {
+      return emptyToNull(p.versionInfo);
+    }
+  }
+  return null;
+}
+
+/**
+ * The generating tool from `creationInfo.creators`. Each creator is prefixed
+ * by its kind: `"Tool: syft-1.18.1"`, `"Person: …"`, `"Organization: …"`.
+ * Only `Tool:` entries identify the SBOM generator; the prefix is stripped
+ * and the first such entry returned. Null when none is present.
+ */
+function extractSpdxTool(creators: string[] | undefined): string | null {
+  if (!Array.isArray(creators)) return null;
+  for (const c of creators) {
+    if (typeof c !== 'string') continue;
+    const m = c.trim().match(/^Tool\s*:\s*(.+)$/i);
+    if (m && m[1]) return m[1].trim();
+  }
+  return null;
 }
 
 export function normalizeSpdxPackage(

@@ -2,6 +2,7 @@ import type {
   Component,
   LoadedSbom,
   LicenseCategory,
+  ReportProvenance,
   Severity,
 } from '../types';
 import {
@@ -30,6 +31,17 @@ class SbomStore {
   // of packages. Raw skips the proxy machinery entirely.
   loadedSbom = $state.raw<LoadedSbom | null>(null);
   loadError = $state<string | null>(null);
+
+  // Report mode — set when the app hydrated from an embedded payload rather
+  // than a dropped file. Report metadata is $state.raw for the same reason
+  // as loadedSbom: it is read-only after hydration and never needs proxying.
+  reportMode = $state(false);
+  reportProvenance = $state.raw<ReportProvenance | null>(null);
+  /** Verbatim source SBOM text embedded in the report, kept for re-download. */
+  reportSourceText = $state.raw<string | null>(null);
+  /** True while an embedded payload is being decoded and parsed on startup,
+   * so the shell can paint a loading state instead of the drop zone. */
+  reportHydrating = $state(false);
 
   ingestState = $state<IngestState>('idle');
   ingestBytesLoaded = $state(0);
@@ -162,6 +174,23 @@ class SbomStore {
     this.ingestState = message ? 'error' : 'idle';
   }
 
+  beginReportHydration(): void {
+    this.reportHydrating = true;
+  }
+
+  endReportHydration(): void {
+    this.reportHydrating = false;
+  }
+
+  /** Enter report mode after a successful payload hydration. The SBOM itself
+   * is set via `setLoaded`; this records the provenance and the source text
+   * that back the provenance header and the original-SBOM download. */
+  enterReportMode(provenance: ReportProvenance, sourceText: string): void {
+    this.reportMode = true;
+    this.reportProvenance = provenance;
+    this.reportSourceText = sourceText;
+  }
+
   setIngestReading(loaded: number, total: number): void {
     this.ingestState = 'reading';
     this.ingestBytesLoaded = loaded;
@@ -175,6 +204,10 @@ class SbomStore {
   reset(): void {
     this.loadedSbom = null;
     this.loadError = null;
+    this.reportMode = false;
+    this.reportProvenance = null;
+    this.reportSourceText = null;
+    this.reportHydrating = false;
     this.ingestState = 'idle';
     this.ingestBytesLoaded = 0;
     this.ingestBytesTotal = 0;

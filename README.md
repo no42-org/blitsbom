@@ -61,6 +61,48 @@ docker build -t blitsbom:latest .
 docker run --rm -p 8080:3000 blitsbom:latest
 ```
 
+## Release reports (CI)
+
+Turn an SBOM into a **single self-contained HTML file** you can attach to a release or hand to an auditor, supplier, or vendor for a quick license review. It is the full blitsbom app with the SBOM already loaded, plus a provenance header identifying the release — and it works offline, from a `file://` URL, with no server and no network.
+
+### In a GitHub Actions workflow
+
+```yaml
+- uses: no42-org/blitsbom/report@v1
+  id: sbom-report
+  with:
+    sbom: bom.json          # path to your CycloneDX or SPDX SBOM
+    # version/project/commit/build-url default from the workflow context
+- uses: actions/upload-artifact@v4
+  with:
+    name: sbom-report
+    path: ${{ steps.sbom-report.outputs.report }}
+```
+
+### With the container image directly (any CI, or a laptop)
+
+```bash
+docker run --rm -v "$PWD:/work" ghcr.io/no42-org/blitsbom:report-rc \
+  /work/bom.json --project acme-platform --version 2.4.1 \
+  --output /work/acme-platform-2.4.1-sbom.html
+```
+
+The generator exits non-zero (and writes nothing) if the SBOM does not parse, so a broken SBOM fails the pipeline instead of shipping a report that greets the recipient with an error. It applies **no** policy judgment — no license or severity gate; that is deliberately left to tools like grype or osv-scanner.
+
+A CycloneDX VEX can be merged in at generation time with `--vex vex.json`; the report then shows the vulnerability data, while the embedded SBOM stays byte-identical to your source.
+
+### What recipients get, and how they verify it
+
+The report offers **Download original SBOM** (the verbatim source, machine-readable) alongside **Export CSV** (for legal). The provenance header shows the `sha256:` digest of the source SBOM — a recipient confirms the report matches the SBOM they were given with:
+
+```bash
+sha256sum bom.json   # compare against the digest shown in the report header
+```
+
+> **The report embeds your SBOM verbatim** — every component, internal registry URL, and publisher field goes with it. Remove anything that must not leave your organization *before* generating the report; blitsbom does not redact.
+
+> Reports over ~2 MB are gzip-compressed inside the file and need a browser with `DecompressionStream` (Chrome/Edge 80+, Firefox 113+, Safari 16.4+ — all 2023 or earlier). Smaller reports embed the SBOM as raw JSON and open anywhere.
+
 ## Supported input
 
 | Format | Versions | Status |
@@ -144,6 +186,7 @@ Everything stays offline — no network call, no online lookup against OSV.dev o
 make install     # npm install
 make dev         # vite dev server
 make build       # build static dist/
+make report SBOM=bom.json VERSION=2.4.1 OUT=report.html  # generate a CI report
 make test        # vitest
 make verify      # lint + tests + network-purity check
 make size-check  # fail if gzipped JS exceeds 60 KB
@@ -194,8 +237,10 @@ src/
   state/      Svelte store, filter combinator (incl. category facet), URL state
   ui/         Svelte components (AppShell, DropZone, SummaryHeader,
               LicenseDonut, LicenseDrilldown, ComponentsTable, ...)
-  export/     CSV writer
+  export/     CSV writer, original-SBOM download
+  generator/  CI report generator (reuses parse/; built to a Node ESM CLI)
   styles/     Tailwind v4 CSS entry (@theme static design tokens)
+report/       Composite GitHub Action wrapping the report generator image
 scripts/      size-check, purity-check, file-smoke, e2e
 samples/      Real-world SBOMs used as test corpus (not bundled into dist/)
 ```

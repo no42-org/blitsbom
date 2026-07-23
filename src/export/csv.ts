@@ -1,4 +1,5 @@
 import type { Component, SbomMetadata } from '../types';
+import { slugify } from '../parse/util';
 
 export const CSV_COLUMNS = [
   // Component identity / metadata.
@@ -89,9 +90,8 @@ function escape(value: string): string {
 
 export function buildCsvFilename(metadata: SbomMetadata, now = new Date()): string {
   const date = formatIsoDate(now);
-  const name = metadata.projectName
-    ? slug(metadata.projectName)
-    : 'blitsbom-export';
+  const name =
+    (metadata.projectName && slugify(metadata.projectName)) || 'blitsbom-export';
   return `${name}-${date}.csv`;
 }
 
@@ -100,15 +100,6 @@ function formatIsoDate(d: Date): string {
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   const dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
-}
-
-function slug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64) || 'blitsbom-export';
 }
 
 export function downloadCsv(

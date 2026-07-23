@@ -102,24 +102,34 @@ jobs:
           # uploaded. Accepting that would green-light a release whose arm64
           # image does not exist yet.
           required_platforms="linux/amd64 linux/arm64"
+          # Both images the release ships must exist: the serving image
+          # (:VERSION) and the report generator (:report-VERSION), each
+          # complete across all platforms.
+          required_tags="${VERSION} report-${VERSION}"
           attempts=80
           delay=30
 
+          # True only when a tag exists with every required platform.
+          tag_complete() {
+            local out
+            out="$(docker buildx imagetools inspect "${IMAGE}:$1" 2>/dev/null || true)"
+            [ -n "$out" ] || return 1
+            for p in $required_platforms; do
+              echo "$out" | grep -qF "Platform:    $p" || return 1
+            done
+            return 0
+          }
+
           for i in $(seq 1 "$attempts"); do
-            out="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>/dev/null || true)"
-            if [ -n "$out" ]; then
-              missing=""
-              for p in $required_platforms; do
-                echo "$out" | grep -qF "Platform:    $p" || missing="${missing} ${p}"
-              done
-              if [ -z "$missing" ]; then
-                echo "✅ ${IMAGE}:${VERSION} present with ${required_platforms}"
-                exit 0
-              fi
-              echo "tag present but missing:${missing} (attempt $i/$attempts)"
-            else
-              echo "tag not yet available (attempt $i/$attempts)"
+            pending=""
+            for t in $required_tags; do
+              tag_complete "$t" || pending="${pending} ${t}"
+            done
+            if [ -z "$pending" ]; then
+              echo "✅ present with ${required_platforms}: ${required_tags}"
+              exit 0
             fi
+            echo "waiting on tags:${pending} (attempt $i/$attempts)"
 
             # Fail fast rather than burning the full budget when the build has
             # already given up.
@@ -143,7 +153,7 @@ jobs:
             sleep "$delay"
           done
 
-          echo "::error::${IMAGE}:${VERSION} never appeared with all of: ${required_platforms}."
+          echo "::error::not all of [${required_tags}] appeared for ${IMAGE} with all of: ${required_platforms}."
           echo "::error::If no docker.yml run exists for ${SHA} at all, the tag push did not reach that workflow (this is what happened in #93). Re-run it manually: gh workflow run docker.yml --ref ${TAG_NAME}"
           exit 1
 

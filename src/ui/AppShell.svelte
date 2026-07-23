@@ -14,11 +14,58 @@
   import ErrorBanner from './ErrorBanner.svelte';
   import Toolbar from './Toolbar.svelte';
   import ThemeToggle from './ThemeToggle.svelte';
+  import ReportProvenanceHeader from './ReportProvenanceHeader.svelte';
   import logoUrl from '../../assets/logo.svg';
+  import { parseSbomText, parseAsVex } from '../parse/load';
+  import { hasEmbeddedPayload, readEmbeddedPayload } from '../parse/payload';
 
   onMount(() => {
-    store.hydrateFromUrl();
+    void hydrate();
   });
+
+  // A CI-generated report embeds its SBOM as a payload; hydrate from it when
+  // present, otherwise fall through to the normal drop-zone flow. On any
+  // decode/parse failure we stay out of report mode and surface the error so
+  // the drop zone remains usable — a broken payload degrades to a working
+  // viewer rather than a blank page.
+  async function hydrate() {
+    if (!hasEmbeddedPayload()) {
+      store.hydrateFromUrl();
+      return;
+    }
+    store.beginReportHydration();
+    // Yield so the loading state paints before the synchronous parse of a
+    // multi-megabyte payload blocks the main thread. Mirrors load.ts.
+    await new Promise((resolve) => setTimeout(() => resolve(null), 0));
+    const payload = await readEmbeddedPayload();
+    if (payload.kind === 'ok') {
+      const result = parseSbomText(payload.sbomText);
+      if (result.ok) {
+        let sbom = result.sbom;
+        // A report may embed a VEX alongside the SBOM; merge it exactly as
+        // the drop-SBOM-then-drop-VEX flow would, keeping the embedded SBOM
+        // itself byte-identical to the downloadable source. The generator
+        // already validated this same merge, so a failure here means the file
+        // was corrupted after generation — surface it rather than silently
+        // rendering a report that claims a VEX it never applied.
+        let vexError: string | null = null;
+        if (payload.vexText) {
+          const vexResult = parseAsVex(payload.vexText, sbom, 'embedded-vex');
+          if (vexResult.kind === 'vex') sbom = vexResult.sbom;
+          else vexError = `Embedded VEX could not be applied: ${vexResult.error}`;
+        }
+        store.setLoaded(sbom);
+        store.enterReportMode(payload.provenance, payload.sbomText);
+        if (vexError) store.setError(vexError);
+      } else {
+        store.setError(result.error);
+      }
+    } else if (payload.kind === 'error') {
+      store.setError(payload.error);
+    }
+    store.endReportHydration();
+    store.hydrateFromUrl();
+  }
 
   // URL state syncs directly from each store mutation method. The query
   // input also calls store.syncToUrl on change. We don't use a
@@ -48,9 +95,19 @@
     {/if}
 
     {#if !store.loadedSbom}
-      <DropZone />
+      {#if store.reportHydrating}
+        <div class="report-loading" role="status" aria-live="polite">
+          <span class="report-loading__spinner" aria-hidden="true"></span>
+          Loading report…
+        </div>
+      {:else}
+        <DropZone />
+      {/if}
     {:else}
       {@const sbom = store.loadedSbom}
+      {#if store.reportMode}
+        <ReportProvenanceHeader />
+      {/if}
       <SummaryHeader
         sbom={sbom}
         componentCount={store.filteredComponents.length}
@@ -89,9 +146,13 @@
         rel="noopener noreferrer">blitsbom</a> · runs entirely in your browser
     </span>
     <span class="page__credit">
-      Made with AI and ❤️ for Open Source in Europe ·
-      <a href="/imprint.html">Imprint</a> ·
-      <a href="/privacy.html">Privacy</a>
+      Made with AI and ❤️ for Open Source in Europe
+      <!-- Imprint / Privacy are site-relative and would 404 next to a
+           standalone report file, so they are omitted in report mode. -->
+      {#if !store.reportMode}
+        · <a href="/imprint.html">Imprint</a> ·
+        <a href="/privacy.html">Privacy</a>
+      {/if}
     </span>
   </footer>
 </div>
@@ -172,6 +233,33 @@
   .page__main {
     display: grid;
     gap: 1.5rem;
+  }
+  .report-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 4rem 2rem;
+    color: var(--color-ink-500);
+    font-size: 0.95rem;
+  }
+  .report-loading__spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid var(--color-ink-200);
+    border-top-color: var(--color-accent-500);
+    border-radius: 50%;
+    animation: report-loading-spin 0.7s linear infinite;
+  }
+  @keyframes report-loading-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .report-loading__spinner {
+      animation: none;
+    }
   }
   .controls {
     display: grid;
