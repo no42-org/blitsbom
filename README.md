@@ -268,6 +268,7 @@ subscription, a one-time donation helps keep it maintained: releases, dependency
 and staying genuinely local-first.
 
 - **GitHub Sponsors:** https://github.com/sponsors/indigo423
+- **Ko-fi:** https://ko-fi.com/indigo423
 
 No paid tiers or perks — the tool stays free for everyone. A ⭐ or a good bug report
 helps just as much, and there's a spot on [SPONSORS.md](./SPONSORS.md) if you'd like one. ❤️
