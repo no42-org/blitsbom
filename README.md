@@ -260,6 +260,18 @@ samples/      Real-world SBOMs used as test corpus (not bundled into dist/)
 - [RELEASING.md](./RELEASING.md) — how releases are cut and how to verify the signatures.
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant 2.1.
 
+## Support
+
+blitsbom is free and open source under the **MIT** license — a zero-install, no-cloud
+SBOM viewer that keeps every byte in your browser. If it saved you a spreadsheet or a
+subscription, a one-time donation helps keep it maintained: releases, dependency upkeep,
+and staying genuinely local-first.
+
+- **GitHub Sponsors:** https://github.com/sponsors/indigo423
+
+No paid tiers or perks — the tool stays free for everyone. A ⭐ or a good bug report
+helps just as much, and there's a spot on [SPONSORS.md](./SPONSORS.md) if you'd like one. ❤️
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
