@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
-    "@tailwindcss/postcss": "^4.3.2",
+    "@tailwindcss/postcss": "^4.3.3",
     "@tsconfig/svelte": "^5.0.4",
     "@types/node": "^26.1.1",
     "autoprefixer": "^10.5.2",
