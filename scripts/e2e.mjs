@@ -333,8 +333,9 @@ const digestText = await page.textContent('.provenance__digest');
 if (!/^sha256:[0-9a-f]{64}$/.test(digestText?.trim() ?? '')) {
   fail(`report: provenance digest missing or malformed: ${digestText}`);
 }
-// The imprint/privacy footer links are suppressed.
-if ((await page.locator('.page__credit a').count()) !== 0) {
+// Site-relative footer links (imprint/privacy) are suppressed; the
+// absolute Ko-fi link is allowed.
+if ((await page.locator('.page__credit a[href^="/"]').count()) !== 0) {
   fail('report: site-relative footer links present in report mode');
 }
 // URL filter applied → table narrowed to the permissive set.
