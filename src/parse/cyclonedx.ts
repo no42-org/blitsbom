@@ -10,7 +10,7 @@ import type {
   SbomMetadata,
 } from '../types';
 import { SUPPORTED_CDX_VERSIONS } from '../types';
-import { emptyToNull, notNull, isRecord } from './util';
+import { emptyToNull, notNull, isRecord, isNoAssertion } from './util';
 import { normalizeLicenseValue } from './licenseValue';
 import { canonicalizePurl } from './purlMatch';
 
@@ -49,9 +49,7 @@ export function normalizeCdxComponent(raw: CdxComponent): Component {
     version: emptyToNull(raw.version),
     description: emptyToNull(raw.description),
     publisher,
-    // CycloneDX 1.4–1.6 doesn't have a distinct "originator" field; mirror
-    // `publisher` so the originator donut works uniformly across formats.
-    originator: publisher,
+    originator: deriveOriginator(raw),
     scope: emptyToNull(raw.scope),
     purl,
     purlCanonical: canonicalizePurl(purl),
@@ -59,6 +57,48 @@ export function normalizeCdxComponent(raw: CdxComponent): Component {
     licenses: (raw.licenses ?? []).map(normalizeCdxLicense).filter(notNull),
     vulnerabilities: [],
   };
+}
+
+/**
+ * "Who does this component come from?" for the originator rollup. CycloneDX
+ * has no originator field, so take the first declared answer:
+ *
+ *   publisher → supplier.name → manufacturer.name (1.6) → authors[0].name (1.6)
+ *   or the deprecated `author` string (≤1.5).
+ *
+ * Every tier skips NOASSERTION, not just empties: SPDX→CycloneDX converters
+ * inject NOASSERTION into exactly these fields, and a converted
+ * `publisher: "NOASSERTION"` must not shadow a real supplier below it. (#144)
+ */
+function deriveOriginator(raw: CdxComponent): string | null {
+  const candidates = [
+    raw.publisher,
+    isRecord(raw.supplier) ? raw.supplier.name : undefined,
+    isRecord(raw.manufacturer) ? raw.manufacturer.name : undefined,
+    Array.isArray(raw.authors) && isRecord(raw.authors[0])
+      ? raw.authors[0].name
+      : stripContactSuffix(raw.author),
+  ];
+  for (const c of candidates) {
+    if (typeof c !== 'string') continue;
+    const v = c.trim();
+    if (!isNoAssertion(v)) return v;
+  }
+  return null;
+}
+
+/**
+ * The deprecated ≤1.5 `author` field carries raw npm-style
+ * "Name <email> (url)" strings, while 1.6 `authors` contacts already separate
+ * name from email — strip the suffixes so the same person produces the same
+ * grouping key regardless of which spec version declared them.
+ */
+function stripContactSuffix(author: unknown): string | undefined {
+  if (typeof author !== 'string') return undefined;
+  return author
+    .replace(/<[^>]*>/g, '')
+    .replace(/\([^)]*\)/g, '')
+    .trim();
 }
 
 function normalizeCdxLicense(choice: CdxLicenseChoice): License | null {
