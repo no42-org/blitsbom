@@ -233,8 +233,18 @@ jobs:
       # bundle: dist/ is a single inlined index.html, so scanning it would find
       # nothing — the meaningful inventory is the npm tree the bundle was
       # compiled from.
+      #
+      # Two syft defaults must be overridden or that inventory vanishes (#136):
+      # every dependency here is a devDependency (the bundle is compiled from
+      # dev tooling; there are no runtime deps), and syft skips dev deps from
+      # package-lock.json by default — leaving only the root package. And the
+      # github-actions catalogers inventory every `uses:` reference; git refs
+      # carry no license metadata, so they drowned the report in "Undeclared".
       - name: Generate CycloneDX SBOM of the source tree
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0.24.0
+        env:
+          SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES: "true"
+          SYFT_SELECT_CATALOGERS: "-github-actions"
         with:
           path: .
           format: cyclonedx-json
