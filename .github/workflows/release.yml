@@ -242,17 +242,38 @@ jobs:
           upload-artifact: false
           upload-release-assets: false
 
-      # SLSA build provenance for both files, verifiable with:
+      # Human-viewable rendering of dist.zip.cdx.json, produced by this repo's
+      # own report action. `uses: ./report` resolves to the tagged commit, so
+      # each release dogfoods exactly the action version it ships, and the
+      # generator image is pinned to the matching :report-VERSION tag — the
+      # `images` job has already waited for that tag to exist in GHCR before
+      # this job started.
+      - name: Compute version from tag
+        id: ver
+        env:
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+        run: echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Render HTML report of the SBOM
+        uses: ./report
+        with:
+          sbom: dist.zip.cdx.json
+          output: dist.zip.cdx.html
+          version: ${{ steps.ver.outputs.version }}
+          image: ghcr.io/${{ github.repository }}:report-${{ steps.ver.outputs.version }}
+
+      # SLSA build provenance, verifiable with:
       #   gh attestation verify dist.zip --repo no42-org/blitsbom
-      # Listing the SBOM as a second subject means one attestation covers both,
-      # rather than the SBOM arriving as an unvouched-for file next to a signed
-      # artifact.
-      - name: Attest build provenance for dist.zip + SBOM
+      # Listing the SBOM and its HTML report as further subjects means one
+      # attestation covers all three, rather than derived files arriving as
+      # unvouched-for neighbours of a signed artifact.
+      - name: Attest build provenance for dist.zip + SBOM + report
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
         with:
           subject-path: |
             dist.zip
             dist.zip.cdx.json
+            dist.zip.cdx.html
 
       # Detect prerelease from the tag suffix. Anything matching
       # `vX.Y.Z-<alphanumeric>` (e.g. v1.0.0-rc.1, v0.2.0-beta.3) is published
@@ -297,6 +318,7 @@ jobs:
             dist.zip.sha512
             dist.zip.sigstore
             dist.zip.cdx.json
+            dist.zip.cdx.html
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true

@@ -16,7 +16,7 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 
 | Artifact                                  | Source                          | Pushed by                      |
 |-------------------------------------------|---------------------------------|--------------------------------|
-| `dist.zip` + `dist.zip.sha512` + `dist.zip.sigstore` attached to a **draft** GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
+| `dist.zip` + `dist.zip.sha512` + `dist.zip.sigstore` + `dist.zip.cdx.json` (CycloneDX SBOM) + `dist.zip.cdx.html` (its blitsbom-rendered HTML report) attached to a **draft** GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
 | The same three files on the rolling `preview` prerelease | every green push to `main`      | `.github/workflows/preview.yml` |
 | `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` (cosign-signed, SBOM-attested) | every push to `main`           | `.github/workflows/docker.yml` |
 | `ghcr.io/no42-org/blitsbom:X.Y.Z` / `:X.Y` (cosign-signed, SBOM-attested) | the `vX.Y.Z` Git tag            | `.github/workflows/docker.yml` (`build-and-push` job) |
@@ -137,7 +137,7 @@ The version-bump commit's own push to `main` separately fires `docker.yml` for t
 
 After the workflows turn green:
 
-1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, `dist.zip.sigstore` and `dist.zip.cdx.json` are all attached, and that you have curated the notes. Spot-check the checksum and the Sigstore signature:
+1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, `dist.zip.sigstore`, `dist.zip.cdx.json` and `dist.zip.cdx.html` are all attached, and that you have curated the notes. The `.cdx.html` file is the release SBOM rendered by this release's own report action and `:report-X.Y.Z` generator image — open it in a browser and confirm it shows the npm tree. Spot-check the checksum and the Sigstore signature:
    ```bash
    gh release download --pattern 'dist.zip*'
    sha512sum -c dist.zip.sha512
@@ -146,10 +146,11 @@ After the workflows turn green:
      --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/release\.yml@refs/tags/v' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com
    ```
-2. **Build provenance** — proves the artifact was built by this repo's workflow from this commit, not assembled elsewhere. The SBOM is covered by the same attestation:
+2. **Build provenance** — proves the artifact was built by this repo's workflow from this commit, not assembled elsewhere. The SBOM and its HTML report are covered by the same attestation:
    ```bash
    gh attestation verify dist.zip --repo no42-org/blitsbom
    gh attestation verify dist.zip.cdx.json --repo no42-org/blitsbom
+   gh attestation verify dist.zip.cdx.html --repo no42-org/blitsbom
    ```
 3. **GHCR images** — pull and run, sanity-check it loads. The image serves on **port 3000** (BusyBox httpd as the unprivileged `static` user), so map to that, not 80:
    ```bash
