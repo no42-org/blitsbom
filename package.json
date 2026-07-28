@@ -33,7 +33,7 @@
     "prettier-plugin-svelte": "^4.1.1",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.2",
-    "tailwindcss": "^4.3.2",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.1.4",
     "vite-plugin-singlefile": "^2.3.3",
