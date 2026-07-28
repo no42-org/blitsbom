@@ -146,9 +146,18 @@
         rel="noopener noreferrer">blitsbom</a> · runs entirely in your browser
     </span>
     <span class="page__credit">
-      Made with AI and ❤️ for Open Source in Europe
-      <!-- Imprint / Privacy are site-relative and would 404 next to a
+      Made with ❤️ in Heilbronn, Germany, Europe 🇪🇺 by
+      <!-- Site-relative links (imprint, privacy) would 404 next to a
            standalone report file, so they are omitted in report mode. -->
+      {#if store.reportMode}
+        Ronny Trommer
+      {:else}
+        <a href="/imprint.html">Ronny Trommer</a>
+      {/if}
+      · <a
+        href="https://ko-fi.com/indigo423"
+        target="_blank"
+        rel="noopener noreferrer">buy me a coffee</a>
       {#if !store.reportMode}
         · <a href="/imprint.html">Imprint</a> ·
         <a href="/privacy.html">Privacy</a>
