@@ -29,8 +29,16 @@ describe('SPDX parser — opennms-core sample', () => {
     expect(sbom.metadata.projectName).toContain('horizon');
   });
 
-  it('emits 2839 components from packages, ignoring files', () => {
-    expect(sbom.components.length).toBe(2839);
+  // 2839 packages minus the described image root, which is lifted to the
+  // header rather than listed as a component (#145).
+  it('emits 2838 components from packages, ignoring files', () => {
+    expect(sbom.components.length).toBe(2838);
+  });
+
+  it('does not list the scan target as a component', () => {
+    const target = sbom.metadata.projectName;
+    expect(target).not.toBeNull();
+    expect(sbom.components.some((c) => c.name === target)).toBe(false);
   });
 
   it('resolves at least one LicenseRef back to Apache-2.0', () => {
@@ -65,8 +73,135 @@ describe('SPDX parser — opennms-minion sample', () => {
 
   if (!result.ok) return;
 
-  it('emits 1339 components', () => {
-    expect(result.sbom.components.length).toBe(1339);
+  it('emits 1338 components', () => {
+    expect(result.sbom.components.length).toBe(1338);
+  });
+});
+
+// Document-root lifting (#145). SPDX keeps the document's subject inside
+// packages[]; CycloneDX keeps it outside components[]. The sole DESCRIBES
+// target is lifted so both formats agree, without matching any generator's
+// id convention.
+
+function spdxDoc(extra: Record<string, unknown>): string {
+  return JSON.stringify({
+    spdxVersion: 'SPDX-2.3',
+    name: 'scan-target',
+    packages: [
+      { SPDXID: 'SPDXRef-DocumentRoot-Directory-.', name: '.' },
+      { SPDXID: 'SPDXRef-Package-foo', name: 'foo', versionInfo: '1.0.0' },
+      { SPDXID: 'SPDXRef-Package-bar', name: 'bar', versionInfo: '2.0.0' },
+    ],
+    ...extra,
+  });
+}
+
+function describesRel(target: string, from = 'SPDXRef-DOCUMENT') {
+  return {
+    spdxElementId: from,
+    relatedSpdxElement: target,
+    relationshipType: 'DESCRIBES',
+  };
+}
+
+function namesOf(text: string): string[] {
+  const result = parseSbomText(text);
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error('parse failed');
+  return result.sbom.components.map((c) => c.name);
+}
+
+describe('SPDX document-root lifting', () => {
+  it('lifts the sole DESCRIBES target out of the component list', () => {
+    const names = namesOf(
+      spdxDoc({
+        relationships: [describesRel('SPDXRef-DocumentRoot-Directory-.')],
+      }),
+    );
+    expect(names).toEqual(['foo', 'bar']);
+  });
+
+  it('accepts the documentDescribes shorthand', () => {
+    const names = namesOf(
+      spdxDoc({ documentDescribes: ['SPDXRef-DocumentRoot-Directory-.'] }),
+    );
+    expect(names).toEqual(['foo', 'bar']);
+  });
+
+  it('prefers relationships over documentDescribes when they disagree', () => {
+    const names = namesOf(
+      spdxDoc({
+        relationships: [describesRel('SPDXRef-Package-foo')],
+        documentDescribes: ['SPDXRef-DocumentRoot-Directory-.'],
+      }),
+    );
+    expect(names).toEqual(['.', 'bar']);
+  });
+
+  it('lifts nothing when the document describes several packages', () => {
+    const names = namesOf(
+      spdxDoc({
+        relationships: [
+          describesRel('SPDXRef-DocumentRoot-Directory-.'),
+          describesRel('SPDXRef-Package-foo'),
+        ],
+      }),
+    );
+    expect(names).toEqual(['.', 'foo', 'bar']);
+  });
+
+  it('lifts nothing when the document describes nothing', () => {
+    expect(namesOf(spdxDoc({}))).toEqual(['.', 'foo', 'bar']);
+  });
+
+  it('never empties the table for a single-package document', () => {
+    const doc = JSON.stringify({
+      spdxVersion: 'SPDX-2.3',
+      name: 'solo',
+      packages: [{ SPDXID: 'SPDXRef-Only', name: 'solo', versionInfo: '1.0' }],
+      relationships: [describesRel('SPDXRef-Only')],
+    });
+    expect(namesOf(doc)).toEqual(['solo']);
+  });
+
+  it('ignores a DESCRIBES target that matches no package', () => {
+    const names = namesOf(
+      spdxDoc({ relationships: [describesRel('SPDXRef-Missing')] }),
+    );
+    expect(names).toEqual(['.', 'foo', 'bar']);
+  });
+
+  it('ignores DESCRIBES relationships not rooted at the document', () => {
+    const names = namesOf(
+      spdxDoc({
+        relationships: [
+          describesRel('SPDXRef-DocumentRoot-Directory-.', 'SPDXRef-Package-foo'),
+        ],
+      }),
+    );
+    expect(names).toEqual(['.', 'foo', 'bar']);
+  });
+
+  it('survives malformed relationship entries', () => {
+    const names = namesOf(
+      spdxDoc({
+        relationships: [null, 'nonsense', {}, 42, describesRel(7 as never)],
+      }),
+    );
+    expect(names).toEqual(['.', 'foo', 'bar']);
+  });
+
+  it('lifts the root in SPDX 2.2, which has no primaryPackagePurpose', () => {
+    const raw = readFileSync(
+      join(HERE, '..', '..', 'samples', 'syft', 'alpine-spdx-json-2.2.json'),
+      'utf8',
+    );
+    const before = JSON.parse(raw).packages.length;
+    const result = parseSbomText(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sbom.components.length).toBe(before - 1);
+    expect(result.sbom.components.some((c) => c.name === 'alpine')).toBe(false);
   });
 });
 
