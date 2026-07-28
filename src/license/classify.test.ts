@@ -28,6 +28,12 @@ describe('classifyLicense — direct SPDX ids', () => {
     }
   });
 
+  it('classifies CC-BY-4.0 and BlueOak-1.0.0 as permissive', () => {
+    for (const id of ['CC-BY-4.0', 'BlueOak-1.0.0']) {
+      expect(classifyLicense({ kind: 'id', value: id })).toBe('permissive');
+    }
+  });
+
   it('classifies CC0-1.0, Unlicense, WTFPL as public-domain', () => {
     for (const id of ['CC0-1.0', 'Unlicense', 'WTFPL']) {
       expect(classifyLicense({ kind: 'id', value: id })).toBe('public-domain');

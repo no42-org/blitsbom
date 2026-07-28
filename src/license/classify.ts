@@ -5,7 +5,8 @@
 //
 // Each entry's category is justified by the FSF's classification at the URL
 // above. Disputes about a placement should be raised by linking the FSF page
-// for that license. The taxonomy here intentionally compresses several FSF
+// for that license. One exception: BlueOak-1.0.0 is absent from the FSF list,
+// so its placement follows its OSI approval instead. The taxonomy here intentionally compresses several FSF
 // distinctions into six buckets — Permissive vs. Copyleft is the most useful
 // split for a viewer audience that includes legal/procurement, not just
 // engineers.
@@ -100,6 +101,10 @@ const TABLE: Record<string, LicenseCategory> = {
   'Python-2.0': 'permissive',
   'Apache-1.0': 'permissive',
   'Apache-1.1': 'permissive',
+  // FSF: free, lax, one-way GPLv3-compatible; common on docs/data packages.
+  'CC-BY-4.0': 'permissive',
+  // Not on the FSF list — OSI-approved (2024) simple permissive license.
+  'BlueOak-1.0.0': 'permissive',
 
   // Weak / file-scoped copyleft.
   'LGPL-2.0': 'copyleft',
