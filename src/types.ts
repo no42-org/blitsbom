@@ -198,7 +198,11 @@ export interface SpdxDocument {
   packages?: SpdxPackage[];
   files?: unknown[];
   hasExtractedLicensingInfos?: SpdxExtractedLicensingInfo[];
+  /** Deliberately `unknown[]`: entries come from a user-supplied file and are
+   * narrowed with `isRecord` at every read. */
   relationships?: unknown[];
+  /** SPDX 2.2+ shorthand for the DESCRIBES relationship. */
+  documentDescribes?: unknown[];
 }
 
 // Internal normalized model.

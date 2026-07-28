@@ -23,10 +23,57 @@ export function normalizeSpdxDocument(doc: SpdxDocument): LoadedSbom {
   const licenseRefMap = buildLicenseRefMap(doc);
   const packages = Array.isArray(doc.packages) ? doc.packages : [];
   // See normalizeCdxBom: skip malformed entries instead of throwing.
-  const components = packages
-    .filter((p): p is SpdxPackage => isRecord(p))
-    .map((p) => normalizeSpdxPackage(p, licenseRefMap));
+  const usable = packages.filter((p): p is SpdxPackage => isRecord(p));
+  const rootId = findDocumentRootId(doc);
+  const listed =
+    rootId !== null && usable.length > 1
+      ? usable.filter((p) => p.SPDXID !== rootId)
+      : usable;
+  const components = listed.map((p) => normalizeSpdxPackage(p, licenseRefMap));
+  // normalizeSpdxMetadata reads doc.packages, not the filtered list, so the
+  // header keeps the scan target's name and version after the row is gone.
   return { metadata: normalizeSpdxMetadata(doc), components };
+}
+
+/**
+ * The SPDXID of the package the document is *about*, or null when the
+ * document does not identify exactly one.
+ *
+ * SPDX keeps the document's subject inside `packages[]`; CycloneDX keeps it
+ * outside `components[]` as `metadata.component`. Lifting the SPDX one out of
+ * the component list restores parity: a syft scan target — "." for a
+ * directory scan, the image reference for an image — is the thing being
+ * described, not a thing it contains, and as a component row it is
+ * contentless (no version, no license) while inflating the component count
+ * and the Undeclared license bucket. (#145)
+ *
+ * Only a *sole* described package is lifted. Documents that describe several
+ * packages use DESCRIBES to mean "these are the top-level components", and
+ * removing those would delete real data. Deliberately no match on syft's
+ * `SPDXRef-DocumentRoot-` prefix (other generators use `SPDXRef-RootPackage`
+ * or hashed ids) and none on `primaryPackagePurpose` (absent in SPDX 2.2).
+ */
+function findDocumentRootId(doc: SpdxDocument): string | null {
+  const fromRelationships = (
+    Array.isArray(doc.relationships) ? doc.relationships : []
+  )
+    .filter(isRecord)
+    .filter(
+      (r) =>
+        r.relationshipType === 'DESCRIBES' &&
+        r.spdxElementId === 'SPDXRef-DOCUMENT',
+    )
+    .map((r) => r.relatedSpdxElement);
+  // `documentDescribes` is the 2.2+ shorthand for the same statement; the
+  // explicit relationship wins when a document carries both.
+  const raw =
+    fromRelationships.length > 0
+      ? fromRelationships
+      : Array.isArray(doc.documentDescribes)
+        ? doc.documentDescribes
+        : [];
+  const ids = new Set(raw.filter((id): id is string => typeof id === 'string'));
+  return ids.size === 1 ? [...ids][0]! : null;
 }
 
 function normalizeSpdxMetadata(doc: SpdxDocument): SbomMetadata {

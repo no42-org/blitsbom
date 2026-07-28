@@ -328,6 +328,7 @@ describe('large SBOM (opennms-core) end to end', () => {
     expect(report.html.length).toBeLessThan(text.length / 2);
     expect(report.summary).toContain('gzip+base64');
     const hydrated = await hydrate(report.html);
-    expect(hydrated.length).toBe(2839);
+    // 2839 packages minus the lifted document root (#145).
+    expect(hydrated.length).toBe(2838);
   });
 });

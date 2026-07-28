@@ -32,13 +32,14 @@ const FIXTURES = [
   {
     name: 'SPDX large (opennms-minion)',
     file: join(SAMPLES, 'opennms-minion.json'),
-    expectedCount: 1339,
+    // Package count minus the described image root, lifted to the header (#145).
+    expectedCount: 1338,
     expectsPermissive: true,
   },
   {
     name: 'SPDX huge (opennms-core)',
     file: join(SAMPLES, 'opennms-core.json'),
-    expectedCount: 2839,
+    expectedCount: 2838,
     expectsPermissive: true,
   },
 ];
