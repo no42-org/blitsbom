@@ -95,10 +95,11 @@ function deriveOriginator(raw: CdxComponent): string | null {
  */
 function stripContactSuffix(author: unknown): string | undefined {
   if (typeof author !== 'string') return undefined;
-  return author
-    .replace(/<[^>]*>/g, '')
-    .replace(/\([^)]*\)/g, '')
-    .trim();
+  // Truncate at the first delimiter rather than deleting <...> segments:
+  // the name always leads in the npm convention, and a deletion-based
+  // rewrite trips CodeQL's incomplete-sanitization heuristic (this is a
+  // grouping key, not HTML sanitization — rendering is escaped by Svelte).
+  return (author.match(/^[^<(]*/)?.[0] ?? '').trim();
 }
 
 function normalizeCdxLicense(choice: CdxLicenseChoice): License | null {
