@@ -45,11 +45,28 @@ export interface CdxComponent {
   version?: string;
   description?: string;
   publisher?: string;
+  /** Deprecated in CycloneDX 1.6 in favor of `authors`; still the only
+   * authorship field in 1.4/1.5. */
+  author?: string;
+  authors?: CdxContact[];
+  supplier?: CdxOrgEntity;
+  /** CycloneDX 1.6+. */
+  manufacturer?: CdxOrgEntity;
   scope?: string;
   purl?: string;
   licenses?: CdxLicenseChoice[];
   externalReferences?: CdxExternalReference[];
   hashes?: CdxHash[];
+}
+
+/** organizationalEntity (subset) — `supplier` and 1.6 `manufacturer`. */
+export interface CdxOrgEntity {
+  name?: string;
+}
+
+/** organizationalContact (subset) — an entry of the 1.6 `authors` array. */
+export interface CdxContact {
+  name?: string;
 }
 
 export interface CdxMetadataComponent {
