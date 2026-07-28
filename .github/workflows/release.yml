@@ -245,6 +245,10 @@ jobs:
         env:
           SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES: "true"
           SYFT_SELECT_CATALOGERS: "-github-actions"
+          # Off: the default (owned-by-package) emits a license-less `file`
+          # component for package-lock.json — the report's last "Undeclared"
+          # sliver, showing a raw runner path (#139).
+          SYFT_FILE_METADATA_SELECTION: "none"
         with:
           path: .
           format: cyclonedx-json
