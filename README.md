@@ -68,11 +68,11 @@ Turn an SBOM into a **single self-contained HTML file** you can attach to a rele
 ### In a GitHub Actions workflow
 
 ```yaml
-- uses: no42-org/blitsbom/report@v0.4.0
+- uses: no42-org/blitsbom@v0.6.0
   id: sbom-report
   with:
     sbom: bom.json          # path to your CycloneDX or SPDX SBOM
-    image: ghcr.io/no42-org/blitsbom:report-0.4.0   # pin the generator image to match
+    # image defaults to :report-0.6.0, matching the action tag
     # version/project/commit/build-url default from the workflow context
 - uses: actions/upload-artifact@v4
   with:
@@ -80,7 +80,9 @@ Turn an SBOM into a **single self-contained HTML file** you can attach to a rele
     path: ${{ steps.sbom-report.outputs.report }}
 ```
 
-Pin the action and its image to a release tag (`@v0.4.0` / `:report-0.4.0`) for reproducible runs. The Action defaults its `image` to `:report-rc`, which tracks `main` — convenient, but a moving target.
+Pin the action to a release tag (`@v0.6.0`) for reproducible runs — the generator image follows it automatically, so the two cannot drift. Tracking a branch instead falls back to `:report-rc`, which follows `main`: convenient, but a moving target. Override `image` to pin something else.
+
+> **Moved in v0.6.0.** The action was `no42-org/blitsbom/report@v0.5.0` and is now at the repository root, `no42-org/blitsbom@v0.6.0`, so it can be listed on the GitHub Marketplace. Existing pins to `@v0.5.0` and earlier keep working — tags are immutable.
 
 ### With the container image directly (any CI, or a laptop)
 

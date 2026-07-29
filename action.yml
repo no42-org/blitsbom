@@ -29,14 +29,21 @@ inputs:
     required: false
     default: ''
   image:
-    description: Report generator image to run.
+    description: >-
+      Report generator image to run. Defaults to the image matching the version
+      of this action you called (`@v0.6.0` → `:report-0.6.0`), so the action and
+      the generator cannot disagree.
     required: false
-    default: ghcr.io/no42-org/blitsbom:report-rc
+    default: ''
 
 outputs:
   report:
     description: Path to the generated report (equal to the `output` input).
     value: ${{ steps.generate.outputs.report }}
+
+branding:
+  icon: file-text
+  color: gray-dark
 
 runs:
   using: composite
@@ -44,7 +51,8 @@ runs:
     - id: generate
       shell: bash
       env:
-        IMAGE: ${{ inputs.image }}
+        IMAGE_IN: ${{ inputs.image }}
+        ACTION_REF: ${{ github.action_ref }}
         SBOM: ${{ inputs.sbom }}
         OUTPUT: ${{ inputs.output }}
         VEX: ${{ inputs.vex }}
@@ -66,6 +74,23 @@ runs:
         VERSION="${VERSION_IN}"
         if [ -z "${VERSION}" ] && [ "${REF_TYPE}" = "tag" ]; then
           VERSION="${REF_NAME#v}"
+        fi
+
+        # Image precedence: the explicit input, else the generator image built
+        # from this same commit — `uses: no42-org/blitsbom@v0.6.0` runs
+        # :report-0.6.0, so the action and the generator can never disagree
+        # about their version. github.action_ref is empty for a local
+        # `uses: ./` and is a branch name for anyone tracking main; neither
+        # names a published image, so fall back to the tag that follows main.
+        # Only a full vX.Y.Z release tag maps to an image: a major alias like
+        # @v1 has no :report-1 counterpart in GHCR, and deriving one would
+        # fail the pull outright rather than degrade to something that runs.
+        IMAGE="${IMAGE_IN}"
+        if [ -z "${IMAGE}" ]; then
+          case "${ACTION_REF}" in
+            v[0-9]*.[0-9]*.[0-9]*) IMAGE="ghcr.io/no42-org/blitsbom:report-${ACTION_REF#v}" ;;
+            *)                     IMAGE="ghcr.io/no42-org/blitsbom:report-rc" ;;
+          esac
         fi
 
         args=("/work/${SBOM}" --output "/work/${OUTPUT}" --compress "${COMPRESS}")
