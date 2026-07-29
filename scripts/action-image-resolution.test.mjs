@@ -1,17 +1,9 @@
-// The generator-image resolution table from action.yml, executed as bash.
-//
-// This block is the load-bearing part of the action and has produced defects
-// three times: a `:report-rc` default that ignored the action's own version, an
-// arm matching a `v0.6`-shaped ref that no git tag can ever produce, and a SHA
-// pin silently resolving to a mutable image. It is bash embedded in YAML, so
-// nothing else in the suite covers it — the smoke test passes `image:`
-// explicitly and never exercises derivation at all.
-//
-// The script is extracted from action.yml rather than duplicated, so the test
-// fails if the real logic changes rather than testing a stale copy of it.
+// Executes action.yml's image-resolution block as bash. The script is
+// extracted, not duplicated, so these cases track the real logic — nothing else
+// covers it, since the smoke test passes `image:` and skips derivation.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
@@ -19,26 +11,39 @@ import { parse } from 'yaml';
 const IMAGE = 'ghcr.io/no42-org/blitsbom';
 const RC = `${IMAGE}:report-rc`;
 
-// The repo root doubles as a realistic action_path: for a remote action the
-// whole repository is materialised there (#159), package.json included.
+// For a remote action the whole repository is materialised at action_path
+// (#159), so the repo root is a realistic stand-in.
 const REPO = process.cwd();
 const REPO_VERSION = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version;
+const SHA = 'a'.repeat(40);
 
 let script;
 let noPackageJson;
+let unreadable;
+let nestedVersion;
 
 beforeAll(() => {
   const run = parse(readFileSync(join(REPO, 'action.yml'), 'utf8')).runs.steps[0].run;
-  // Stop before the container runs; only resolution is under test.
-  const body = run.slice(0, run.indexOf('docker run'));
-  expect(body).not.toBe('');
-  // The action logs to stdout, as an Actions step should, so mark the result
-  // rather than assuming it is the only thing printed.
-  script = `${body}\nprintf '\\nRESOLVED=%s' "$IMAGE"`;
+  const cut = run.indexOf('docker run');
+  // Guard the index, not emptiness: a missed marker would otherwise keep the
+  // whole script and every case below would really invoke docker.
+  expect(cut).toBeGreaterThan(0);
+  script = `${run.slice(0, cut)}\nprintf '\\nRESOLVED=%s' "$IMAGE"`;
+
   noPackageJson = mkdtempSync(join(tmpdir(), 'no-pkg-'));
+
+  // A directory named package.json fails the read regardless of uid, unlike
+  // chmod 000, which root ignores.
+  unreadable = mkdtempSync(join(tmpdir(), 'unreadable-'));
+  mkdirSync(join(unreadable, 'package.json'));
+
+  nestedVersion = mkdtempSync(join(tmpdir(), 'nested-'));
+  writeFileSync(
+    join(nestedVersion, 'package.json'),
+    '{\n  "engines": {\n    "version": "9.9.9"\n  },\n  "version": "0.6.0"\n}\n'
+  );
 });
 
-// Runs the resolution block and returns its full stdout.
 function run({ ref = '', image = '', actionPath = REPO } = {}) {
   return execFileSync('bash', ['-c', script], {
     encoding: 'utf8',
@@ -62,9 +67,7 @@ function run({ ref = '', image = '', actionPath = REPO } = {}) {
   });
 }
 
-// The image the action would run.
 const resolve = (opts) => run(opts).split('RESOLVED=').at(-1);
-// What it said about how it got there.
 const logOf = (opts) => run(opts).split('RESOLVED=')[0];
 
 describe('generator image resolution', () => {
@@ -76,51 +79,90 @@ describe('generator image resolution', () => {
   describe('release tag refs', () => {
     it.each([
       ['v0.6.0', '0.6.0'],
-      ['v0.5.0', '0.5.0'],
       ['v10.20.30', '10.20.30'],
+      ['v1.0.0-rc.1', '1.0.0-rc.1'],
     ])('%s resolves to :report-%s', (ref, version) => {
       expect(resolve({ ref })).toBe(`${IMAGE}:report-${version}`);
     });
 
-    // The tag is authoritative, not a proxy: docker.yml names the image from
-    // the git tag via type=semver, so a tag ref must not consult package.json.
+    // docker.yml names the image from the git tag via type=semver, so the tag
+    // is authoritative and must not be second-guessed by package.json.
     it('prefers the tag over package.json when they disagree', () => {
       expect(resolve({ ref: 'v9.9.9' })).toBe(`${IMAGE}:report-9.9.9`);
       expect(REPO_VERSION).not.toBe('9.9.9');
     });
+
+    // Tag-shaped refs that name no published image must not be derived.
+    it.each([
+      ['v1.2.3+build.5', "'+' is invalid in an OCI tag"],
+      ['v1.2.3.4', 'four components are never published'],
+      ['v1.2', 'no such git tag is cut'],
+      ['v1', 'no :report-1 is published'],
+      ['V0.6.0', 'capitalised'],
+    ])('%s falls back (%s)', (ref) => {
+      expect(resolve({ ref })).toBe(RC);
+    });
   });
 
   describe('commit-SHA refs', () => {
-    const sha = 'a'.repeat(40);
-
-    // The behaviour this change exists for. Dependabot pins the release tag's
-    // commit, whose package.json carries that release's version.
     it("reads the version from the action's own package.json", () => {
-      expect(resolve({ ref: sha })).toBe(`${IMAGE}:report-${REPO_VERSION}`);
+      expect(resolve({ ref: SHA })).toBe(`${IMAGE}:report-${REPO_VERSION}`);
     });
 
-    it('accepts any lowercase-hex 40-character ref', () => {
-      expect(resolve({ ref: '0123456789abcdef'.repeat(2) + '01234567' })).toBe(
+    it('accepts uppercase hex, which Dependabot does not write but a human might', () => {
+      expect(resolve({ ref: 'A'.repeat(40) })).toBe(`${IMAGE}:report-${REPO_VERSION}`);
+      expect(resolve({ ref: `${'A'.repeat(20)}${'a'.repeat(20)}` })).toBe(
         `${IMAGE}:report-${REPO_VERSION}`
       );
     });
 
-    it('falls back to rc when package.json is not there', () => {
-      expect(resolve({ ref: sha, actionPath: noPackageJson })).toBe(RC);
+    it('takes the top-level version, not a nested one appearing earlier', () => {
+      expect(resolve({ ref: SHA, actionPath: nestedVersion })).toBe(`${IMAGE}:report-0.6.0`);
+    });
+
+    // The floor has to hold, or a consumer's workflow fails where it used to
+    // degrade. Both of these aborted the step before this was guarded.
+    it('falls back when package.json is absent', () => {
+      expect(resolve({ ref: SHA, actionPath: noPackageJson })).toBe(RC);
+    });
+
+    it('falls back when package.json cannot be read', () => {
+      expect(resolve({ ref: SHA, actionPath: unreadable })).toBe(RC);
+    });
+
+    it('falls back when action_path is unset entirely', () => {
+      const out = execFileSync('bash', ['-c', script], {
+        encoding: 'utf8',
+        env: {
+          PATH: process.env.PATH,
+          IMAGE_IN: '',
+          ACTION_REF: SHA,
+          GITHUB_OUTPUT: '/dev/null',
+          SBOM: 'b',
+          OUTPUT: 'o',
+          VEX: '',
+          COMPRESS: 'auto',
+          PROJECT: 'p',
+          VERSION_IN: '',
+          REF_NAME: 'main',
+          REF_TYPE: 'branch',
+          COMMIT: 'c',
+          BUILD_URL: 'u',
+        },
+      });
+      expect(out.split('RESOLVED=').at(-1)).toBe(RC);
     });
   });
 
-  describe('everything else falls back to the main-tip generator', () => {
+  describe('everything else gets the main-tip generator', () => {
     it.each([
       ['main', 'a branch ref'],
       ['feature/x', 'a branch ref containing a slash'],
       ['', 'a local `uses: ./`, where action_ref is empty'],
-      ['v1', 'a bare major alias — no :report-1 is published'],
-      ['v0.6', 'a minor alias — no such git tag can exist'],
-      ['V0.6.0', 'a capitalised tag'],
-      ['a'.repeat(39), 'a 39-character hex string'],
-      ['a'.repeat(41), 'a 41-character hex string'],
-      ['g'.repeat(40), '40 characters that are not hex'],
+      ['a'.repeat(39), '39 hex characters'],
+      ['a'.repeat(41), '41 hex characters'],
+      ['g'.repeat(40), '40 non-hex characters'],
+      ['refs/tags/v1.2.3', 'a fully qualified ref'],
     ])('%s (%s)', (ref) => {
       expect(resolve({ ref })).toBe(RC);
     });
@@ -128,11 +170,12 @@ describe('generator image resolution', () => {
 
   describe('the resolution is logged', () => {
     it.each([
-      ['v0.6.0', REPO, 'tag v0.6.0'],
-      ['a'.repeat(40), REPO, 'package.json at the pinned commit'],
-      ['main', REPO, 'no version for'],
-    ])('%s reports how it resolved', (ref, actionPath, fragment) => {
-      const log = logOf({ ref, actionPath });
+      ['v0.6.0', 'tag v0.6.0'],
+      [SHA, 'package.json at the pinned commit'],
+      ['main', 'no usable version'],
+      ['v1.2.3+build.5', 'no usable version'],
+    ])('%s reports how it resolved', (ref, fragment) => {
+      const log = logOf({ ref });
       expect(log).toContain('generator image:');
       expect(log).toContain(fragment);
     });

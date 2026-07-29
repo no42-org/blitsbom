@@ -32,8 +32,9 @@ inputs:
   image:
     description: >-
       Report generator image to run. Defaults to the image matching the version
-      of this action you called (`@v0.6.0` → `:report-0.6.0`), so the action and
-      the generator cannot disagree.
+      of the action you called — a release tag or a commit pinned to one
+      (`@v0.6.0` → `:report-0.6.0`) — so the two cannot disagree. A branch ref
+      gets `:report-rc`, the generator built from main.
     required: false
     default: ''
 
@@ -77,56 +78,44 @@ runs:
           VERSION="${REF_NAME#v}"
         fi
 
-        # Match the generator to the source the action itself came from, so the
-        # two cannot disagree about their version. In precedence order:
+        # Match the generator to the source the action came from, so the two
+        # cannot disagree about their version. Precedence: the explicit `image:`
+        # input, a vX.Y.Z tag, the version in the action's own package.json
+        # (all a SHA pin has to go on), then :report-rc.
         #
-        #   1. the explicit `image:` input — always wins.
-        #   2. a vX.Y.Z tag ref. The tag is authoritative rather than a proxy:
-        #      docker.yml names the generator image from the git tag via
-        #      `type=semver`, so the tag is literally what the image is called.
-        #   3. a commit-SHA ref. No tag is available, so read the version the
-        #      action ships with. The whole repository is materialised at
-        #      GITHUB_ACTION_PATH for a remote action (#159), package.json
-        #      included. Dependabot pins the release tag's commit, whose
-        #      package.json carries that release's version, so a SHA pin
-        #      resolves the same image a tag ref would.
-        #   4. anything else — a branch ref, or a local `uses: ./` where
-        #      action_ref is empty. :report-rc is the generator built from main,
-        #      so for a ref that tracks main it is the matching pair, not a
-        #      consolation prize. It is also the floor if a version cannot be
-        #      read at all, which is why step 3 is allowed to fail quietly.
+        # A tag beats package.json because docker.yml names the image from the
+        # git tag via `type=semver`. :report-rc is the generator built from
+        # main, so it pairs correctly with a ref that tracks main, and is the
+        # floor whenever no usable version can be read.
         IMAGE="${IMAGE_IN}"
         if [ -z "${IMAGE}" ]; then
-          REGISTRY_IMAGE="ghcr.io/no42-org/blitsbom"
-          RESOLVED_VERSION=""
+          VERSION_TAG=""
           RESOLVED_FROM=""
 
-          case "${ACTION_REF}" in
-            v[0-9]*.[0-9]*.[0-9]*)
-              RESOLVED_VERSION="${ACTION_REF#v}"
-              RESOLVED_FROM="tag ${ACTION_REF}"
-              ;;
-          esac
-
-          # A 40-character all-hex ref is a commit SHA. Checked by shape
-          # because no context distinguishes a tag ref from a branch or a SHA.
-          if [ -z "${RESOLVED_VERSION}" ] && [ "${#ACTION_REF}" -eq 40 ] &&
-             [ -z "$(printf '%s' "${ACTION_REF}" | tr -d '0-9a-f')" ]; then
-            PACKAGE_JSON="${GITHUB_ACTION_PATH}/package.json"
-            if [ -f "${PACKAGE_JSON}" ]; then
-              RESOLVED_VERSION="$(
-                sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-                  "${PACKAGE_JSON}" | head -1
-              )"
-              RESOLVED_FROM="package.json at the pinned commit"
-            fi
+          if [[ "${ACTION_REF}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            VERSION_TAG="${BASH_REMATCH[1]}"
+            RESOLVED_FROM="tag ${ACTION_REF}"
+          elif [[ "${ACTION_REF}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            # Two-space anchor keeps this to the top-level key. Allowed to fail
+            # — an unreadable or absent file must reach the floor, not abort.
+            VERSION_TAG="$(
+              sed -n 's/^  "version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+                "${GITHUB_ACTION_PATH:-}/package.json" 2>/dev/null | head -1 || true
+            )"
+            RESOLVED_FROM="package.json at the pinned commit"
           fi
 
-          if [ -n "${RESOLVED_VERSION}" ]; then
-            IMAGE="${REGISTRY_IMAGE}:report-${RESOLVED_VERSION}"
+          # Reject anything not shaped like a version: it would name an image
+          # never published, or an illegal one — '+' is invalid in an OCI tag.
+          if [[ ! "${VERSION_TAG}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            VERSION_TAG=""
+          fi
+
+          if [ -n "${VERSION_TAG}" ]; then
+            IMAGE="ghcr.io/no42-org/blitsbom:report-${VERSION_TAG}"
           else
-            IMAGE="${REGISTRY_IMAGE}:report-rc"
-            RESOLVED_FROM="no version for ref '${ACTION_REF}' — using the main-tip generator"
+            IMAGE="ghcr.io/no42-org/blitsbom:report-rc"
+            RESOLVED_FROM="no usable version for ref '${ACTION_REF}' — using the main-tip generator"
           fi
 
           echo "generator image: ${IMAGE} (${RESOLVED_FROM})"
