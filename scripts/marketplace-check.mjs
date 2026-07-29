@@ -37,6 +37,39 @@ function text(value) {
   return typeof value === 'string' && value.trim() !== '' ? value : null;
 }
 
+// Version references in the README that must track the current release. The
+// README is the listing body, so a stale example hands a Marketplace visitor a
+// version we have already superseded — v0.6.0's examples outlived the release
+// that fixed v0.6.0's own defects (#165).
+const README_VERSION_PATTERNS = [
+  // Bare `@vX.Y.Z` too, not just `no42-org/blitsbom@vX.Y.Z`: the resolution
+  // table writes refs unqualified, and those drift just as easily.
+  { label: 'action ref', re: /@v(\d+\.\d+\.\d+)/g },
+  { label: 'generator image', re: /:report-(\d+\.\d+\.\d+)/g },
+  { label: 'serving image', re: /blitsbom:(\d+\.\d+\.\d+)/g },
+];
+
+// Blockquotes carry migration notes — "Moved in v0.6.0", "pins to @v0.5.0 keep
+// working" — which are statements about the past and must not be rewritten.
+// Anything outside one is a live example.
+export function findStaleReadmeVersions(readme, version) {
+  const problems = [];
+  readme.split('\n').forEach((line, i) => {
+    if (/^\s*>/.test(line)) return;
+    for (const { label, re } of README_VERSION_PATTERNS) {
+      for (const m of line.matchAll(re)) {
+        if (m[1] !== version) {
+          problems.push(
+            `README.md:${i + 1}: ${label} says ${m[1]}, expected ${version} — ` +
+              `"${m[0]}". Move it to a blockquote if it is deliberately historical.`
+          );
+        }
+      }
+    }
+  });
+  return problems;
+}
+
 // Returns a list of human-readable problems; empty means the metadata would be
 // accepted. Pure and exported so the cases live in tests rather than in a
 // maintainer's memory.
@@ -102,20 +135,25 @@ export function checkSource(source) {
 // Only run as a CLI when invoked directly, so importing this from a test does
 // not exit the process.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const file = join(process.cwd(), 'action.yml');
-  const source = readFileSync(file, 'utf8');
+  const root = process.cwd();
+  const source = readFileSync(join(root, 'action.yml'), 'utf8');
   const problems = checkSource(source);
-  const doc = problems.length ? null : parse(source);
+
+  const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
+  problems.push(
+    ...findStaleReadmeVersions(readFileSync(join(root, 'README.md'), 'utf8'), version)
+  );
 
   if (problems.length) {
-    console.error('marketplace-check: action.yml would be rejected when publishing.\n');
+    console.error('marketplace-check: the listing would be wrong or rejected.\n');
     for (const p of problems) console.error(`  ✗ ${p}`);
     console.error('');
     process.exit(1);
   }
 
+  const doc = parse(source);
   console.error(
     `marketplace-check: ok — description ${doc.description.length}/${DESCRIPTION_MAX} chars, ` +
-      `branding ${doc.branding.icon}/${doc.branding.color}.`
+      `branding ${doc.branding.icon}/${doc.branding.color}, README examples at ${version}.`
   );
 }

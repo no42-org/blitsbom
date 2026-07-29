@@ -14,6 +14,7 @@ import { parse } from 'yaml';
 import {
   validateMetadata,
   checkSource,
+  findStaleReadmeVersions,
   DESCRIPTION_MAX,
   BRANDING_COLORS,
 } from './marketplace-check.mjs';
@@ -211,5 +212,73 @@ branding:
     const result = checkSource('name: [unclosed\ndescription: x\n');
     expect(result).toHaveLength(1);
     expect(result[0]).toContain('not valid YAML');
+  });
+});
+
+// The README is the Marketplace listing body, so a stale example hands a
+// visitor a superseded release. v0.6.0's examples outlived the release that
+// fixed v0.6.0's own defects (#165).
+describe('findStaleReadmeVersions', () => {
+  const stale = (md, v = '0.6.1') => findStaleReadmeVersions(md, v);
+
+  it("accepts the repository's own README against package.json", () => {
+    const readme = readFileSync(join(process.cwd(), 'README.md'), 'utf8');
+    const version = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')).version;
+    expect(findStaleReadmeVersions(readme, version)).toEqual([]);
+  });
+
+  describe('flags a superseded version', () => {
+    it.each([
+      ['- uses: no42-org/blitsbom@v0.6.0', 'action ref'],
+      ['| `@v0.6.0` — a release tag |', 'action ref'],
+      ['image defaults to :report-0.6.0', 'generator image'],
+      ['docker run ghcr.io/no42-org/blitsbom:0.1.0', 'serving image'],
+      ['ghcr.io/no42-org/blitsbom:report-0.4.0 \\', 'generator image'],
+    ])('%s', (line, label) => {
+      const r = stale(line);
+      expect(r).toHaveLength(1);
+      expect(r[0]).toContain(label);
+      expect(r[0]).toContain('expected 0.6.1');
+    });
+  });
+
+  describe('accepts the current version', () => {
+    it.each([
+      '- uses: no42-org/blitsbom@v0.6.1',
+      'image defaults to :report-0.6.1',
+      'docker run ghcr.io/no42-org/blitsbom:0.6.1',
+      '| `@v0.6.1` | `:report-0.6.1` |',
+    ])('%s', (line) => {
+      expect(stale(line)).toEqual([]);
+    });
+  });
+
+  // Migration notes are statements about the past and must survive a bump.
+  describe('exempts blockquotes', () => {
+    it.each([
+      '> **Moved in v0.6.0.** The action was `no42-org/blitsbom/report@v0.5.0`',
+      '  > indented blockquote with no42-org/blitsbom@v0.1.0',
+      '> pins to `@v0.5.0` keep working, and `:report-0.4.0` still exists',
+    ])('%s', (line) => {
+      expect(stale(line)).toEqual([]);
+    });
+  });
+
+  describe('leaves non-version numbers alone', () => {
+    it.each([
+      ['--version 2.4.1 --output acme-platform-2.4.1-sbom.html', 'a product version in an example'],
+      ['make report SBOM=bom.json VERSION=2.4.1', 'a Make variable'],
+      ['| a commit SHA | `:report-<that commit\'s version>` |', 'a placeholder, not a version'],
+      ['docker run -p 8080:3000 ghcr.io/no42-org/blitsbom:rc', 'a floating tag'],
+    ])('%s (%s)', (line) => {
+      expect(stale(line)).toEqual([]);
+    });
+  });
+
+  it('reports every stale reference on a line, with its line number', () => {
+    const md = 'intro\n| `@v0.5.0` | `:report-0.4.0` |\n';
+    const r = stale(md);
+    expect(r).toHaveLength(2);
+    expect(r.every((p) => p.includes('README.md:2'))).toBe(true);
   });
 });
