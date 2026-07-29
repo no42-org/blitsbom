@@ -1,4 +1,4 @@
-.PHONY: help install dev build build-generator report verify test lint format clean preview dist-zip size-check purity-check smoke e2e docker-build docker-run ci
+.PHONY: help install dev build build-generator report verify test lint format clean preview dist-zip size-check purity-check marketplace-check smoke e2e docker-build docker-run ci
 
 help:
 	@echo "blitsbom — Make targets"
@@ -7,13 +7,14 @@ help:
 	@echo "  build           Build static dist/"
 	@echo "  build-generator Build the CI report generator (dist-generator/)"
 	@echo "  report          Generate a report: make report SBOM=bom.json [OUT=report.html VEX=vex.json]"
-	@echo "  verify          Type-check, lint, run tests, and run purity check"
+	@echo "  verify          Type-check, lint, run tests, purity + marketplace checks"
 	@echo "  test            Run the unit test suite"
 	@echo "  lint            Type-check and svelte-check"
 	@echo "  format          Run prettier across the source tree"
 	@echo "  preview         Preview the production build"
 	@echo "  size-check      Fail if gzipped JS exceeds 60 KB"
 	@echo "  purity-check    Fail if any forbidden network call appears in src/"
+	@echo "  marketplace-check Fail if action.yml would be rejected by the Marketplace"
 	@echo "  smoke           Run the file:// headless-Chromium smoke test"
 	@echo "  e2e             Full file:// end-to-end UX check (upload, filter, export)"
 	@echo "  dist-zip        Build and zip dist/ as dist.zip"
@@ -47,7 +48,7 @@ report: build build-generator
 		$(if $(PROJECT),--project "$(PROJECT)",) \
 		$(if $(VERSION),--version "$(VERSION)",)
 
-verify: lint test purity-check
+verify: lint test purity-check marketplace-check
 
 test:
 	npm test
@@ -66,6 +67,9 @@ size-check:
 
 purity-check:
 	npm run purity-check
+
+marketplace-check:
+	npm run marketplace-check
 
 smoke:
 	npm run smoke

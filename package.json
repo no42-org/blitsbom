@@ -16,6 +16,7 @@
     "format": "prettier --write \"src/**/*.{ts,svelte,css}\" \"*.{json,md,html}\"",
     "size-check": "node scripts/size-check.mjs",
     "purity-check": "node scripts/purity-check.mjs",
+    "marketplace-check": "node scripts/marketplace-check.mjs",
     "smoke": "node scripts/file-smoke.mjs",
     "e2e": "node scripts/e2e.mjs"
   },
