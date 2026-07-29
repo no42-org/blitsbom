@@ -80,9 +80,19 @@ Turn an SBOM into a **single self-contained HTML file** you can attach to a rele
     path: ${{ steps.sbom-report.outputs.report }}
 ```
 
-Pin the action to a release tag (`@v0.6.0`) for reproducible runs — the generator image follows it automatically, so the two cannot drift. Tracking a branch instead falls back to `:report-rc`, which follows `main`: convenient, but a moving target. Override `image` to pin something else.
+Pin the action to a release tag for reproducible runs. `image` then defaults to the generator built from that same tag, so the two cannot drift:
 
-> **Moved in v0.6.0.** The action was `no42-org/blitsbom/report@v0.5.0` and is now at the repository root, `no42-org/blitsbom@v0.6.0`, so it can be listed on the GitHub Marketplace. Existing pins to `@v0.5.0` and earlier keep working — tags are immutable.
+| Action ref | Generator image |
+|---|---|
+| `@v0.6.0` | `:report-0.6.0` |
+| `@v0.6` | `:report-0.6` |
+| `@main`, or a commit SHA | `:report-rc` — follows `main` |
+
+**A commit-SHA pin does not get a pinned generator.** There is no `:report-<sha>` image to derive, so a SHA-pinned action falls back to `:report-rc`, which is mutable. That is worth knowing if you pin by SHA precisely to avoid moving targets — set `image` explicitly to pin both. Whichever image is used, the action logs it.
+
+> **Moved in v0.6.0.** The action was `no42-org/blitsbom/report@v0.5.0` and is now at the repository root, `no42-org/blitsbom@v0.6.0`, so it can be listed on the GitHub Marketplace.
+>
+> Pins to `@v0.5.0` or any earlier tag keep working — tags are immutable. What breaks is a ref that follows `main`: `no42-org/blitsbom/report@main`, or a SHA pin updated to a commit after the move. Those need the `/report` suffix dropped.
 
 ### With the container image directly (any CI, or a laptop)
 
@@ -249,7 +259,7 @@ src/
   export/     CSV writer, original-SBOM download
   generator/  CI report generator (reuses parse/; built to a Node ESM CLI)
   styles/     Tailwind v4 CSS entry (@theme static design tokens)
-report/       Composite GitHub Action wrapping the report generator image
+action.yml    Composite GitHub Action wrapping the report generator image
 scripts/      size-check, purity-check, file-smoke, e2e
 samples/      Real-world SBOMs used as test corpus (not bundled into dist/)
 ```
