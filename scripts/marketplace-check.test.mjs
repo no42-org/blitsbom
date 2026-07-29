@@ -253,6 +253,42 @@ describe('findStaleReadmeVersions', () => {
     });
   });
 
+  // RELEASING.md documents a prerelease flow (vX.Y.Z-rc1); a capture of bare
+  // X.Y.Z could never equal such a version, wedging the bump PR.
+  describe('prerelease versions', () => {
+    it('accepts a matching prerelease ref', () => {
+      expect(stale('- uses: no42-org/blitsbom@v1.0.0-rc.1', '1.0.0-rc.1')).toEqual([]);
+    });
+
+    it('flags a stale stable ref while a prerelease is current', () => {
+      const r = stale('- uses: no42-org/blitsbom@v1.0.0', '1.0.0-rc.1');
+      expect(r).toHaveLength(1);
+      expect(r[0]).toContain('says 1.0.0, expected 1.0.0-rc.1');
+    });
+
+    it('does not swallow a trailing sentence period into the version', () => {
+      expect(stale('since `no42-org/blitsbom@v1.0.0-rc.1`.', '1.0.0-rc.1')).toEqual([]);
+    });
+  });
+
+  // Third-party pins in the same workflow snippet are not ours to version.
+  describe('third-party action refs', () => {
+    it.each([
+      '- uses: actions/upload-artifact@v4.6.2',
+      '- uses: actions/checkout@v5.0.1 # full-precision pin',
+    ])('%s is not flagged', (line) => {
+      expect(stale(line)).toEqual([]);
+    });
+
+    it('still flags our own qualified ref on the same line shape', () => {
+      expect(stale('- uses: no42-org/blitsbom@v0.6.0')).toHaveLength(1);
+    });
+
+    it('still flags a bare backtick-wrapped ref, as the resolution table writes it', () => {
+      expect(stale('| `@v0.6.0` — a release tag |')).toHaveLength(1);
+    });
+  });
+
   // Migration notes are statements about the past and must survive a bump.
   describe('exempts blockquotes', () => {
     it.each([

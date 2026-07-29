@@ -14,7 +14,7 @@ help:
 	@echo "  preview         Preview the production build"
 	@echo "  size-check      Fail if gzipped JS exceeds 60 KB"
 	@echo "  purity-check    Fail if any forbidden network call appears in src/"
-	@echo "  marketplace-check Fail if action.yml would be rejected by the Marketplace"
+	@echo "  marketplace-check Fail if action.yml or the README's version examples would break the listing"
 	@echo "  smoke           Run the file:// headless-Chromium smoke test"
 	@echo "  e2e             Full file:// end-to-end UX check (upload, filter, export)"
 	@echo "  dist-zip        Build and zip dist/ as dist.zip"

@@ -8,6 +8,10 @@
 // 181-character description shipped (#151) and how the missing `branding` block
 // nearly did (#150). Checking them here moves the failure to the PR.
 //
+// The README is the listing body, so its version examples are checked against
+// package.json too — a stale example hands a Marketplace visitor a superseded
+// release (#165).
+//
 // Uniqueness of `name` across the Marketplace is deliberately absent: it is
 // only knowable from GitHub's own validation.
 import { readFileSync } from 'node:fs';
@@ -41,17 +45,31 @@ function text(value) {
 // README is the listing body, so a stale example hands a Marketplace visitor a
 // version we have already superseded — v0.6.0's examples outlived the release
 // that fixed v0.6.0's own defects (#165).
+// Captures a prerelease suffix too (1.0.0-rc.1): RELEASING.md documents the
+// prerelease flow, and a capture of bare X.Y.Z could never equal such a
+// version, wedging the bump PR. The suffix must end alphanumeric so a
+// sentence's trailing period is not swallowed into the version.
+const V = /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]*[0-9A-Za-z])?)/.source;
+
 const README_VERSION_PATTERNS = [
-  // Bare `@vX.Y.Z` too, not just `no42-org/blitsbom@vX.Y.Z`: the resolution
-  // table writes refs unqualified, and those drift just as easily.
-  { label: 'action ref', re: /@v(\d+\.\d+\.\d+)/g },
-  { label: 'generator image', re: /:report-(\d+\.\d+\.\d+)/g },
-  { label: 'serving image', re: /blitsbom:(\d+\.\d+\.\d+)/g },
+  { label: 'action ref', re: new RegExp(`no42-org/blitsbom@v${V}`, 'g') },
+  // Bare `@vX.Y.Z` as the resolution table writes it. The lookbehind keeps
+  // third-party pins out: in `actions/upload-artifact@v4.6.2` the `@` follows
+  // a word character, while ours follows a backtick, space or line start.
+  { label: 'action ref', re: new RegExp(`(?<![\\w/])@v${V}`, 'g') },
+  { label: 'generator image', re: new RegExp(`:report-${V}`, 'g') },
+  { label: 'serving image', re: new RegExp(`blitsbom:${V}`, 'g') },
 ];
 
 // Blockquotes carry migration notes — "Moved in v0.6.0", "pins to @v0.5.0 keep
 // working" — which are statements about the past and must not be rewritten.
 // Anything outside one is a live example.
+//
+// The exemption is line-based, not CommonMark-aware: a lazy continuation line
+// of a real blockquote is flagged (the fix the error suggests — prefix it with
+// `>` — is also the correct Markdown), and a `>` redirect at the start of a
+// fenced-code line is exempted. Both are accepted as the cost of not parsing
+// Markdown here.
 export function findStaleReadmeVersions(readme, version) {
   const problems = [];
   readme.split('\n').forEach((line, i) => {
@@ -137,7 +155,17 @@ export function checkSource(source) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = process.cwd();
   const source = readFileSync(join(root, 'action.yml'), 'utf8');
-  const problems = checkSource(source);
+  // Parse once: the same document is validated and then reported on. The
+  // success-path field reads below are safe because validateMetadata proved
+  // the fields present — via this doc, not a second parse that could diverge.
+  let doc = null;
+  let problems;
+  try {
+    doc = parse(source);
+    problems = validateMetadata(doc);
+  } catch (err) {
+    problems = [`action.yml is not valid YAML — ${err.message.split('\n')[0]}`];
+  }
 
   const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
   problems.push(
@@ -151,7 +179,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
 
-  const doc = parse(source);
   console.error(
     `marketplace-check: ok — description ${doc.description.length}/${DESCRIPTION_MAX} chars, ` +
       `branding ${doc.branding.icon}/${doc.branding.color}, README examples at ${version}.`

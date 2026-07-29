@@ -93,7 +93,7 @@ When it derives the image, the action logs which one and why; passing `image` ex
 
 Two limits worth knowing. A SHA pinned to a commit *between* releases resolves that commit's `package.json` version, which is the last release — so the generator is a little older than the action. And a fork's SHA resolves against `ghcr.io/no42-org/blitsbom`, not the fork's own registry; pass `image` if you publish your own.
 
-> **Moved in v0.6.0.** The action was `no42-org/blitsbom/report@v0.5.0` and is now at the repository root, `no42-org/blitsbom@v0.6.0`, so it can be listed on the GitHub Marketplace.
+> **Moved in v0.6.0.** The action was `no42-org/blitsbom/report@v0.5.0` and is now at the repository root, `no42-org/blitsbom`, so it can be listed on the GitHub Marketplace.
 >
 > Pins to `@v0.5.0` or any earlier tag keep working — tags are immutable. What breaks is a ref that follows `main`: `no42-org/blitsbom/report@main`, or a SHA pin updated to a commit after the move. Those need the `/report` suffix dropped.
 
