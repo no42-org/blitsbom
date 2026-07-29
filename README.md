@@ -80,15 +80,18 @@ Turn an SBOM into a **single self-contained HTML file** you can attach to a rele
     path: ${{ steps.sbom-report.outputs.report }}
 ```
 
-Pin the action to a release tag for reproducible runs. `image` then defaults to the generator built from that same tag, so the two cannot drift:
+Pin the action however your policy requires — `image` defaults to the generator matching whatever the action itself came from, so the two cannot drift:
 
 | Action ref | Generator image |
 |---|---|
-| `@v0.6.0` | `:report-0.6.0` |
-| `@v0.6` | `:report-0.6` |
-| `@main`, or a commit SHA | `:report-rc` — follows `main` |
+| `@v0.6.0` — a release tag | `:report-0.6.0` |
+| a commit SHA, e.g. Dependabot's pin | `:report-<that commit's version>` |
+| `@main` or another branch | `:report-rc`, the generator built from `main` — the matching pair for a ref that tracks `main` |
+| anything else, or a version that cannot be read | `:report-rc` |
 
-**A commit-SHA pin does not get a pinned generator.** There is no `:report-<sha>` image to derive, so a SHA-pinned action falls back to `:report-rc`, which is mutable. That is worth knowing if you pin by SHA precisely to avoid moving targets — set `image` explicitly to pin both. Whichever image is used, the action logs it.
+When it derives the image, the action logs which one and why; passing `image` explicitly skips that. Set `image` to override — to pin a digest, or to run a branch ref against a released generator.
+
+Two limits worth knowing. A SHA pinned to a commit *between* releases resolves that commit's `package.json` version, which is the last release — so the generator is a little older than the action. And a fork's SHA resolves against `ghcr.io/no42-org/blitsbom`, not the fork's own registry; pass `image` if you publish your own.
 
 > **Moved in v0.6.0.** The action was `no42-org/blitsbom/report@v0.5.0` and is now at the repository root, `no42-org/blitsbom@v0.6.0`, so it can be listed on the GitHub Marketplace.
 >
