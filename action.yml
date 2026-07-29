@@ -33,7 +33,7 @@ inputs:
     description: >-
       Report generator image to run. Defaults to the image matching the version
       of the action you called — a release tag or a commit pinned to one
-      (`@v0.6.0` → `:report-0.6.0`) — so the two cannot disagree. A branch ref
+      (`@vX.Y.Z` → `:report-X.Y.Z`) — so the two cannot disagree. A branch ref
       gets `:report-rc`, the generator built from main.
     required: false
     default: ''

@@ -49,6 +49,7 @@ These are the ones that bite:
 - **Bundle budget: 60 KB gzipped JS**, enforced by `make size-check`. A new dependency usually is not worth it.
 - **Both CycloneDX and SPDX** are supported inputs despite the project's framing — check `parse/format-detect.ts` before assuming a shape.
 - **`action.yml` is a published Marketplace listing**, and its constraints are enforced only when a release is published — a bad `description` or `branding` blocks the listing hours after the commit that broke it. `make marketplace-check` moves that failure into the PR. It cannot check whether `name` is unique across the Marketplace; only GitHub knows that.
+- **The README is the listing body**, so its version examples must match `package.json` — `marketplace-check` fails the build otherwise, which means a release bump has to move them in the same PR. References inside a blockquote are exempt: those are migration notes about the past.
 
 ## Conventions
 

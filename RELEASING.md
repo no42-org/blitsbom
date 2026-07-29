@@ -58,13 +58,26 @@ git log "$(git tag -l 'v*' --sort=-v:refname | head -1)"..HEAD --oneline
 
 `main` is protected and requires the `gates / verify` and `gates / lint-workflows` checks, so the version bump lands via a PR — it cannot be pushed directly. **Tag the merged bump commit, not your local one**: squash-merging creates a new commit, so a tag made before the merge points at a commit that is not on `main`.
 
+The README's usage examples move in the **same** PR. It doubles as the
+Marketplace listing body, so leaving them behind advertises a superseded release
+to anyone copy-pasting from the listing — which is how v0.6.0's examples outlived
+the release that fixed v0.6.0's own defects ([#165](https://github.com/no42-org/blitsbom/issues/165)).
+`make marketplace-check` compares them against `package.json` and fails the bump
+PR until they match, so this is enforced rather than remembered. Version
+references inside a blockquote are exempt: those are migration notes about the
+past and must not be rewritten.
+
 ```bash
 # Bump package.json (recorded in the bundle for diagnostics) on a branch.
 git checkout -b chore/release-v0.2.0
 npm version --no-git-tag-version 0.2.0   # adjust to the chosen version
 
+# Move the README's examples to match. marketplace-check names every line that
+# is still stale, so run it, fix what it lists, and run it again.
+make marketplace-check
+
 # Commit the version bump using the conventional-commits style.
-git add package.json package-lock.json
+git add package.json package-lock.json README.md
 git commit -s -m "chore(release): v0.2.0"
 git push -u origin chore/release-v0.2.0
 gh pr create --fill
