@@ -9,7 +9,7 @@ Always go through `make` — CI runs the same targets.
 ```bash
 make install      # npm ci
 make ci           # what CI runs: build + verify + size-check + smoke + e2e
-make verify       # lint + test + purity-check
+make verify       # lint + test + purity-check + marketplace-check
 make test         # vitest run
 make dev          # Vite dev server
 make report SBOM=bom.json [VERSION=x OUT=report.html VEX=vex.json]  # CI HTML report
@@ -48,6 +48,7 @@ These are the ones that bite:
 - **No network calls, ever.** `make purity-check` fails the build on `fetch`, `XMLHttpRequest`, `sendBeacon` or any analytics SDK in `src/`. The no-phone-home promise is the product, not a preference.
 - **Bundle budget: 60 KB gzipped JS**, enforced by `make size-check`. A new dependency usually is not worth it.
 - **Both CycloneDX and SPDX** are supported inputs despite the project's framing — check `parse/format-detect.ts` before assuming a shape.
+- **`action.yml` is a published Marketplace listing**, and its constraints are enforced only when a release is published — a bad `description` or `branding` blocks the listing hours after the commit that broke it. `make marketplace-check` moves that failure into the PR. It cannot check whether `name` is unique across the Marketplace; only GitHub knows that.
 
 ## Conventions
 
