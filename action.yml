@@ -77,32 +77,59 @@ runs:
           VERSION="${REF_NAME#v}"
         fi
 
-        # Image precedence: the explicit input, else the generator image built
-        # from this same commit — `uses: no42-org/blitsbom@v0.6.0` runs
-        # :report-0.6.0, so the action and the generator cannot disagree about
-        # their version.
+        # Match the generator to the source the action itself came from, so the
+        # two cannot disagree about their version. In precedence order:
         #
-        # Which refs can derive an image is dictated by what docker.yml
-        # actually publishes under the `report-` prefix: `{{version}}` and
-        # `{{major}}.{{minor}}`, so vX.Y.Z and vX.Y both resolve. Nothing else
-        # does. A bare major alias (@v1) has no :report-1 counterpart, and
-        # there is no :report-<sha> either — the `type=sha` tag is on the
-        # serving image only. So a branch ref, a local `uses: ./` (where
-        # action_ref is empty), and a commit-SHA pin all fall back to the tag
-        # that follows main.
-        #
-        # A SHA pin falling back is the awkward case, since pinning by SHA is
-        # what this project recommends elsewhere: it buys an immutable action
-        # but a mutable generator. Hence the echo below — a fallback should be
-        # visible in the log, not silent. Set `image:` to pin both.
+        #   1. the explicit `image:` input — always wins.
+        #   2. a vX.Y.Z tag ref. The tag is authoritative rather than a proxy:
+        #      docker.yml names the generator image from the git tag via
+        #      `type=semver`, so the tag is literally what the image is called.
+        #   3. a commit-SHA ref. No tag is available, so read the version the
+        #      action ships with. The whole repository is materialised at
+        #      GITHUB_ACTION_PATH for a remote action (#159), package.json
+        #      included. Dependabot pins the release tag's commit, whose
+        #      package.json carries that release's version, so a SHA pin
+        #      resolves the same image a tag ref would.
+        #   4. anything else — a branch ref, or a local `uses: ./` where
+        #      action_ref is empty. :report-rc is the generator built from main,
+        #      so for a ref that tracks main it is the matching pair, not a
+        #      consolation prize. It is also the floor if a version cannot be
+        #      read at all, which is why step 3 is allowed to fail quietly.
         IMAGE="${IMAGE_IN}"
         if [ -z "${IMAGE}" ]; then
+          REGISTRY_IMAGE="ghcr.io/no42-org/blitsbom"
+          RESOLVED_VERSION=""
+          RESOLVED_FROM=""
+
           case "${ACTION_REF}" in
-            v[0-9]*.[0-9]*.[0-9]*) IMAGE="ghcr.io/no42-org/blitsbom:report-${ACTION_REF#v}" ;;
-            v[0-9]*.[0-9]*)        IMAGE="ghcr.io/no42-org/blitsbom:report-${ACTION_REF#v}" ;;
-            *)                     IMAGE="ghcr.io/no42-org/blitsbom:report-rc" ;;
+            v[0-9]*.[0-9]*.[0-9]*)
+              RESOLVED_VERSION="${ACTION_REF#v}"
+              RESOLVED_FROM="tag ${ACTION_REF}"
+              ;;
           esac
-          echo "generator image: ${IMAGE} (derived from action ref '${ACTION_REF}')"
+
+          # A 40-character all-hex ref is a commit SHA. Checked by shape
+          # because no context distinguishes a tag ref from a branch or a SHA.
+          if [ -z "${RESOLVED_VERSION}" ] && [ "${#ACTION_REF}" -eq 40 ] &&
+             [ -z "$(printf '%s' "${ACTION_REF}" | tr -d '0-9a-f')" ]; then
+            PACKAGE_JSON="${GITHUB_ACTION_PATH}/package.json"
+            if [ -f "${PACKAGE_JSON}" ]; then
+              RESOLVED_VERSION="$(
+                sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+                  "${PACKAGE_JSON}" | head -1
+              )"
+              RESOLVED_FROM="package.json at the pinned commit"
+            fi
+          fi
+
+          if [ -n "${RESOLVED_VERSION}" ]; then
+            IMAGE="${REGISTRY_IMAGE}:report-${RESOLVED_VERSION}"
+          else
+            IMAGE="${REGISTRY_IMAGE}:report-rc"
+            RESOLVED_FROM="no version for ref '${ACTION_REF}' — using the main-tip generator"
+          fi
+
+          echo "generator image: ${IMAGE} (${RESOLVED_FROM})"
         fi
 
         args=("/work/${SBOM}" --output "/work/${OUTPUT}" --compress "${COMPRESS}")
