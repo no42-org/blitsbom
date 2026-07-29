@@ -4,7 +4,7 @@
   "version": "0.6.0",
   "type": "module",
   "license": "MIT",
-  "description": "Zero-install CycloneDX SBOM viewer — runs in your browser.",
+  "description": "Zero-install CycloneDX and SPDX SBOM viewer — runs in your browser.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -43,9 +43,12 @@ outputs:
     description: Path to the generated report (equal to the `output` input).
     value: ${{ steps.generate.outputs.report }}
 
+# A Marketplace listing cannot carry a custom logo — only a Feather icon name
+# and a colour from a fixed palette. These echo assets/logo.svg, whose mark is
+# vertical bars of varying height in teal and blue.
 branding:
-  icon: file-text
-  color: gray-dark
+  icon: bar-chart-2
+  color: blue
 
 runs:
   using: composite
