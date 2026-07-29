@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/no42-org/blitsbom/main/assets/logo.svg" alt="" width="40" height="40" align="middle"> blitsbom
+# <img src="https://raw.githubusercontent.com/no42-org/blitsbom/main/assets/logo.svg" alt="" width="30" height="30" align="middle"> blitsbom
 
 [![CI](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/no42-org/blitsbom?sort=semver&logo=github)](https://github.com/no42-org/blitsbom/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
