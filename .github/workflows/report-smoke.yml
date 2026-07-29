@@ -27,7 +27,7 @@ jobs:
 
       - name: Generate a report via the composite action
         id: report
-        uses: ./report
+        uses: ./
         with:
           sbom: samples/opennms/prometheus-remote-writer.json
           output: ci-report.html

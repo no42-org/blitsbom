@@ -257,7 +257,7 @@ jobs:
           upload-release-assets: false
 
       # Human-viewable rendering of dist.zip.cdx.json, produced by this repo's
-      # own report action. `uses: ./report` resolves to the tagged commit, so
+      # own report action. `uses: ./` resolves to the tagged commit, so
       # each release dogfoods exactly the action version it ships, and the
       # generator image is pinned to the matching :report-VERSION tag — the
       # `images` job has already waited for that tag to exist in GHCR before
@@ -269,7 +269,7 @@ jobs:
         run: echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Render HTML report of the SBOM
-        uses: ./report
+        uses: ./
         with:
           sbom: dist.zip.cdx.json
           output: dist.zip.cdx.html
