@@ -1,8 +1,9 @@
 name: blitsbom SBOM report
+# Keep under 125 characters: the Marketplace rejects a longer description at
+# publish time, and nothing in CI checks it.
 description: >-
-  Generate a self-contained, offline HTML SBOM report from a CycloneDX or SPDX
-  SBOM using the blitsbom report generator image. Provenance defaults are taken
-  from the workflow context.
+  Turn a CycloneDX or SPDX SBOM into one self-contained HTML report you can
+  attach to a release. Works offline.
 
 inputs:
   sbom:
