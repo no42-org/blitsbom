@@ -3,24 +3,24 @@
 // when publishing to the GitHub Marketplace.
 //
 // These constraints are enforced only at publish time, on the release-draft
-// page, one batch of errors at a time. Nothing in a normal CI run touches
-// them, so a listing can be blocked hours after the change that broke it —
-// which is how a 181-character description shipped (#151) and how the missing
-// `branding` block nearly did (#150). Checking them here moves the failure to
-// the PR that causes it.
+// page, one batch of errors at a time. Nothing else in CI touches them, so a
+// listing can be blocked hours after the change that broke it — which is how a
+// 181-character description shipped (#151) and how the missing `branding` block
+// nearly did (#150). Checking them here moves the failure to the PR.
 //
 // Uniqueness of `name` across the Marketplace is deliberately absent: it is
 // only knowable from GitHub's own validation.
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { parse } from 'yaml';
 
-const FILE = join(process.cwd(), 'action.yml');
-
-// Marketplace caps the description. The limit is exclusive: 125 is rejected.
-const DESCRIPTION_MAX = 125;
+// GitHub's rejection message is "must be less than 125 characters", so 124 is
+// the longest that passes.
+export const DESCRIPTION_MAX = 124;
 
 // The documented palette for `branding.color`. Anything else is rejected.
-const BRANDING_COLORS = new Set([
+export const BRANDING_COLORS = [
   'white',
   'yellow',
   'blue',
@@ -29,121 +29,93 @@ const BRANDING_COLORS = new Set([
   'red',
   'purple',
   'gray-dark',
-]);
+];
 
-const lines = readFileSync(FILE, 'utf8').split('\n');
+// A field is unusable if absent, not a string, or blank — the Marketplace
+// rejects an empty name, description or icon just as it rejects a missing one.
+function text(value) {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
+}
 
-// Read one scalar by key path — `description` or `branding.color`. Returns the
-// effective string GitHub's parser would see.
-//
-// Only the YAML shapes this file actually uses are understood. An unrecognized
-// shape throws rather than returning something approximate: a metadata guard
-// that quietly passes on input it cannot read is worse than no guard, since it
-// reports the constraint as satisfied when it was never evaluated.
-function readScalar(path) {
-  const segments = path.split('.');
-  const key = segments.at(-1);
-  const indent = (segments.length - 1) * 2;
-  const start = lines.findIndex((l) => l.startsWith(`${' '.repeat(indent)}${key}:`));
-  if (start === -1) return null;
+// Returns a list of human-readable problems; empty means the metadata would be
+// accepted. Pure and exported so the cases live in tests rather than in a
+// maintainer's memory.
+export function validateMetadata(doc) {
+  const problems = [];
 
-  const inline = lines[start].slice(indent + key.length + 1).trim();
-
-  // Block scalar: `>`/`>-`/`>+` fold newlines to spaces, `|`/`|-`/`|+` keep them.
-  const block = inline.match(/^([>|])([-+]?)$/);
-  if (block) {
-    const body = [];
-    for (const line of lines.slice(start + 1)) {
-      if (line.trim() === '') {
-        body.push('');
-        continue;
-      }
-      if (!/^\s/.test(line)) break;
-      body.push(line.trim());
-    }
-    while (body.at(-1) === '') body.pop();
-    return block[1] === '>' ? body.join(' ') : body.join('\n');
+  if (doc === null || typeof doc !== 'object') {
+    return ['action.yml did not parse as a mapping.'];
   }
 
-  if (inline === '') {
-    throw new Error(
-      `${path}: empty value with no block indicator. If this is now a nested ` +
-        `structure or a shape this script does not parse, update readScalar().`
+  if (!text(doc.name)) {
+    problems.push('name: missing or empty. A listing needs one, and it must be unique on the Marketplace.');
+  }
+
+  const description = text(doc.description);
+  if (!description) {
+    problems.push('description: missing or empty. A listing requires one.');
+  } else if (description.length > DESCRIPTION_MAX) {
+    problems.push(
+      `description: ${description.length} characters, at most ${DESCRIPTION_MAX} allowed. ` +
+        `Trim ${description.length - DESCRIPTION_MAX} or more.`
     );
   }
 
-  // A plain inline scalar may still continue onto indented lines below it.
-  const continuation = [];
-  for (const line of lines.slice(start + 1)) {
-    if (line.trim() === '' || !/^\s/.test(line)) break;
-    if (/^\s+[\w-]+:/.test(line)) break; // a nested key, not a continuation
-    continuation.push(line.trim());
+  const branding = doc.branding;
+  if (branding === null || typeof branding !== 'object') {
+    problems.push(
+      'branding: missing. It needs both `icon` (a Feather icon name) and `color`, ' +
+        'or the action cannot be listed.'
+    );
+    return problems;
   }
 
-  const quoted = inline.match(/^(['"])(.*)\1$/);
-  if (quoted) {
-    if (continuation.length) {
-      throw new Error(`${path}: quoted scalar with trailing lines is not parsed here.`);
-    }
-    return quoted[2];
+  if (!text(branding.icon)) {
+    problems.push('branding.icon: missing or empty. Use a Feather icon name.');
   }
 
-  return [inline, ...continuation].join(' ');
+  const color = text(branding.color);
+  if (!color) {
+    problems.push('branding.color: missing or empty.');
+  } else if (!BRANDING_COLORS.includes(color)) {
+    problems.push(
+      `branding.color: "${color}" is not accepted. Use one of: ${BRANDING_COLORS.join(', ')}.`
+    );
+  }
+
+  return problems;
 }
 
-const problems = [];
-
-// A shape readScalar cannot read is reported as a failure, not a crash: the
-// outcome is the same (non-zero, never a silent pass) but the maintainer gets
-// told which key to look at instead of a stack trace. UNREADABLE is distinct
-// from null so an unparseable key is not also reported as a missing one.
-const UNREADABLE = Symbol('unreadable');
-function read(path) {
+// Parse and validate in one step. A malformed document is reported as a
+// problem rather than thrown: the file is unpublishable either way, and a
+// parse error naming the line is more use than a stack trace.
+export function checkSource(source) {
+  let doc;
   try {
-    return readScalar(path);
+    doc = parse(source);
   } catch (err) {
-    problems.push(err.message);
-    return UNREADABLE;
+    return [`action.yml is not valid YAML — ${err.message.split('\n')[0]}`];
   }
+  return validateMetadata(doc);
 }
 
-const name = read('name');
-if (name === null) {
-  problems.push('name: missing. A listing needs one, and it must be unique on the Marketplace.');
-}
+// Only run as a CLI when invoked directly, so importing this from a test does
+// not exit the process.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const file = join(process.cwd(), 'action.yml');
+  const source = readFileSync(file, 'utf8');
+  const problems = checkSource(source);
+  const doc = problems.length ? null : parse(source);
 
-const description = read('description');
-if (description === null) {
-  problems.push('description: missing. A listing requires one.');
-} else if (typeof description === 'string' && description.length >= DESCRIPTION_MAX) {
-  problems.push(
-    `description: ${description.length} characters, must be under ${DESCRIPTION_MAX}. ` +
-      `Trim ${description.length - DESCRIPTION_MAX + 1} or more.`
+  if (problems.length) {
+    console.error('marketplace-check: action.yml would be rejected when publishing.\n');
+    for (const p of problems) console.error(`  ✗ ${p}`);
+    console.error('');
+    process.exit(1);
+  }
+
+  console.error(
+    `marketplace-check: ok — description ${doc.description.length}/${DESCRIPTION_MAX} chars, ` +
+      `branding ${doc.branding.icon}/${doc.branding.color}.`
   );
 }
-
-const icon = read('branding.icon');
-const color = read('branding.color');
-if (icon === null || color === null) {
-  problems.push(
-    'branding: needs both `icon` (a Feather icon name) and `color`. ' +
-      'Without it the action cannot be listed.'
-  );
-} else if (typeof color === 'string' && !BRANDING_COLORS.has(color)) {
-  problems.push(
-    `branding.color: "${color}" is not accepted. Use one of: ` +
-      `${[...BRANDING_COLORS].join(', ')}.`
-  );
-}
-
-if (problems.length) {
-  console.error('marketplace-check: action.yml would be rejected when publishing.\n');
-  for (const p of problems) console.error(`  ✗ ${p}`);
-  console.error('');
-  process.exit(1);
-}
-
-console.error(
-  `marketplace-check: ok — description ${description.length}/${DESCRIPTION_MAX - 1} chars, ` +
-    `branding ${icon}/${color}.`
-);
