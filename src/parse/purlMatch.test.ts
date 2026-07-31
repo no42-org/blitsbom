@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalizePurl } from './purlMatch';
+import { canonicalizePurl, originatorFromPurl } from './purlMatch';
 
 describe('canonicalizePurl', () => {
   it('returns null for null / undefined / empty / non-purl input', () => {
@@ -93,5 +93,77 @@ describe('canonicalizePurl', () => {
       'pkg:maven/org.example/foo@1.2.3?type=jar&classifier=sources',
     );
     expect(a).toBe(b);
+  });
+});
+
+describe('originatorFromPurl', () => {
+  it('returns the Maven groupId', () => {
+    expect(originatorFromPurl('pkg:maven/com.google.guava/guava@33.0')).toBe(
+      'com.google.guava',
+    );
+  });
+
+  it('decodes a scoped npm namespace rather than showing %40', () => {
+    expect(originatorFromPurl('pkg:npm/%40angular/core@17.0.0')).toBe(
+      '@angular',
+    );
+    // Some generators emit the scope unencoded; both must agree.
+    expect(originatorFromPurl('pkg:npm/@angular/core@17.0.0')).toBe('@angular');
+  });
+
+  it('keeps every segment of a multi-segment namespace', () => {
+    // Truncating to the first segment would collapse every Go module on
+    // GitHub into one bucket. (#169)
+    expect(
+      originatorFromPurl('pkg:golang/github.com/gorilla/mux@v1.8.0'),
+    ).toBe('github.com/gorilla');
+  });
+
+  it('returns the distro for OS packages', () => {
+    expect(originatorFromPurl('pkg:deb/debian/curl@7.88.1-10')).toBe('debian');
+    expect(originatorFromPurl('pkg:apk/alpine/musl@1.2.4')).toBe('alpine');
+  });
+
+  it('returns null for namespaceless purl types', () => {
+    expect(originatorFromPurl('pkg:pypi/requests@2.31.0')).toBe(null);
+    expect(originatorFromPurl('pkg:cargo/serde@1.0.197')).toBe(null);
+    expect(originatorFromPurl('pkg:oci/nginx@sha256%3Aabc')).toBe(null);
+    expect(originatorFromPurl('pkg:generic/openssl@3.0.13')).toBe(null);
+  });
+
+  it('returns null for null / empty / malformed input', () => {
+    expect(originatorFromPurl(null)).toBe(null);
+    expect(originatorFromPurl('')).toBe(null);
+    expect(originatorFromPurl('not-a-purl')).toBe(null);
+    expect(originatorFromPurl('pkg:')).toBe(null);
+    expect(originatorFromPurl('pkg:/foo/bar@1.0')).toBe(null);
+  });
+
+  it('ignores qualifiers and subpath', () => {
+    expect(
+      originatorFromPurl('pkg:maven/org.example/foo@1.2.3?type=jar'),
+    ).toBe('org.example');
+    expect(
+      originatorFromPurl('pkg:golang/github.com/x/y@v1#sub/dir'),
+    ).toBe('github.com/x');
+  });
+
+  it('keeps namespace case verbatim, unlike canonicalizePurl', () => {
+    // The rollup label is displayed; the canonical form is a join key.
+    expect(originatorFromPurl('pkg:github/NixOS/nixpkgs@1.0')).toBe(
+      'NixOS',
+    );
+  });
+
+  it('keeps a segment with a malformed escape rather than dropping it', () => {
+    expect(originatorFromPurl('pkg:maven/100%discount/foo@1.0')).toBe(
+      '100%discount',
+    );
+  });
+
+  it('handles a purl with no version', () => {
+    expect(originatorFromPurl('pkg:maven/com.google.guava/guava')).toBe(
+      'com.google.guava',
+    );
   });
 });

@@ -92,6 +92,10 @@
         </li>
       {/each}
     </ul>
+    <p class="chart__note">
+      Where the SBOM declares no originator, the package namespace is used
+      instead (for example a Maven groupId).
+    </p>
   </section>
 {/if}
 
@@ -104,6 +108,15 @@
     background: var(--color-surface);
     border: 1px solid var(--color-ink-200);
     border-radius: 12px;
+  }
+  /* A report recipient has no way to tell a declared originator from one
+     derived from a purl namespace, so the chart says so once. Deliberately
+     not a per-slice marker: the distinction is not actionable. (#169) */
+  .chart__note {
+    margin: 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: var(--color-ink-500);
   }
   .chart__heading {
     margin: 0;

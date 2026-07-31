@@ -12,7 +12,7 @@ import type {
 import { SUPPORTED_CDX_VERSIONS } from '../types';
 import { emptyToNull, notNull, isRecord, isNoAssertion } from './util';
 import { normalizeLicenseValue } from './licenseValue';
-import { canonicalizePurl } from './purlMatch';
+import { canonicalizePurl, originatorFromPurl } from './purlMatch';
 
 export function isCdxBom(value: unknown): value is CdxBom {
   if (typeof value !== 'object' || value === null) return false;
@@ -64,11 +64,16 @@ export function normalizeCdxComponent(raw: CdxComponent): Component {
  * has no originator field, so take the first declared answer:
  *
  *   publisher → supplier.name → manufacturer.name (1.6) → authors[0].name (1.6)
- *   or the deprecated `author` string (≤1.5).
+ *   or the deprecated `author` string (≤1.5) → group → the purl namespace.
  *
  * Every tier skips NOASSERTION, not just empties: SPDX→CycloneDX converters
  * inject NOASSERTION into exactly these fields, and a converted
  * `publisher: "NOASSERTION"` must not shadow a real supplier below it. (#144)
+ *
+ * The last two tiers exist because a syft CycloneDX scan has the same gap its
+ * SPDX scan has: nothing declares an origin, while `group` says
+ * `com.google.guava` right there. `group` comes first because it is that fact
+ * declared directly, and a component can carry it with no purl at all. (#169)
  */
 function deriveOriginator(raw: CdxComponent): string | null {
   const candidates = [
@@ -78,6 +83,8 @@ function deriveOriginator(raw: CdxComponent): string | null {
     Array.isArray(raw.authors) && isRecord(raw.authors[0])
       ? raw.authors[0].name
       : stripContactSuffix(raw.author),
+    raw.group,
+    originatorFromPurl(emptyToNull(raw.purl)),
   ];
   for (const c of candidates) {
     if (typeof c !== 'string') continue;

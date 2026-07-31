@@ -160,3 +160,56 @@ describe('CycloneDX originator fallback', () => {
     ).toBe('Publisher');
   });
 });
+
+describe('CycloneDX originator group and purl tiers (#169)', () => {
+  it('falls back to group when nothing else is declared', () => {
+    expect(originatorOf({ group: 'com.google.guava' })).toBe(
+      'com.google.guava',
+    );
+  });
+
+  it('prefers group over the purl namespace', () => {
+    expect(
+      originatorOf({
+        group: 'declared.group',
+        purl: 'pkg:maven/from.the.purl/foo@1.0',
+      }),
+    ).toBe('declared.group');
+  });
+
+  it('falls back to the purl namespace when group is absent', () => {
+    expect(
+      originatorOf({ purl: 'pkg:maven/io.dropwizard.metrics/metrics-core@4.2' }),
+    ).toBe('io.dropwizard.metrics');
+  });
+
+  it('keeps a real supplier ahead of group and purl (#144 stays fixed)', () => {
+    expect(
+      originatorOf({
+        publisher: 'NOASSERTION',
+        supplier: { name: 'Acme' },
+        group: 'com.acme.internal',
+        purl: 'pkg:maven/com.acme.internal/foo@1.0',
+      }),
+    ).toBe('Acme');
+  });
+
+  it('falls through a NOASSERTION group to the purl namespace', () => {
+    expect(
+      originatorOf({
+        group: 'NOASSERTION',
+        purl: 'pkg:maven/com.google.guava/guava@33.0',
+      }),
+    ).toBe('com.google.guava');
+  });
+
+  it('is null when group is absent and the purl has no namespace', () => {
+    expect(originatorOf({ purl: 'pkg:pypi/requests@2.31.0' })).toBeNull();
+  });
+
+  it('decodes a scoped npm namespace', () => {
+    expect(originatorOf({ purl: 'pkg:npm/%40angular/core@17.0.0' })).toBe(
+      '@angular',
+    );
+  });
+});

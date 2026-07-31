@@ -9,7 +9,7 @@ import type {
 import { isNoAssertion, emptyToNull, isRecord } from './util';
 import { buildLicenseRefMap } from './licenseRef';
 import { normalizeLicenseValue } from './licenseValue';
-import { canonicalizePurl } from './purlMatch';
+import { canonicalizePurl, originatorFromPurl } from './purlMatch';
 
 export function isSpdxDocument(value: unknown): value is SpdxDocument {
   if (typeof value !== 'object' || value === null) return false;
@@ -135,8 +135,17 @@ export function normalizeSpdxPackage(
   // (the entity that delivered this package). Many tools fill only one;
   // for the originator field we prefer `originator` and fall back to
   // `supplier`. The publisher field follows the historical mapping.
+  //
+  // The purl namespace is the last resort. syft fills originator/supplier
+  // only from a jar manifest's `Implementation-Vendor`, which most projects
+  // never set, so 40% of a Maven SBOM's components arrive with no declared
+  // origin at all while carrying a groupId that states it plainly. A
+  // declared value always wins, including one that names the same origin
+  // differently than the namespace does. (#169)
   const originator =
-    parseSpdxAgent(pkg.originator) ?? parseSpdxAgent(pkg.supplier);
+    parseSpdxAgent(pkg.originator) ??
+    parseSpdxAgent(pkg.supplier) ??
+    originatorFromPurl(purl);
   return {
     type: 'library',
     group: emptyToNull(extractGroupFromPurl(purl)),
