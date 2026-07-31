@@ -214,6 +214,28 @@ gh release delete v0.2.0 --yes --cleanup-tag
 
 Then cut a new patch version.
 
+## Verifying a new CycloneDX minor
+
+The version gate accepts any CycloneDX `1.x` at or above 1.4, so a new minor loads without a code change.
+What it does *not* do is claim the minor was checked: `CDX_HIGHEST_VERIFIED_MINOR` in `src/types.ts` records how far verification actually got, and anything above it renders as "newer than this build" in the header.
+
+When a new CycloneDX minor ships, bump it like this:
+
+1. Diff the schemas for the fields the parser reads:
+   ```bash
+   for v in 1.7 1.8; do
+     curl -sSL -o "bom-$v.json" \
+       "https://raw.githubusercontent.com/CycloneDX/specification/master/schema/bom-$v.schema.json"
+   done
+   ```
+   Compare `definitions.component.properties` (`type`, `group`, `name`, `version`, `description`, `publisher`, `supplier`, `manufacturer`, `authors`, `author`, `scope`, `purl`, `bom-ref`, `licenses`), `definitions.metadata.properties` (`component`, `timestamp`, `tools`), and `definitions.{license,licenses,vulnerability}`.
+2. If any of those changed shape or meaning, that is a parser change, not a constant bump. Stop and open an issue.
+3. Add a fixture produced by a real generator, not a hand-edited `specVersion`. See `samples/syft/blitsbom-cdx-1.7.json`.
+4. Wire it into `scripts/e2e.mjs` so it loads in a real browser.
+5. Bump `CDX_HIGHEST_VERIFIED_MINOR` and update the "Supported input" table in `README.md`.
+
+Leaving the constant stale is safe. It costs a caveat on a document that would parse correctly anyway, never a refusal.
+
 ## Troubleshooting
 
 - **`docker.yml` fails on first run with "denied: permission_denied"** — the GHCR package didn't exist yet and is private by default. After the first successful publish, set the package visibility to `public` under **Repository → Packages → blitsbom → Package settings**, or grant the workflow `packages: write` (already configured here).

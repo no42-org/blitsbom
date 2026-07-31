@@ -129,9 +129,11 @@ sha256sum bom.json   # compare against the digest shown in the report header
 
 | Format | Versions | Status |
 |--------|----------|--------|
-| CycloneDX JSON | 1.4 / 1.5 / 1.6 | Supported |
+| CycloneDX JSON | 1.4 – 1.7 | Verified — schema-checked against the fields blitsbom reads, with fixtures from real generators |
+| CycloneDX JSON | 1.8+ | Accepted — CycloneDX minors are additive, so newer ones load; the header marks them "newer than this build" until verified |
 | SPDX JSON | 2.x (2.2 / 2.3) | Supported |
 | CycloneDX 1.0 – 1.3 | — | Rejected with a clear error (open an issue if you need it) |
+| CycloneDX 2.x | — | Rejected — a major version is a spec break, not a minor addition |
 | CycloneDX XML | — | Not yet — open an issue |
 | SPDX 3.x | — | Not yet — open an issue |
 

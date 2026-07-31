@@ -1,5 +1,6 @@
 <script lang="ts">
   import { store } from '../state/store.svelte';
+  import { formatSpecLabel } from '../parse/specLabel';
 
   // Release provenance for a CI-generated report. Everything here is either
   // supplied by the pipeline (which the SBOM cannot know) or derived from the
@@ -10,13 +11,7 @@
   const project = $derived(p?.project ?? meta?.projectName ?? null);
   const version = $derived(p?.version ?? meta?.productVersion ?? null);
 
-  const formatLabel = $derived(
-    meta
-      ? meta.sbomFormat === 'CycloneDX-1.x'
-        ? `CycloneDX ${meta.specVersion}`
-        : meta.specVersion
-      : null,
-  );
+  const formatLabel = $derived(meta ? formatSpecLabel(meta) : null);
 
   function formatTimestamp(iso: string | null | undefined): string | null {
     if (!iso) return null;
