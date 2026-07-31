@@ -18,6 +18,7 @@ import { gzipSync } from 'node:zlib';
 import { parseSbomText, parseAsVex } from '../parse/load';
 import { buildPayloadScripts } from '../parse/payload';
 import { artifactBaseName } from '../parse/util';
+import { formatSpecLabel } from '../parse/specLabel';
 import type { PayloadEncoding, ReportProvenance, SbomMetadata } from '../types';
 
 /** SBOMs below this on-disk size embed as raw JSON (human-inspectable);
@@ -195,10 +196,7 @@ function buildSummary(
   licenseCount: number,
   encoding: PayloadEncoding,
 ): string {
-  const format =
-    metadata.sbomFormat === 'CycloneDX-1.x'
-      ? `CycloneDX ${metadata.specVersion}`
-      : metadata.specVersion;
+  const format = formatSpecLabel(metadata);
   return (
     `embedded ${componentCount} components · ${licenseCount} licenses · ` +
     `${format} · ${encoding}`

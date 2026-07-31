@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { LoadedSbom } from '../types';
   import { store } from '../state/store.svelte';
+  import { formatSpecLabel } from '../parse/specLabel';
   import LoadVexButton from './LoadVexButton.svelte';
 
   interface Props {
@@ -42,9 +43,7 @@
           </h1>
         {/if}
         <p class="mt-1 text-sm text-ink-500">
-          {sbom.metadata.sbomFormat === 'CycloneDX-1.x'
-            ? `CycloneDX ${sbom.metadata.specVersion}`
-            : sbom.metadata.specVersion}
+          {formatSpecLabel(sbom.metadata)}
           {#if sbom.metadata.sbomTool}
             <span aria-hidden="true">·</span>
             <span title="Tool that generated this SBOM">{sbom.metadata.sbomTool}</span>

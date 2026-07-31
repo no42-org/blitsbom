@@ -23,6 +23,22 @@ export const CDX_MINIMUM_MINOR = 4;
 /** Human-readable range for error messages, e.g. "1.4 or later". */
 export const CDX_SUPPORTED_RANGE = `${CDX_SUPPORTED_MAJOR}.${CDX_MINIMUM_MINOR} or later`;
 
+/**
+ * Highest CycloneDX minor whose schema has actually been diffed against the
+ * fields this parser reads, and which has a real-generator fixture.
+ *
+ * Above this, documents are still accepted — minors are additive by policy —
+ * but the acceptance is an assumption rather than a check, and the UI says so
+ * (`formatSpecLabel`). Bump this only after diffing the new minor's schema and
+ * adding a fixture; see the "Verifying a new CycloneDX minor" section of
+ * RELEASING.md. Leaving it stale is safe: it costs a caveat on a document that
+ * would parse correctly anyway, never a refusal.
+ */
+export const CDX_HIGHEST_VERIFIED_MINOR = 7;
+
+/** Human-readable verified range, e.g. "1.4 – 1.7". */
+export const CDX_VERIFIED_RANGE = `${CDX_SUPPORTED_MAJOR}.${CDX_MINIMUM_MINOR} – ${CDX_SUPPORTED_MAJOR}.${CDX_HIGHEST_VERIFIED_MINOR}`;
+
 export interface CdxLicenseObject {
   id?: string;
   name?: string;
