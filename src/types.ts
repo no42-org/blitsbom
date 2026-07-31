@@ -1,12 +1,27 @@
 // CycloneDX raw shapes (subset relevant to v1).
 
-export type CdxSpecVersion = '1.4' | '1.5' | '1.6';
+/**
+ * Not a closed union. An unrecognized minor is accepted and carried through
+ * to the header verbatim, so the value here can be a version this build has
+ * never heard of. See `isSupportedCdxVersion`.
+ */
+export type CdxSpecVersion = string;
 
-export const SUPPORTED_CDX_VERSIONS: readonly CdxSpecVersion[] = [
-  '1.4',
-  '1.5',
-  '1.6',
-] as const;
+/** The CycloneDX major version this parser understands. A major bump is a
+ * spec break and is refused; minors within it are additive by policy. */
+export const CDX_SUPPORTED_MAJOR = 1;
+
+/**
+ * Oldest minor accepted. Not load-bearing for any parsing decision — nothing
+ * branches on `specVersion` — so it exists purely to say how far back
+ * compatibility was verified. Raising it would delete no code (the
+ * deprecated `tools` array and `author` string stay legal well past 1.4) and
+ * would refuse documents the CycloneDX Maven plugin still emits. (#171)
+ */
+export const CDX_MINIMUM_MINOR = 4;
+
+/** Human-readable range for error messages, e.g. "1.4 or later". */
+export const CDX_SUPPORTED_RANGE = `${CDX_SUPPORTED_MAJOR}.${CDX_MINIMUM_MINOR} or later`;
 
 export interface CdxLicenseObject {
   id?: string;

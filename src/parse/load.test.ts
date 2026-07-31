@@ -43,11 +43,89 @@ describe('parseSbomText — CycloneDX', () => {
     expect(result.error).toMatch(/CycloneDX 1\.3 is not supported/);
   });
 
-  it('rejects unsupported future CycloneDX versions (1.7)', () => {
-    const result = parseSbomText(
-      JSON.stringify({ bomFormat: 'CycloneDX', specVersion: '1.7' }),
-    );
-    expect(result.ok).toBe(false);
+  // Was a rejection case until #171: syft 1.46 emits 1.7 by default, so an
+  // enumerated allowlist refused the output of the most common generator.
+  it.each(['1.4', '1.5', '1.6', '1.7', '1.10', '1.99'])(
+    'accepts CycloneDX %s',
+    (specVersion) => {
+      const result = parseSbomText(
+        JSON.stringify({
+          bomFormat: 'CycloneDX',
+          specVersion,
+          components: [{ type: 'library', name: 'foo', version: '1.0.0' }],
+        }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.sbom.components).toHaveLength(1);
+      expect(result.sbom.metadata.specVersion).toBe(specVersion);
+    },
+  );
+
+  // 1.10 must beat 1.4 numerically; a lexical compare gets this backwards.
+  it('compares the minor numerically, not lexically', () => {
+    const parse = (specVersion: string) =>
+      parseSbomText(JSON.stringify({ bomFormat: 'CycloneDX', specVersion })).ok;
+    expect(parse('1.10')).toBe(true);
+    expect(parse('1.9')).toBe(true);
+    expect(parse('1.3')).toBe(false);
+  });
+
+  it.each(['1.3', '1.0', '0.9', '2.0', '2.1'])(
+    'rejects CycloneDX %s as outside the supported range',
+    (specVersion) => {
+      const result = parseSbomText(
+        JSON.stringify({ bomFormat: 'CycloneDX', specVersion }),
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toMatch(/is not supported/);
+    },
+  );
+
+  it.each(['1', '1.x', 'v1.5', '', '1.4.0', ' 1.5', '0x1.5'])(
+    'rejects malformed specVersion %j without throwing',
+    (specVersion) => {
+      const result = parseSbomText(
+        JSON.stringify({ bomFormat: 'CycloneDX', specVersion }),
+      );
+      expect(result.ok).toBe(false);
+    },
+  );
+
+  // The gate is the only thing that changed: an unrecognized minor must
+  // normalize to exactly what the same document declares at a known one.
+  it('parses a 1.7 document identically to the same document at 1.6', () => {
+    const doc = (specVersion: string) =>
+      JSON.stringify({
+        bomFormat: 'CycloneDX',
+        specVersion,
+        metadata: {
+          timestamp: '2026-01-01T00:00:00Z',
+          component: { type: 'application', name: 'app', version: '2.0.0' },
+          tools: { components: [{ name: 'syft', version: '1.46.0' }] },
+        },
+        components: [
+          {
+            type: 'library',
+            group: 'com.example',
+            name: 'foo',
+            version: '1.0.0',
+            purl: 'pkg:maven/com.example/foo@1.0.0',
+            licenses: [{ license: { id: 'MIT' } }],
+          },
+        ],
+      });
+    const a = parseSbomText(doc('1.6'));
+    const b = parseSbomText(doc('1.7'));
+    expect(a.ok && b.ok).toBe(true);
+    if (!a.ok || !b.ok) return;
+    expect(b.sbom.components).toEqual(a.sbom.components);
+    expect({ ...b.sbom.metadata, specVersion: null }).toEqual({
+      ...a.sbom.metadata,
+      specVersion: null,
+    });
+    expect(b.sbom.metadata.specVersion).toBe('1.7');
   });
 
   it('handles CDX components missing optional fields', () => {
