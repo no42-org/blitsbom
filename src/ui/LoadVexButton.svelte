@@ -140,7 +140,7 @@
   <section class="help-dialog__section">
     <h3>What we accept</h3>
     <ul>
-      <li>CycloneDX VEX (CDX 1.4 / 1.5 / 1.6)</li>
+      <li>CycloneDX VEX (CDX 1.4 or later)</li>
       <li>A CycloneDX SBOM with a populated <code>vulnerabilities[]</code> array</li>
     </ul>
     <p class="help-dialog__muted">
