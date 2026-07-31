@@ -1,0 +1,122 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "blitsbom-originator-fixture",
+  "documentNamespace": "https://blitsbom.example.com/originator",
+  "comment": "Originator-tier fixture for #169. Package shapes mirror syft output across ecosystems whose purl namespace behaves differently: multi-segment (golang), percent-encoded (npm scope), absent (pypi), and distro-as-supplier (apk). Two Jackson packages reproduce the accepted fragmentation trade, where one declares a vendor and the other does not.",
+  "creationInfo": {
+    "created": "2026-07-31T00:00:00Z",
+    "creators": ["Tool: blitsbom-test-fixture"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-jackson-databind",
+      "name": "jackson-databind",
+      "versionInfo": "2.17.0",
+      "originator": "Organization: FasterXML",
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.17.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jackson-jr-objects",
+      "name": "jackson-jr-objects",
+      "versionInfo": "2.17.0",
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/com.fasterxml.jackson.jr/jackson-jr-objects@2.17.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-guava",
+      "name": "guava",
+      "versionInfo": "33.0.0-jre",
+      "originator": "NOASSERTION",
+      "supplier": "NOASSERTION",
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/com.google.guava/guava@33.0.0-jre"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-mux",
+      "name": "github.com/gorilla/mux",
+      "versionInfo": "v1.8.0",
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:golang/github.com/gorilla/mux@v1.8.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-angular-core",
+      "name": "@angular/core",
+      "versionInfo": "17.0.0",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40angular/core@17.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-musl",
+      "name": "musl",
+      "versionInfo": "1.2.4-r2",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:apk/alpine/musl@1.2.4-r2?arch=x86_64"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-requests",
+      "name": "requests",
+      "versionInfo": "2.31.0",
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/requests@2.31.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-mystery",
+      "name": "mystery-blob",
+      "versionInfo": "0.1.0",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION"
+    }
+  ]
+}

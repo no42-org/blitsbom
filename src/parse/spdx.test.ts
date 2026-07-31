@@ -428,3 +428,124 @@ describe('SPDX parser — synthetic edge cases', () => {
     expect(result.sbom.metadata.sbomTool).toBeNull();
   });
 });
+
+describe('SPDX originator precedence (#169)', () => {
+  /** One package, parsed. No DESCRIBES, so document-root lifting is inert. */
+  function single(pkg: Record<string, unknown>) {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'tiny',
+      packages: [{ name: 'foo', versionInfo: '1.0.0', ...pkg }],
+    };
+    const result = parseSbomText(JSON.stringify(doc));
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('parse failed');
+    return result.sbom.components[0]!;
+  }
+
+  const purlRef = (locator: string) => ({
+    externalRefs: [
+      {
+        referenceCategory: 'PACKAGE-MANAGER',
+        referenceType: 'purl',
+        referenceLocator: locator,
+      },
+    ],
+  });
+
+  it('prefers a declared originator over supplier and namespace', () => {
+    const c = single({
+      originator: 'Organization: FasterXML',
+      supplier: 'Organization: Someone Else',
+      ...purlRef('pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.17.0'),
+    });
+    expect(c.originator).toBe('FasterXML');
+  });
+
+  it('prefers a declared supplier over the namespace', () => {
+    const c = single({
+      supplier: 'Organization: Example Inc',
+      ...purlRef('pkg:maven/com.google.guava/guava@33.0'),
+    });
+    expect(c.originator).toBe('Example Inc');
+  });
+
+  it('falls back to the namespace when neither is declared', () => {
+    const c = single(purlRef('pkg:maven/com.google.guava/guava@33.0'));
+    expect(c.originator).toBe('com.google.guava');
+  });
+
+  it('falls through NOASSERTION at both declared tiers', () => {
+    const c = single({
+      originator: 'NOASSERTION',
+      supplier: 'NOASSERTION',
+      ...purlRef('pkg:maven/io.dropwizard.metrics/metrics-core@4.2.25'),
+    });
+    expect(c.originator).toBe('io.dropwizard.metrics');
+  });
+
+  it('is null with nothing declared and no purl', () => {
+    expect(single({}).originator).toBe(null);
+  });
+
+  it('is null when the purl has no namespace', () => {
+    const c = single(purlRef('pkg:pypi/requests@2.31.0'));
+    expect(c.originator).toBe(null);
+  });
+
+  it('takes the full golang namespace without disturbing group', () => {
+    const c = single(purlRef('pkg:golang/github.com/gorilla/mux@v1.8.0'));
+    expect(c.originator).toBe('github.com/gorilla');
+    // The table's group column keeps its first-segment behaviour.
+    expect(c.group).toBe('github.com');
+  });
+});
+
+describe('SPDX originator fixture — samples/opennms/spdx-originator.json', () => {
+  const result = parseSbomText(readSample('spdx-originator.json'));
+
+  function originatorOfPackage(name: string): string | null {
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('parse failed');
+    const c = result.sbom.components.find((x) => x.name === name);
+    expect(c, `no component named ${name}`).toBeDefined();
+    return c!.originator;
+  }
+
+  it('parses successfully', () => {
+    expect(result.ok).toBe(true);
+  });
+
+  it('attributes each ecosystem from its namespace', () => {
+    expect(originatorOfPackage('guava')).toBe('com.google.guava');
+    expect(originatorOfPackage('github.com/gorilla/mux')).toBe(
+      'github.com/gorilla',
+    );
+    expect(originatorOfPackage('@angular/core')).toBe('@angular');
+    expect(originatorOfPackage('musl')).toBe('alpine');
+  });
+
+  it('keeps a declared originator ahead of the namespace', () => {
+    expect(originatorOfPackage('jackson-databind')).toBe('FasterXML');
+  });
+
+  it('leaves only genuinely unattributable packages Unknown', () => {
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const unknown = result.sbom.components
+      .filter((c) => c.originator === null)
+      .map((c) => c.name);
+    // requests has a namespaceless purl; mystery-blob has no purl at all.
+    expect(unknown.sort()).toEqual(['mystery-blob', 'requests']);
+  });
+
+  it('documents the accepted fragmentation trade', () => {
+    // One organisation, two slices: jackson-databind declares a vendor and
+    // jackson-jr-objects does not, so the declared name and the namespace
+    // sit side by side. Accepted rather than fixed; see the proposal. (#169)
+    expect(originatorOfPackage('jackson-databind')).toBe('FasterXML');
+    expect(originatorOfPackage('jackson-jr-objects')).toBe(
+      'com.fasterxml.jackson.jr',
+    );
+  });
+});

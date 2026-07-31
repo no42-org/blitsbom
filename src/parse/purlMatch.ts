@@ -26,6 +26,66 @@
 
 const IDENTITY_QUALIFIERS = new Set(['type', 'arch', 'repository_url']);
 
+/**
+ * The purl namespace as a human-readable origin, for the originator rollup.
+ *
+ * Deliberately not `canonicalizePurl`'s namespace and deliberately not
+ * `extractGroupFromPurl` in `spdx.ts`:
+ *
+ *   - canonicalization lowercases, because VEX matching wants a join key.
+ *     A displayed originator keeps the case the SBOM gave it.
+ *   - `extractGroupFromPurl` takes only the first `/`-separated segment and
+ *     leaves percent-encoding intact. That is defensible for the components
+ *     table's `group` cell, but as a chart bucket it turns every Go module
+ *     into `github.com` and labels a slice `%40angular`. (#169)
+ *
+ * So: every namespace segment, each percent-decoded. Null when the purl
+ * declares no namespace (`pkg:pypi/requests@2.31` and friends), which is how
+ * ecosystems without a namespace stay in Unknown without a per-type table.
+ */
+export function originatorFromPurl(purl: string | null): string | null {
+  if (typeof purl !== 'string') return null;
+  const trimmed = purl.trim();
+  if (!trimmed.startsWith('pkg:')) return null;
+
+  // Strip #subpath and ?qualifiers before looking for the namespace.
+  const hashIdx = trimmed.indexOf('#');
+  const bodyAndQuery = hashIdx >= 0 ? trimmed.slice(0, hashIdx) : trimmed;
+  const qIdx = bodyAndQuery.indexOf('?');
+  const body = qIdx >= 0 ? bodyAndQuery.slice(0, qIdx) : bodyAndQuery;
+
+  const afterScheme = body.slice('pkg:'.length);
+  const firstSlash = afterScheme.indexOf('/');
+  if (firstSlash <= 0) return null;
+  const rest = afterScheme.slice(firstSlash + 1);
+
+  // Same split as canonicalizePurl: the LAST `@` starts the version, since a
+  // scoped npm namespace can carry an unencoded one (`pkg:npm/@scope/foo@1`).
+  const atIdx = rest.lastIndexOf('@');
+  const beforeAt = atIdx > 0 ? rest.slice(0, atIdx) : rest;
+  const lastSlash = beforeAt.lastIndexOf('/');
+  if (lastSlash < 0) return null;
+  const namespace = beforeAt.slice(0, lastSlash);
+  if (!namespace) return null;
+
+  const decoded = namespace
+    .split('/')
+    .map(decodeSegment)
+    .filter((s) => s !== '')
+    .join('/');
+  return decoded || null;
+}
+
+/** Percent-decode one namespace segment, keeping it verbatim if it is not
+ * valid encoding — a malformed escape is not a reason to drop an origin. */
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 export function canonicalizePurl(p: string | null | undefined): string | null {
   if (typeof p !== 'string') return null;
   const trimmed = p.trim();
