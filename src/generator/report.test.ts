@@ -147,6 +147,24 @@ describe('validation failures', () => {
     ).toThrow(ReportError);
   });
 
+  // The release pipeline generates its report from syft output, and syft 1.46
+  // emits 1.7. Before #171 this threw, so a release could have shipped a
+  // report the generator refused to build. (#171)
+  it('builds a report from an unrecognized CycloneDX minor and states the version', () => {
+    const doc = JSON.stringify({
+      bomFormat: 'CycloneDX',
+      specVersion: '1.7',
+      components: [{ type: 'library', name: 'foo', version: '1.0.0' }],
+    });
+    const report = buildReport({
+      templateHtml: TEMPLATE,
+      sbomText: doc,
+      sourceDigest: 'sha256:x',
+    });
+    expect(report.summary).toContain('CycloneDX 1.7');
+    expect(report.html).toContain('id="blitsbom-sbom"');
+  });
+
   it('main() returns non-zero and writes nothing on a bad SBOM', () => {
     const dir = mkdtempSync(join(tmpdir(), 'blitsbom-gen-'));
     const badPath = join(dir, 'bad.json');

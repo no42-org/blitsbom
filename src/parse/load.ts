@@ -3,7 +3,7 @@ import { isCdxBom, normalizeCdxBom } from './cyclonedx';
 import { isSpdxDocument, normalizeSpdxDocument } from './spdx';
 import { applyVexToSbom } from './vex';
 import {
-  SUPPORTED_CDX_VERSIONS,
+  CDX_SUPPORTED_RANGE,
   type CdxBom,
   type LoadedSbom,
   type LoadResult,
@@ -62,7 +62,7 @@ export function parseSbomText(text: string): LoadResult {
     const obj = value as Record<string, unknown>;
     return {
       ok: false,
-      error: `CycloneDX ${obj.specVersion} is not supported. Supported CycloneDX versions: ${SUPPORTED_CDX_VERSIONS.join(', ')}.`,
+      error: `CycloneDX ${obj.specVersion} is not supported. blitsbom supports CycloneDX ${CDX_SUPPORTED_RANGE}.`,
     };
   }
 
@@ -76,7 +76,7 @@ export function parseSbomText(text: string): LoadResult {
   return {
     ok: false,
     error:
-      'Unrecognized format. blitsbom supports CycloneDX 1.4–1.6 and SPDX 2.x JSON SBOMs.',
+      'Unrecognized format. blitsbom supports CycloneDX 1.4 or later and SPDX 2.x JSON SBOMs.',
   };
 }
 
@@ -129,7 +129,7 @@ export function parseDroppedFile(
       const obj = value as Record<string, unknown>;
       return {
         kind: 'error',
-        error: `CycloneDX ${obj.specVersion} is not supported. Supported CycloneDX versions: ${SUPPORTED_CDX_VERSIONS.join(', ')}.`,
+        error: `CycloneDX ${obj.specVersion} is not supported. blitsbom supports CycloneDX ${CDX_SUPPORTED_RANGE}.`,
       };
     }
 
@@ -156,7 +156,7 @@ export function parseDroppedFile(
     return {
       kind: 'error',
       error:
-        'Unrecognized format. blitsbom supports CycloneDX 1.4–1.6 and SPDX 2.x JSON SBOMs.',
+        'Unrecognized format. blitsbom supports CycloneDX 1.4 or later and SPDX 2.x JSON SBOMs.',
     };
   }
   return {

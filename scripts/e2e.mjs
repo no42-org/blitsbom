@@ -15,12 +15,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const DIST_HTML = join(ROOT, 'dist', 'index.html');
 const SAMPLES = join(ROOT, 'samples', 'opennms');
+const SYFT_SAMPLES = join(ROOT, 'samples', 'syft');
 
 const FIXTURES = [
   {
     name: 'CycloneDX small',
     file: join(SAMPLES, 'prometheus-remote-writer.json'),
     expectedCount: 24,
+    expectsPermissive: true,
+  },
+  {
+    // Unmodified syft 1.46 output. The enumerated version allowlist refused
+    // this outright, so a current-syft SBOM could not be opened at all
+    // (#171). Loading it in the real app is the regression test.
+    name: 'CycloneDX 1.7 (syft 1.46)',
+    file: join(SYFT_SAMPLES, 'blitsbom-cdx-1.7.json'),
+    expectedCount: 196,
     expectsPermissive: true,
   },
   {

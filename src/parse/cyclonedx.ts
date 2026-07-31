@@ -9,7 +9,7 @@ import type {
   LoadedSbom,
   SbomMetadata,
 } from '../types';
-import { SUPPORTED_CDX_VERSIONS } from '../types';
+import { CDX_SUPPORTED_MAJOR, CDX_MINIMUM_MINOR } from '../types';
 import { emptyToNull, notNull, isRecord, isNoAssertion } from './util';
 import { normalizeLicenseValue } from './licenseValue';
 import { canonicalizePurl, originatorFromPurl } from './purlMatch';
@@ -24,8 +24,29 @@ export function isCdxBom(value: unknown): value is CdxBom {
   return true;
 }
 
+/**
+ * Accept any minor at or above the floor within the supported major, including
+ * minors this build has never heard of.
+ *
+ * An enumerated allowlist meant every CycloneDX release broke the viewer until
+ * someone edited a constant — syft 1.46 emits 1.7, and a current-syft SBOM
+ * could not be opened at all. The SPDX side already worked this way
+ * (`/^SPDX-2\.[0-9]+$/` in format-detect.ts), so this is the two parsers
+ * agreeing rather than a new policy. (#171)
+ *
+ * Compared numerically, not lexically: "1.10" is later than "1.4", and a
+ * string comparison would get that backwards.
+ */
 export function isSupportedCdxVersion(v: string): boolean {
-  return (SUPPORTED_CDX_VERSIONS as readonly string[]).includes(v);
+  const parts = v.split('.');
+  if (parts.length !== 2) return false;
+  // Reject "1.4.0", "v1.5", "1.x", " 1.5" and friends: Number() is too
+  // permissive (it accepts whitespace and "0x..."), so require plain digits.
+  if (!/^\d+$/.test(parts[0]!) || !/^\d+$/.test(parts[1]!)) return false;
+  return (
+    Number(parts[0]) === CDX_SUPPORTED_MAJOR &&
+    Number(parts[1]) >= CDX_MINIMUM_MINOR
+  );
 }
 
 export function normalizeCdxBom(bom: CdxBom): LoadedSbom {
