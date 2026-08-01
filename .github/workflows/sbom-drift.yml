@@ -18,6 +18,12 @@ name: SBOM drift
 # against the same digest-pinned syft stage. What is left to catch is a syft
 # bump changing the output in a way the parser rejects.
 #
+# Note what that gave up. The old job ran `anchore/sbom-action` directly, so a
+# bump of that action was exercised here. `docker.yml` still uses it for the
+# image SBOM, and no gate exercises it now. That is accepted: the image SBOM is
+# an attestation on the container, never rendered by the viewer, and #171 was
+# about the source SBOM. Stated rather than left to be discovered.
+#
 # Scoped on purpose rather than run on every PR. Since #174 opened the version
 # gate to any CycloneDX 1.x, a generator bump can only break the viewer by
 # jumping a major, so this is insurance — and the bump arrives specifically as
@@ -64,10 +70,26 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      # The same target release.yml calls, so this exercises the generator
-      # the release actually uses rather than a copy of its configuration.
+      # Guards the property the deleted correspondence check used to hold: the
+      # release must still go through this target. If an inline sbom-action step
+      # with its own SYFT_* env returned to release.yml, everything below would
+      # still pass while testing something the release no longer does.
+      - name: Assert the release still generates its SBOM via make sbom
+        run: |
+          set -euo pipefail
+          grep -qE '^\s*run: make sbom\s*$' .github/workflows/release.yml || {
+            echo "::error::release.yml no longer calls 'make sbom' — this gate would be testing a target the release does not use."
+            exit 1; }
+          grep -q 'SYFT_' .github/workflows/release.yml && {
+            echo "::error::release.yml declares SYFT_* options again; they belong in the Makefile so the SBOM stays reproducible."
+            exit 1; } || true
+          echo "OK: the release generates its SBOM via make sbom"
+
+      # Deliberately bare, with no OUT override: release.yml relies on the
+      # default being exactly dist.zip.cdx.json, which its upload and report
+      # steps name literally. Overriding it here would leave that untested.
       - name: Generate a fresh SBOM the way the release does
-        run: make sbom OUT=drift-check.cdx.json
+        run: make sbom
 
       # Parse the fresh SBOM through the report generator, which imports the
       # app's own parser, so acceptance here means acceptance in the viewer.
@@ -75,18 +97,25 @@ jobs:
       - name: Assert the parser accepts it
         run: |
           set -euo pipefail
-          test -s drift-check.cdx.json || { echo "no SBOM was generated"; exit 1; }
-          spec_version=$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")).specVersion ?? "unknown"))')
+          test -s dist.zip.cdx.json || { echo "::error::make sbom produced no dist.zip.cdx.json — release.yml names this path literally"; exit 1; }
+          spec_version=$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync("dist.zip.cdx.json","utf8")).specVersion ?? "unknown"))')
           # Handle both metadata.tools shapes: the 1.5+ object and the <=1.4
           # array. A pin rollback to 1.4 is exactly when this line is read.
-          syft_version=$(node -e 'const t=JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")).metadata?.tools; const c=Array.isArray(t)?t[0]:t?.components?.[0]; process.stdout.write(String(c?.version ?? "unknown"))')
+          syft_version=$(node -e 'const t=JSON.parse(require("fs").readFileSync("dist.zip.cdx.json","utf8")).metadata?.tools; const c=Array.isArray(t)?t[0]:t?.components?.[0]; process.stdout.write(String(c?.version ?? "unknown"))')
           echo "generator: syft ${syft_version} -> CycloneDX ${spec_version}"
-          make report SBOM=drift-check.cdx.json OUT=drift-check.html
+          # The version syft records must match the tag pinned in the Dockerfile.
+          # They can drift if the tag is hand-edited without the digest.
+          declared=$(sed -n 's|^FROM ghcr.io/anchore/syft:v\([0-9][0-9.]*\)@.*|\1|p' Dockerfile | head -1)
+          test -n "$declared" || { echo "::error::could not read the pinned syft version from the Dockerfile"; exit 1; }
+          test "$declared" = "$syft_version" || {
+            echo "::error::Dockerfile pins syft v${declared} but the generated SBOM records ${syft_version} — the tag and digest disagree."
+            exit 1; }
+          make report SBOM=dist.zip.cdx.json OUT=drift-check.html
           test -s drift-check.html || { echo "generator produced no report"; exit 1; }
           # A report can be structurally valid and carry nothing. Assert the
           # parser actually found components, or this gate greenlights the
           # regression it exists to catch.
-          components=$(node -e 'const d=JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")); process.stdout.write(String((d.components||[]).length))')
+          components=$(node -e 'const d=JSON.parse(require("fs").readFileSync("dist.zip.cdx.json","utf8")); process.stdout.write(String((d.components||[]).length))')
           test "$components" -gt 0 || { echo "::error::the generated SBOM has no components"; exit 1; }
           grep -q 'id="blitsbom-sbom"' drift-check.html || { echo "::error::report carries no embedded payload"; exit 1; }
           echo "OK: parser accepted ${components} components from what the release pipeline generates"
@@ -97,7 +126,7 @@ jobs:
       - name: Note when the spec version is outside the verified range
         run: |
           set -euo pipefail
-          spec_version=$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")).specVersion ?? ""))')
+          spec_version=$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync("dist.zip.cdx.json","utf8")).specVersion ?? ""))')
           # Validate before any arithmetic or echo. An unexpected shape like
           # "1.6.1" would otherwise make `[ "6.1" -gt 6 ]` error out; because
           # that runs as an `if` condition, `set -e` does not fire and the

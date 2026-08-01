@@ -48,9 +48,15 @@ CMD ["--help"]
 # not parse action inputs, workflow `container:` images, or `docker://` refs.
 # That makes this the only place a syft pin is both explicit and tracked. (#172)
 #
-# Pinned to the version `anchore/sbom-action@v0.24.0` ships, so `make sbom`
-# reproduces the published SBOM byte-for-byte modulo timestamp and serial
-# number. Upgrading syft is a separate, reviewable change — see RELEASING.md.
+# Pinned to v1.42.3 — the version `anchore/sbom-action@v0.24.0` shipped when
+# this landed, chosen so the switch to `make sbom` changed how the SBOM is
+# produced and not what it contains.
+#
+# That correspondence is a starting condition, not an invariant. Dependabot
+# will bump this pin, and `docker.yml` bumps the action independently, so the
+# two drift apart by design. Once this moves, `make sbom` no longer reproduces
+# SBOMs published before the bump — see RELEASING.md, "Reproducing the release
+# SBOM". Upgrading is an ordinary reviewed dependency change.
 #
 # Same ordering constraint as the report stage above: defined BEFORE the
 # serving stage so a plain `docker build .` still produces the serving image.

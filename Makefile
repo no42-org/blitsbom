@@ -99,23 +99,50 @@ dist-zip: build
 # version is explicit and Dependabot proposes updates to it. The scan target is
 # the repository root and is deliberately not configurable — this target
 # reproduces one specific artifact.
-OUT ?= dist.zip.cdx.json
+# `OUT` is target-specific on purpose. A file-scope `OUT ?=` would also reach
+# the `report` target above, whose `$(if $(OUT),...)` was written to fall back
+# to the generator's own filename when unset — making `make report` write HTML
+# into the release SBOM's name, and `make report SBOM=dist.zip.cdx.json`
+# overwrite the file it just read.
+sbom: OUT ?= dist.zip.cdx.json
+# Floor on the component count. syft exits 0 on an empty scan, and every
+# override below exists because a silently-wrong result looked plausible: the
+# #136 regression produced a one-component SBOM. syft also ignores
+# unrecognised SYFT_* variables, so an upstream option rename reproduces that
+# exact shape. Well below the real count (196 at v0.6.1); this catches a
+# collapse, not drift.
+sbom: MIN_COMPONENTS ?= 50
+# Handed to the recipe through the environment rather than interpolated into
+# the shell text. `$(OUT)` inline would be evaluated by the shell before any
+# guard runs, so a value containing backticks executes during the validation
+# itself — verified. Reading it from the environment means the value is data,
+# never code.
+sbom: export SBOM_OUT = $(OUT)
 sbom:
-	@command -v docker >/dev/null 2>&1 || { \
-		echo "make sbom needs Docker: syft runs from the digest-pinned image in the Dockerfile."; \
-		echo "Install Docker, or run syft yourself with the three SYFT_* options documented above this target."; \
+	@docker info >/dev/null 2>&1 || { \
+		echo "make sbom needs a running Docker daemon: syft runs from the digest-pinned image in the Dockerfile."; \
+		echo "Start Docker, or run syft yourself with the three SYFT_* options documented above this target."; \
 		exit 1; }
-	@case "$(OUT)" in \
-		/*|*..*) echo "OUT must be a path inside the repository: syft writes from a bind mount, so an absolute or escaping path lands in the container and is lost."; exit 1 ;; \
+	@case "$$SBOM_OUT" in \
+		"") echo "OUT must not be empty."; exit 1 ;; \
+		/*) echo "OUT must be relative to the repository root: syft writes from a bind mount, so an absolute path lands inside the container and is lost."; exit 1 ;; \
+		..|../*|*/..|*/../*) echo "OUT must not escape the repository: syft writes from a bind mount."; exit 1 ;; \
+		*[!A-Za-z0-9._/-]*) echo "OUT may only contain letters, digits, dot, underscore, dash and slash."; exit 1 ;; \
 		esac
-	docker build --quiet --target syft -t blitsbom-syft:local . >/dev/null
-	docker run --rm \
-		-e SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=true \
-		-e SYFT_SELECT_CATALOGERS=-github-actions \
-		-e SYFT_FILE_METADATA_SELECTION=none \
-		-v "$(CURDIR):/work" -w /work \
-		blitsbom-syft:local dir:. -o cyclonedx-json="$(OUT)" -q
-	@echo "wrote $(OUT)"
+	@dir=$$(dirname "$$SBOM_OUT"); test -d "$$dir" || { echo "OUT directory does not exist: $$dir"; exit 1; }
+	@img=$$(docker build --quiet --target syft .); \
+		docker run --rm --user "$$(id -u):$$(id -g)" \
+			-e SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=true \
+			-e SYFT_SELECT_CATALOGERS=-github-actions \
+			-e SYFT_FILE_METADATA_SELECTION=none \
+			-v "$(CURDIR):/work" -w /work \
+			"$$img" dir:. -o cyclonedx-json="$$SBOM_OUT" -q
+	@test -s "$$SBOM_OUT" || { echo "syft reported success but wrote nothing to $$SBOM_OUT."; exit 1; }
+	@n=$$(node -e 'const d=require("path").resolve(process.argv[1]);process.stdout.write(String((JSON.parse(require("fs").readFileSync(d,"utf8")).components||[]).length))' "$$SBOM_OUT"); \
+		test "$$n" -ge "$(MIN_COMPONENTS)" || { \
+			echo "$$SBOM_OUT has only $$n components, below the floor of $(MIN_COMPONENTS) — the scan options are probably not taking effect (see #136)."; \
+			exit 1; }; \
+		echo "wrote $$SBOM_OUT ($$n components)"
 
 docker-build:
 	docker build -t blitsbom:latest .
@@ -127,3 +154,4 @@ ci: build build-generator verify size-check smoke e2e
 
 clean:
 	rm -rf dist node_modules dist.zip
+	rm -f dist.zip.cdx.json dist.zip.cdx.html drift-check.cdx.json drift-check.html

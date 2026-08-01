@@ -222,7 +222,9 @@ Then cut a new patch version.
 make sbom          # writes dist.zip.cdx.json; needs Docker
 ```
 
-The result matches the published SBOM in component set, purl set and per-component licence set. It differs only in `serialNumber` and `metadata.timestamp`, which are per-run by construction.
+The result matches the published SBOM in component set, purl set and per-component licence set, differing only in `serialNumber` and `metadata.timestamp`, which are per-run by construction. Verified for v0.6.1 from a clean checkout with no `npm ci` — syft's directory scan reads `package-lock.json`, not `node_modules/`, so an unbuilt tree gives the same inventory.
+
+**This holds only while the syft pin matches the one the release was cut with.** Once Dependabot bumps the `syft` stage, reproducing an older release means checking out that release's `Dockerfile` too — which `git checkout <tag>` does anyway. Nothing gates this claim, so treat a mismatch in `metadata.tools` as the explanation before assuming a real difference.
 
 The syft version is pinned by digest in the `syft` stage of the `Dockerfile`, so it is explicit and Dependabot proposes updates to it. Upgrading syft is therefore an ordinary reviewed dependency change; nothing about it is implicit in a third-party action's release cadence.
 
