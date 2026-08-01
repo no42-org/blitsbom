@@ -139,6 +139,39 @@ sha256sum bom.json   # compare against the digest shown in the report header
 
 Format is auto-detected from the document's top-level keys (`bomFormat: "CycloneDX"` vs `spdxVersion: "SPDX-2.x"`); no format selector required.
 
+SPDX 2.x is a closed line — 2.3 was the last, superseded by 3.0 — so unlike CycloneDX there is no "newer than this build" case to mark.
+
+### Where originator data comes from
+
+*Licenses by Originator* answers "whose terms am I accepting". How much of it is populated depends on your **generator** and on the **ecosystems** in your tree, and neither is something blitsbom can change: it reports what the document says.
+
+**Declared originator.** blitsbom reads the first of `originator`, then `supplier` (SPDX), or `publisher`, `supplier.name`, `manufacturer.name`, `authors[0].name` / `author` (CycloneDX). Whether any are present is the generator's business:
+
+| Generator | Declares an originator? |
+|-----------|------------------------|
+| syft, Java/jar scan | Only from the jar manifest's `Implementation-Vendor`. Netty, Apache, Eclipse and FasterXML set it; most projects do not |
+| syft, npm lockfile scan | No. `package-lock.json` has no author field to read, so the field is absent for every component |
+| syft, Go scan | No |
+| `@cyclonedx/cyclonedx-npm` | Yes, from each installed `package.json` — roughly two thirds of a typical tree |
+
+**Derived from the package namespace.** When nothing is declared, blitsbom falls back to the purl namespace, which is why most components are attributed even from syft output. This works only where the ecosystem *has* a namespace:
+
+| Ecosystem | Derived originator | Example |
+|-----------|-------------------|---------|
+| Maven | groupId | `com.google.guava` |
+| Go | module path minus the package | `github.com/gorilla` |
+| npm, scoped | the scope | `@angular` |
+| Debian / RPM / Alpine | the distribution | `debian` |
+| **npm, unscoped** | **none** — stays Unknown | `left-pad` has no namespace |
+| **PyPI, Cargo, OCI, generic** | **none** — stays Unknown | purl carries no namespace at all |
+
+So a Java or Go tree attributes almost completely, a scoped-npm tree partially, and a plain-npm or Python tree may stay largely Unknown no matter which generator produced it. That is the SBOM's limit, not the viewer's.
+
+Two consequences worth knowing:
+
+- A derived originator is a namespace, not an attestation. `com.github.ben-manes.caffeine` is a namespace whose owner is a person.
+- One organisation can appear twice when it declares a vendor for some artifacts and not others — `FasterXML` alongside `com.fasterxml.jackson.jr`. Merging those would need a hardcoded vendor map, which would go stale; blitsbom does not attempt it.
+
 ### License classification
 
 The donut chart classifies each component's primary license into one of six categories, sourced from the **[Free Software Foundation's license list](https://www.gnu.org/licenses/license-list.html)**:
