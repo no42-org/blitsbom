@@ -4,7 +4,7 @@
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "blitsbom-graph-root-fixture",
   "documentNamespace": "https://blitsbom.example.com/graph-roots",
-  "comment": "Graph-root lifting fixture for #167. One package per branch of the four-clause predicate, so dropping any clause changes the expected component list. SPDXRef-Scan-Target is lifted by the older DESCRIBES rule (#145) and satisfies neither clause 3 nor clause 4, proving the two rules are disjoint. SPDXRef-Workspace-Root is the case that forced clause 1: an npm package, versionless, with dependants of its own and no dependants-of \u2014 the shape a git devDependency takes. It MUST be kept. Two golang roots are present to pin the lift-all policy.",
+  "comment": "Graph-root lifting fixture for #167, revised after the post-merge review of #176. One package per branch of the four-clause predicate, so dropping any clause changes the expected component list \u2014 mutation-tested: removing any single clause from findGraphRoots must fail a test here. SPDXRef-Scan-Target is lifted by the older DESCRIBES rule (#145) and satisfies neither clause 3 nor clause 4, proving the two rules are disjoint. Exactly one golang graph root, because several matches now mean 'monorepo or vendored source' and nothing is lifted.",
   "creationInfo": {
     "created": "2026-08-01T00:00:00Z",
     "creators": [
@@ -21,7 +21,7 @@
       "SPDXID": "SPDXRef-Go-Root",
       "name": "github.com/example/app/go",
       "versionInfo": "UNKNOWN",
-      "comment": "Graph root: versionless, has dependencies, is a dependency of nothing. LIFTED.",
+      "comment": "The sole graph root. Satisfies all four clauses. LIFTED.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
@@ -33,7 +33,7 @@
     {
       "SPDXID": "SPDXRef-Workspace-Root",
       "name": "example-workspace",
-      "comment": "The gitdep shape: npm, no version, has dependencies, is a dependency of nothing. Satisfies clauses 2-4 and is saved ONLY by clause 1 (purl type is not golang). KEPT.",
+      "comment": "Clause 1 counterexample (the gitdep shape): npm, versionless, has dependants, is a dependency of nothing. Saved ONLY by the purl type. Must be KEPT.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
@@ -46,7 +46,7 @@
       "SPDXID": "SPDXRef-XMod",
       "name": "golang.org/x/mod",
       "versionInfo": "v0.37.0",
-      "comment": "Near miss: satisfies clauses 2 and 3 exactly like a graph root, saved ONLY by carrying a version. KEPT.",
+      "comment": "Clause 2 counterexample: satisfies 1, 3 and 4 exactly like a graph root, saved ONLY by carrying a version. Must be KEPT.",
       "licenseConcluded": "BSD-3-Clause",
       "externalRefs": [
         {
@@ -58,14 +58,14 @@
     },
     {
       "SPDXID": "SPDXRef-Orphan",
-      "name": "orphan-leaf",
+      "name": "golang-orphan",
       "versionInfo": "NOASSERTION",
-      "comment": "Versionless, but nothing depends on it, so clause 2 fails. KEPT.",
+      "comment": "Clause 3 counterexample: golang and versionless, but NOTHING points a dependency edge at it. Must be KEPT. Deliberately golang so clause 1 cannot mask the check.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:npm/orphan-leaf"
+          "referenceLocator": "pkg:golang/example.com/golang-orphan"
         }
       ]
     },
@@ -86,7 +86,7 @@
       "SPDXID": "SPDXRef-Dep-B",
       "name": "dep-b",
       "versionInfo": "UNKNOWN",
-      "comment": "Versionless AND a dependency of the go root, so clause 3 fails. KEPT \u2014 proves clause 3 is load-bearing on its own.",
+      "comment": "Clause 4 counterexample: golang, versionless, AND has a dependant of its own \u2014 but it is itself a dependency, so it must be KEPT.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
@@ -118,32 +118,6 @@
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
           "referenceLocator": "pkg:golang/example.com/sub-dep@3.0.0"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Go-Root-2",
-      "name": "github.com/example/tool/go",
-      "versionInfo": "UNKNOWN",
-      "comment": "Second golang graph root. LIFTED, pinning the lift-all policy.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:golang/github.com/example/tool/go"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Tool-Dep",
-      "name": "tool-dep",
-      "versionInfo": "4.0.0",
-      "licenseConcluded": "MIT",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:golang/example.com/tool-dep@4.0.0"
         }
       ]
     }
@@ -180,9 +154,9 @@
       "relatedSpdxElement": "SPDXRef-Sub-Dep"
     },
     {
-      "spdxElementId": "SPDXRef-Tool-Dep",
+      "spdxElementId": "SPDXRef-Sub-Dep",
       "relationshipType": "DEPENDENCY_OF",
-      "relatedSpdxElement": "SPDXRef-Go-Root-2"
+      "relatedSpdxElement": "SPDXRef-Dep-B"
     }
   ]
 }
