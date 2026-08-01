@@ -29,7 +29,14 @@ export function normalizeSpdxDocument(doc: SpdxDocument): LoadedSbom {
     rootId !== null && usable.length > 1
       ? usable.filter((p) => p.SPDXID !== rootId)
       : usable;
-  const components = listed.map((p) => normalizeSpdxPackage(p, licenseRefMap));
+  // Second lift, disjoint from the first: a dependency-graph root is not the
+  // document's subject (nothing DESCRIBES it) but is equally not a component.
+  const graphRootIds = findGraphRootIds(doc, listed);
+  const kept =
+    graphRootIds.size > 0
+      ? listed.filter((p) => !graphRootIds.has(p.SPDXID as string))
+      : listed;
+  const components = kept.map((p) => normalizeSpdxPackage(p, licenseRefMap));
   // normalizeSpdxMetadata reads doc.packages, not the filtered list, so the
   // header keeps the scan target's name and version after the row is gone.
   return { metadata: normalizeSpdxMetadata(doc), components };
@@ -74,6 +81,96 @@ function findDocumentRootId(doc: SpdxDocument): string | null {
         : [];
   const ids = new Set(raw.filter((id): id is string => typeof id === 'string'));
   return ids.size === 1 ? [...ids][0]! : null;
+}
+
+/**
+ * SPDXIDs of packages that are the root of a dependency graph rather than a
+ * member of one — syft emits a Go main module from `go.mod` alongside the real
+ * dependencies, and it is the thing being scanned, not a thing it contains.
+ * Left in the list it inflates the count, pads the Undeclared bucket, and
+ * since #169 renders the scanned project as a named originator slice beside
+ * its own third parties. (#167)
+ *
+ * A package qualifies when all four hold:
+ *
+ *   1. its purl type is `golang`, and
+ *   2. it declares no usable version (absent, UNKNOWN, or NOASSERTION), and
+ *   3. something declares DEPENDENCY_OF pointing at it, and
+ *   4. it is not itself the subject of any DEPENDENCY_OF.
+ *
+ * Clause 1 looks like the per-ecosystem special-casing this project usually
+ * refuses, and it was not in the original design. It is here because the
+ * phenomenon *is* ecosystem-specific: `go.mod` has no version field, so syft
+ * writes UNKNOWN for a Go main module, while `package.json` requires one. The
+ * rule therefore matches its own explanation rather than approximating it.
+ *
+ * Without it the rule deletes real components. Measured: a git *dev*Dependency
+ * arrives versionless, and if it has a transitive dependency of its own it
+ * satisfies 2, 3 and 4 —
+ *
+ *   gitdep      version="UNKNOWN"  (git+ssh://…/gitdep.git#deadbeef)
+ *   tiny-helper version="1.2.3"    tiny-helper IS-DEP-OF gitdep
+ *
+ * — and would silently vanish from a compliance artifact. Clause 4 saves
+ * ordinary git dependencies because syft links direct deps to the root
+ * package, but it emits no root→devDep edge, which is why blitsbom's own SBOM
+ * carries 13 unlinked top-level npm nodes. `downloadLocation` was tried as a
+ * discriminator and rejected: `golang.org/x/mod` is NOASSERTION too.
+ *
+ * Otherwise structural on purpose. No match on package name, on syft's SPDXID
+ * prefixes, on `sourceInfo` wording, or on `primaryPackagePurpose` (absent in
+ * 2.2) — all generator-specific and liable to change without notice. Same
+ * reasoning as findDocumentRootId above.
+ */
+function findGraphRootIds(
+  doc: SpdxDocument,
+  listed: readonly SpdxPackage[],
+): Set<string> {
+  const relationships = Array.isArray(doc.relationships)
+    ? doc.relationships
+    : [];
+  // One pass building two sets: a per-package scan of relationships[] would be
+  // quadratic, and real documents are large (nl6 carries 3,514 DEPENDENCY_OF
+  // entries against 1,421 packages; opennms-core is bigger still).
+  const hasDependencies = new Set<string>();
+  const isDependency = new Set<string>();
+  for (const r of relationships) {
+    if (!isRecord(r) || r.relationshipType !== 'DEPENDENCY_OF') continue;
+    if (typeof r.spdxElementId === 'string') isDependency.add(r.spdxElementId);
+    if (typeof r.relatedSpdxElement === 'string') {
+      hasDependencies.add(r.relatedSpdxElement);
+    }
+  }
+  const roots = new Set<string>();
+  if (hasDependencies.size === 0) return roots;
+  for (const p of listed) {
+    const id = p.SPDXID;
+    if (typeof id !== 'string') continue;
+    if (!isGolangPackage(p)) continue;
+    if (!hasNoUsableVersion(p.versionInfo)) continue;
+    if (!hasDependencies.has(id)) continue;
+    if (isDependency.has(id)) continue;
+    roots.add(id);
+  }
+  return roots;
+}
+
+/** Purl type is exactly `golang`. A package with no purl never qualifies:
+ * without an ecosystem there is no basis for the versionless-root inference. */
+function isGolangPackage(pkg: SpdxPackage): boolean {
+  const purl = extractPurl(pkg);
+  return purl !== null && purl.startsWith('pkg:golang/');
+}
+
+/**
+ * `isNoAssertion` plus UNKNOWN, which syft writes for a Go main module because
+ * `go.mod` has no version field. Deliberately not folded into `isNoAssertion`:
+ * that helper also governs what the components table displays, and "UNKNOWN"
+ * is a value a reader should keep seeing when a package really is listed.
+ */
+function hasNoUsableVersion(versionInfo: string | undefined): boolean {
+  if (isNoAssertion(versionInfo)) return true;
+  return versionInfo!.trim().toUpperCase() === 'UNKNOWN';
 }
 
 function normalizeSpdxMetadata(doc: SpdxDocument): SbomMetadata {
