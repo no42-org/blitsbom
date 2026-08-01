@@ -961,48 +961,96 @@ describe('SPDX graph-root lifting — robustness', () => {
 describe('SPDX DEPENDENCY_OF direction, anchored to real syft output', () => {
   /**
    * The graph-root rule turns entirely on which element of a `DEPENDENCY_OF`
-   * is the dependency. Invert it and the rule inverts with it: leaf
-   * dependencies get lifted and real graph roots kept. Every synthetic fixture
-   * in this file would still pass, because they encode the same assumption the
-   * parser does — a shared misconception is invisible to both.
+   * is the dependency. Invert it and the rule inverts with it.
    *
-   * So the direction is pinned here against a checked-in syft scan plus a fact
-   * about the world that cannot be the other way round: Alpine's `musl-utils`
-   * are the tools built on the `musl` C library, so musl-utils depends on musl.
+   * The other tests in this file cannot catch that, and neither can a mutation
+   * run over them: every fixture here is hand-written, so it encodes the same
+   * assumption the parser does. Inverting the parser *and* the fixtures leaves
+   * the suite green — demonstrated during review of #181, where that pair of
+   * edits produced 396/396 passing with the direction backwards.
+   *
+   * Closing it needs an artifact this repo did not author. Both tests below
+   * read real syft output, so the only way to make an inverted parser pass is
+   * to edit a vendored generator artifact — a visible act, not a plausible
+   * "fix the failing assertion" edit.
    */
-  const raw = readFileSync(
-    join(HERE, '..', '..', 'samples', 'syft', 'alpine-spdx-json-2.3.json'),
-    'utf8',
-  );
 
   it('encodes the dependency as spdxElementId and the dependant as relatedSpdxElement', () => {
-    const doc = JSON.parse(raw);
-    const nameOf = new Map<string, string>(
-      doc.packages
-        .filter((p: { SPDXID?: string }) => typeof p?.SPDXID === 'string')
-        .map((p: { SPDXID: string; name: string }) => [p.SPDXID, p.name]),
-    );
-    const edges = doc.relationships
-      .filter((r: { relationshipType: string }) => r.relationshipType === 'DEPENDENCY_OF')
-      .map((r: { spdxElementId: string; relatedSpdxElement: string }) => ({
-        subject: nameOf.get(r.spdxElementId),
-        object: nameOf.get(r.relatedSpdxElement),
-      }));
+    // Ground truth from a real apk scan plus a fact that cannot be the other
+    // way round: musl-utils are the tools built on the musl C library.
+    const doc = JSON.parse(
+      readFileSync(
+        join(HERE, '..', '..', 'samples', 'syft', 'alpine-spdx-json-2.3.json'),
+        'utf8',
+      ),
+    ) as {
+      packages?: { SPDXID?: unknown; name?: unknown }[];
+      relationships?: { relationshipType?: unknown; spdxElementId?: unknown; relatedSpdxElement?: unknown }[];
+    };
+    const nameOf = new Map<string, string>();
+    for (const p of doc.packages ?? []) {
+      if (typeof p?.SPDXID === 'string' && typeof p.name === 'string') {
+        nameOf.set(p.SPDXID, p.name);
+      }
+    }
+    // `dependencyId` is the SUBJECT of the relationship. Naming it after its
+    // role rather than its position matters: read as "subject = the actor" it
+    // invites a maintainer to swap these and pin the direction backwards.
+    const edges = (doc.relationships ?? [])
+      .filter((r) => r.relationshipType === 'DEPENDENCY_OF')
+      .map((r) => ({
+        dependency: nameOf.get(r.spdxElementId as string),
+        dependant: nameOf.get(r.relatedSpdxElement as string),
+      }))
+      .filter((e) => e.dependency !== undefined && e.dependant !== undefined);
 
-    // musl-utils depends on musl, never the reverse.
-    expect(edges).toContainEqual({ subject: 'musl', object: 'musl-utils' });
-    expect(edges).not.toContainEqual({ subject: 'musl-utils', object: 'musl' });
+    // Without this the negative assertion below can pass on an empty or
+    // all-undefined array.
+    expect(edges.length).toBeGreaterThan(0);
+    expect(edges).toContainEqual({ dependency: 'musl', dependant: 'musl-utils' });
+    expect(edges).not.toContainEqual({ dependency: 'musl-utils', dependant: 'musl' });
   });
 
-  it('lifts the dependant, not the dependency, given that orientation', () => {
-    // Same shape as the sample above: `app` is the dependant (something is a
-    // dependency OF it) and versionless golang, so it is the graph root.
-    // `lib` is the dependency and must survive. If the parser read the
-    // direction the other way, this assertion flips.
-    const go = (id: string, name: string, version?: string) => ({
+  it('lifts the Go main module of a real syft scan, not its dependencies', () => {
+    // A row-subset of nl6 v0.21.0's published SBOM: real syft 1.46 output,
+    // values untouched. The alpine sample cannot serve here — it carries only
+    // apk and oci purls, so the golang clause rejects every package and
+    // nothing can ever be lifted from it.
+    //
+    // Orientation-sensitive by construction: the main module is versionless
+    // and is the DEPENDANT of its requires. Read the direction backwards and
+    // it stops being a graph root, so it survives and this fails.
+    const raw = readFileSync(
+      join(HERE, '..', '..', 'samples', 'syft', 'nl6-go-graph-root-spdx-2.3.json'),
+      'utf8',
+    );
+    const result = parseSbomText(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const names = result.sbom.components.map((c) => c.name);
+
+    expect(names).not.toContain('github.com/labmonkeys-space/nl6/go');
+    // Its dependencies are real components and must survive.
+    const deps = JSON.parse(raw).relationships
+      .filter((r: { relationshipType: string }) => r.relationshipType === 'DEPENDENCY_OF')
+      .length;
+    expect(deps).toBeGreaterThan(0);
+    expect(names.length).toBeGreaterThan(0);
+    // And the scanned project must not appear as its own supplier (#167/#169).
+    expect(result.sbom.components.map((c) => c.originator)).not.toContain(
+      'github.com/labmonkeys-space/nl6',
+    );
+  });
+
+  it('lifts the dependant, not the dependency, when only direction can decide', () => {
+    // Both packages versionless, so the version clause cannot be what selects
+    // the lifted one — direction is the only deciding variable. With `lib`
+    // versioned instead, an implementation with the whole dependency graph
+    // deleted also passes; verified during review of #181.
+    const go = (id: string, name: string) => ({
       SPDXID: id,
       name,
-      ...(version === undefined ? {} : { versionInfo: version }),
+      versionInfo: 'UNKNOWN',
       externalRefs: [
         {
           referenceCategory: 'PACKAGE-MANAGER',
@@ -1014,7 +1062,7 @@ describe('SPDX DEPENDENCY_OF direction, anchored to real syft output', () => {
     const doc = {
       spdxVersion: 'SPDX-2.3',
       name: 'direction',
-      packages: [go('app', 'app', 'UNKNOWN'), go('lib', 'lib', '1.0.0')],
+      packages: [go('app', 'app'), go('lib', 'lib')],
       relationships: [
         {
           spdxElementId: 'lib',
