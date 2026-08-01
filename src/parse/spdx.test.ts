@@ -957,3 +957,75 @@ describe('SPDX graph-root lifting — robustness', () => {
     ]);
   });
 });
+
+describe('SPDX DEPENDENCY_OF direction, anchored to real syft output', () => {
+  /**
+   * The graph-root rule turns entirely on which element of a `DEPENDENCY_OF`
+   * is the dependency. Invert it and the rule inverts with it: leaf
+   * dependencies get lifted and real graph roots kept. Every synthetic fixture
+   * in this file would still pass, because they encode the same assumption the
+   * parser does — a shared misconception is invisible to both.
+   *
+   * So the direction is pinned here against a checked-in syft scan plus a fact
+   * about the world that cannot be the other way round: Alpine's `musl-utils`
+   * are the tools built on the `musl` C library, so musl-utils depends on musl.
+   */
+  const raw = readFileSync(
+    join(HERE, '..', '..', 'samples', 'syft', 'alpine-spdx-json-2.3.json'),
+    'utf8',
+  );
+
+  it('encodes the dependency as spdxElementId and the dependant as relatedSpdxElement', () => {
+    const doc = JSON.parse(raw);
+    const nameOf = new Map<string, string>(
+      doc.packages
+        .filter((p: { SPDXID?: string }) => typeof p?.SPDXID === 'string')
+        .map((p: { SPDXID: string; name: string }) => [p.SPDXID, p.name]),
+    );
+    const edges = doc.relationships
+      .filter((r: { relationshipType: string }) => r.relationshipType === 'DEPENDENCY_OF')
+      .map((r: { spdxElementId: string; relatedSpdxElement: string }) => ({
+        subject: nameOf.get(r.spdxElementId),
+        object: nameOf.get(r.relatedSpdxElement),
+      }));
+
+    // musl-utils depends on musl, never the reverse.
+    expect(edges).toContainEqual({ subject: 'musl', object: 'musl-utils' });
+    expect(edges).not.toContainEqual({ subject: 'musl-utils', object: 'musl' });
+  });
+
+  it('lifts the dependant, not the dependency, given that orientation', () => {
+    // Same shape as the sample above: `app` is the dependant (something is a
+    // dependency OF it) and versionless golang, so it is the graph root.
+    // `lib` is the dependency and must survive. If the parser read the
+    // direction the other way, this assertion flips.
+    const go = (id: string, name: string, version?: string) => ({
+      SPDXID: id,
+      name,
+      ...(version === undefined ? {} : { versionInfo: version }),
+      externalRefs: [
+        {
+          referenceCategory: 'PACKAGE-MANAGER',
+          referenceType: 'purl',
+          referenceLocator: `pkg:golang/example.com/${name}`,
+        },
+      ],
+    });
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'direction',
+      packages: [go('app', 'app', 'UNKNOWN'), go('lib', 'lib', '1.0.0')],
+      relationships: [
+        {
+          spdxElementId: 'lib',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'app',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name)).toEqual(['lib']);
+  });
+});
