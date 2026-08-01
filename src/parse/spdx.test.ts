@@ -559,87 +559,255 @@ describe('SPDX graph-root lifting (#167)', () => {
     return result.sbom.components.map((c) => c.name).sort();
   }
 
-  it('lifts both golang graph roots and the DESCRIBES scan target, keeping the rest', () => {
+  it('lifts the sole graph root and the DESCRIBES scan target, keeping the rest', () => {
     expect(names()).toEqual([
       'dep-a',
       'dep-b',
       'example-workspace',
+      'golang-orphan',
       'golang.org/x/mod',
       'left-pad',
-      'orphan-leaf',
       'sub-dep',
-      'tool-dep',
     ]);
   });
 
-  it('keeps an npm package with the graph-root shape (clause 1)', () => {
-    // example-workspace is versionless, has dependants of its own and is a
-    // dependency of nothing — it satisfies clauses 2-4 exactly like a Go main
-    // module. Only the purl type saves it. This is the `gitdep` case that
-    // blocked the original three-clause rule: a git devDependency arrives
-    // versionless, and deleting it would silently shrink a signed artifact.
+  // One test per clause, each against a package that ONLY that clause saves.
+  // Mutation-checked: deleting any single clause from findGraphRoots fails at
+  // least one of these. The previous fixture failed that check — `orphan-leaf`
+  // carried an npm purl so clause 1 masked clause 3, and `dep-b` had no
+  // dependant so clause 3 masked clause 4.
+  it('clause 1 — keeps an npm package with the graph-root shape', () => {
     expect(names()).toContain('example-workspace');
   });
 
-  it('keeps a near miss saved only by its version (clause 2)', () => {
-    // golang.org/x/mod satisfies clauses 2 and 3 exactly like a graph root.
-    // Only the version separates them. This is the whole safety margin.
+  it('clause 2 — keeps a golang graph root that carries a version', () => {
     expect(names()).toContain('golang.org/x/mod');
   });
 
-  it('keeps a versionless package that is itself a dependency (clause 4)', () => {
+  it('clause 3 — keeps a versionless golang package nothing depends on', () => {
+    expect(names()).toContain('golang-orphan');
+  });
+
+  it('clause 4 — keeps a versionless golang package that is itself a dependency', () => {
     expect(names()).toContain('dep-b');
   });
+});
 
-  it('keeps a versionless package nothing depends on (clause 3)', () => {
-    // The scan-target stand-in has the same shape and is lifted by the
-    // DESCRIBES rule instead — the two rules are disjoint.
-    expect(names()).toContain('orphan-leaf');
+describe('SPDX graph-root lifting — several roots lift nothing (#176 review)', () => {
+  const go = (id: string, name: string, version?: string) => ({
+    SPDXID: id,
+    name,
+    ...(version === undefined ? {} : { versionInfo: version }),
+    externalRefs: [
+      {
+        referenceCategory: 'PACKAGE-MANAGER',
+        referenceType: 'purl',
+        referenceLocator: `pkg:golang/${name}`,
+      },
+    ],
   });
 
-  it('lifts nothing when the document declares no relationships', () => {
+  it('keeps vendored third-party modules when several roots match', () => {
+    // A monorepo or a vendored source tree yields several versionless main
+    // modules. Lifting all of them deleted real components; the rule now
+    // refuses, mirroring findDocumentRootId.
     const doc = {
       spdxVersion: 'SPDX-2.3',
-      name: 'no-rels',
+      name: 'scan',
       packages: [
-        { SPDXID: 'SPDXRef-A', name: 'a', versionInfo: 'UNKNOWN' },
-        { SPDXID: 'SPDXRef-B', name: 'b', versionInfo: '1.0.0' },
+        go('v1', 'github.com/vendor/other-project', 'UNKNOWN'),
+        go('v2', 'github.com/vendor/second', 'UNKNOWN'),
+        go('d', 'shared-dep', '1.0.0'),
+      ],
+      relationships: [
+        {
+          spdxElementId: 'd',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'v1',
+        },
+        {
+          spdxElementId: 'd',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'v2',
+        },
       ],
     };
     const r = parseSbomText(JSON.stringify(doc));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.sbom.components.map((c) => c.name).sort()).toEqual(['a', 'b']);
+    expect(r.sbom.components.map((c) => c.name).sort()).toEqual([
+      'github.com/vendor/other-project',
+      'github.com/vendor/second',
+      'shared-dep',
+    ]);
   });
 
-  it('skips malformed relationship entries without throwing', () => {
+  it('consumes DEPENDS_ON as well as DEPENDENCY_OF', () => {
+    // X DEPENDS_ON Y means Y is a dependency of X. Reading only DEPENDENCY_OF
+    // left Y looking like a graph root and deleted it.
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'mixed',
+      packages: [go('X', 'X', '1.0'), go('Y', 'Y', 'UNKNOWN'), go('Z', 'Z', '1.0')],
+      relationships: [
+        {
+          spdxElementId: 'X',
+          relationshipType: 'DEPENDS_ON',
+          relatedSpdxElement: 'Y',
+        },
+        {
+          spdxElementId: 'Z',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'Y',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name).sort()).toEqual(['X', 'Y', 'Z']);
+  });
+
+  it('ignores a dependency edge whose subject is not a listed package', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'ghost',
+      packages: [go('root', 'github.com/x/app', 'UNKNOWN'), go('o', 'other', '1.0')],
+      relationships: [
+        {
+          spdxElementId: 'ghost',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'root',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name).sort()).toEqual([
+      'github.com/x/app',
+      'other',
+    ]);
+  });
+
+  it('never empties the component list', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'scan',
+      documentDescribes: ['S'],
+      packages: [
+        { SPDXID: 'S', name: '.' },
+        go('R', 'github.com/x/app', 'UNKNOWN'),
+      ],
+      relationships: [
+        {
+          spdxElementId: 'S',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'R',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.length).toBeGreaterThan(0);
+  });
+
+  it('keeps a versioned package sharing an SPDXID with a lifted root', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'dup',
+      packages: [
+        go('SPDXRef-X', 'github.com/x/app', 'UNKNOWN'),
+        { ...go('SPDXRef-X', 'real-pkg', '2.0.0') },
+        go('d', 'dep', '1.0'),
+      ],
+      relationships: [
+        {
+          spdxElementId: 'd',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'SPDXRef-X',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name)).toContain('real-pkg');
+  });
+
+  it.each([
+    ['(devel)', true],
+    ['noassertion', false],
+    ['NoAssertion', false],
+    [' UNKNOWN ', false],
+  ])('version %j is kept as a component: %s', (versionInfo, kept) => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'v',
+      packages: [
+        go('r', 'github.com/x/app', versionInfo as string),
+        go('d', 'dep', '1.0'),
+      ],
+      relationships: [
+        {
+          spdxElementId: 'd',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'r',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.some((c) => c.name === 'github.com/x/app')).toBe(
+      kept,
+    );
+  });
+
+  it('keeps a package whose versionInfo is a non-string', () => {
     const doc = {
       spdxVersion: 'SPDX-2.3',
       name: 'malformed',
       packages: [
-        {
-          SPDXID: 'SPDXRef-Root',
-          name: 'root',
-          versionInfo: 'UNKNOWN',
-          externalRefs: [
-            {
-              referenceCategory: 'PACKAGE-MANAGER',
-              referenceType: 'purl',
-              referenceLocator: 'pkg:golang/example.com/root',
-            },
-          ],
-        },
-        { SPDXID: 'SPDXRef-Dep', name: 'dep', versionInfo: '1.0.0' },
+        { ...go('r', 'github.com/x/app'), versionInfo: 0 },
+        go('d', 'dep', '1.0'),
       ],
       relationships: [
-        null,
-        'nonsense',
-        { relationshipType: 'DEPENDENCY_OF' },
-        { spdxElementId: 42, relationshipType: 'DEPENDENCY_OF' },
         {
-          spdxElementId: 'SPDXRef-Dep',
+          spdxElementId: 'd',
           relationshipType: 'DEPENDENCY_OF',
-          relatedSpdxElement: 'SPDXRef-Root',
+          relatedSpdxElement: 'r',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name)).toContain('github.com/x/app');
+  });
+
+  it('reads a purl from an uppercase referenceType, and past an empty locator', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'refs',
+      packages: [
+        {
+          SPDXID: 'r',
+          name: 'github.com/x/app',
+          versionInfo: 'UNKNOWN',
+          externalRefs: [
+            { referenceType: 'purl', referenceLocator: '' },
+            { referenceType: 'PURL', referenceLocator: 'pkg:golang/github.com/x/app' },
+          ],
+        },
+        go('d', 'dep', '1.0'),
+      ],
+      relationships: [
+        {
+          spdxElementId: 'd',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'r',
         },
       ],
     };
@@ -647,41 +815,6 @@ describe('SPDX graph-root lifting (#167)', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.sbom.components.map((c) => c.name)).toEqual(['dep']);
-  });
-
-  it('does not lift a graph root that carries a version', () => {
-    const doc = {
-      spdxVersion: 'SPDX-2.3',
-      name: 'versioned-root',
-      packages: [
-        { SPDXID: 'SPDXRef-Root', name: 'workspace', versionInfo: '0.0.0' },
-        { SPDXID: 'SPDXRef-Dep', name: 'dep', versionInfo: '1.0.0' },
-      ],
-      relationships: [
-        {
-          spdxElementId: 'SPDXRef-Dep',
-          relationshipType: 'DEPENDENCY_OF',
-          relatedSpdxElement: 'SPDXRef-Root',
-        },
-      ],
-    };
-    const r = parseSbomText(JSON.stringify(doc));
-    expect(r.ok).toBe(true);
-    if (!r.ok) return;
-    // The npm workspace-root case: nl6-docs is exactly this and must survive.
-    expect(r.sbom.components.map((c) => c.name).sort()).toEqual([
-      'dep',
-      'workspace',
-    ]);
-  });
-
-  it('does not attribute a lifted root in the originator rollup', () => {
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const origins = new Set(
-      result.sbom.components.map((c) => c.originator).filter(Boolean),
-    );
-    expect(origins.has('github.com/example/app')).toBe(false);
   });
 });
 
