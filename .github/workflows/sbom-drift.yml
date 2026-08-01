@@ -24,7 +24,15 @@ on:
     paths:
       - '.github/workflows/**'
       - '.github/dependabot.yml'
+      # The report generator runs inside this image, so a base-image digest
+      # bump from Dependabot's docker ecosystem changes the runtime that
+      # renders every release report.
+      - 'Dockerfile'
   workflow_dispatch:
+
+concurrency:
+  group: sbom-drift-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -50,11 +58,12 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      # Must stay byte-identical to the invocation in release.yml, including
-      # the pinned SHA and every SYFT_* override: this job is only meaningful
-      # if it exercises the same generator the release does. When Dependabot
-      # bumps the action it rewrites both occurrences, which is what makes this
-      # gate fire on the PR that introduces the risk.
+      # Must match the invocation in release.yml — the pinned SHA and every
+      # SYFT_* override — because this job is only meaningful if it exercises
+      # the same generator the release does. Only `output-file` differs. That
+      # correspondence is checked below rather than asserted in a comment.
+      # When Dependabot bumps the action it rewrites both occurrences, which
+      # is what makes this gate fire on the PR that introduces the risk.
       - name: Generate a fresh SBOM with the release pipeline's generator
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0.24.0
         env:
@@ -68,22 +77,45 @@ jobs:
           upload-artifact: false
           upload-release-assets: false
 
-      # Build the app and the generator, then parse the fresh SBOM through the
-      # generator — which imports the app's own parser, so acceptance here means
-      # acceptance in the viewer.
-      - name: Build the app and the report generator
-        run: make build build-generator
+      - name: Assert this job uses the same generator config as the release
+        run: |
+          set -euo pipefail
+          # Compare the generator invocation in this file against release.yml.
+          # Anchored to the start of a YAML line so the pattern list below
+          # cannot match itself — a bare substring search compares the check
+          # to its own source and always reports a difference.
+          extract() {
+            grep -E "^[[:space:]]*(uses: anchore/sbom-action@|SYFT_[A-Z_]+:)" "$1" \
+              | sed 's/#.*//' | tr -d ' ' | sort -u
+          }
+          if ! diff <(extract .github/workflows/sbom-drift.yml) \
+                    <(extract .github/workflows/release.yml); then
+            echo "::error::the generator invocation differs from release.yml — this gate would exercise a different generator than the release does."
+            exit 1
+          fi
+          echo "OK: generator invocation matches release.yml"
 
+      # Parse the fresh SBOM through the report generator, which imports the
+      # app's own parser, so acceptance here means acceptance in the viewer.
+      # `make report` already builds both, so no separate build step.
       - name: Assert the parser accepts it
         run: |
           set -euo pipefail
           test -s drift-check.cdx.json || { echo "no SBOM was generated"; exit 1; }
           spec_version=$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")).specVersion ?? "unknown"))')
-          syft_version=$(node -e 'const t=JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")).metadata?.tools?.components?.[0]; process.stdout.write(String(t?.version ?? "unknown"))')
+          # Handle both metadata.tools shapes: the 1.5+ object and the <=1.4
+          # array. A pin rollback to 1.4 is exactly when this line is read.
+          syft_version=$(node -e 'const t=JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")).metadata?.tools; const c=Array.isArray(t)?t[0]:t?.components?.[0]; process.stdout.write(String(c?.version ?? "unknown"))')
           echo "generator: syft ${syft_version} -> CycloneDX ${spec_version}"
           make report SBOM=drift-check.cdx.json OUT=drift-check.html
           test -s drift-check.html || { echo "generator produced no report"; exit 1; }
-          echo "OK: the current parser accepts what the release pipeline generates"
+          # A report can be structurally valid and carry nothing. Assert the
+          # parser actually found components, or this gate greenlights the
+          # regression it exists to catch.
+          components=$(node -e 'const d=JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")); process.stdout.write(String((d.components||[]).length))')
+          test "$components" -gt 0 || { echo "::error::the generated SBOM has no components"; exit 1; }
+          grep -q 'id="blitsbom-sbom"' drift-check.html || { echo "::error::report carries no embedded payload"; exit 1; }
+          echo "OK: parser accepted ${components} components from what the release pipeline generates"
 
       # A version outside the verified range still passes the job — it parses,
       # which is the contract. Surface it so the reviewer of the bump knows the
@@ -92,11 +124,19 @@ jobs:
         run: |
           set -euo pipefail
           spec_version=$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync("drift-check.cdx.json","utf8")).specVersion ?? ""))')
+          # Validate before any arithmetic or echo. An unexpected shape like
+          # "1.6.1" would otherwise make `[ "6.1" -gt 6 ]` error out; because
+          # that runs as an `if` condition, `set -e` does not fire and the
+          # drift would go unreported. This also keeps unvalidated file
+          # content out of a `::`-prefixed workflow command.
+          expr "$spec_version" : '^[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null || {
+            echo "::error::specVersion '${spec_version}' is not <major>.<minor>, so it cannot be compared against the verified ceiling"; exit 1; }
           # Read the ceiling from the constant the app itself uses, so this
-          # note cannot disagree with what the header will show.
-          verified=$(sed -n 's/^export const CDX_HIGHEST_VERIFIED_MINOR = \([0-9][0-9]*\);.*/\1/p' src/types.ts)
-          test -n "$verified" || { echo "could not read CDX_HIGHEST_VERIFIED_MINOR from src/types.ts"; exit 1; }
+          # note cannot disagree with what the header will show. Tolerates an
+          # optional type annotation so a formatter change cannot break CI.
+          verified=$(sed -n 's/^export const CDX_HIGHEST_VERIFIED_MINOR[^=]*= *\([0-9][0-9]*\).*/\1/p' src/types.ts | head -1)
+          test -n "$verified" || { echo "::error::could not read CDX_HIGHEST_VERIFIED_MINOR from src/types.ts"; exit 1; }
           minor=${spec_version#*.}
-          if [ "${spec_version%%.*}" = "1" ] && [ "${minor:-0}" -gt "$verified" ]; then
+          if [ "${spec_version%%.*}" = "1" ] && [ "$minor" -gt "$verified" ]; then
             echo "::warning::This bump moves the release SBOM to CycloneDX ${spec_version}, newer than the verified ceiling (1.${verified}). It parses, but reports will mark it \"newer than this build\" until the schema is diffed and a fixture added — see RELEASING.md, \"Verifying a new CycloneDX minor\"."
           fi
