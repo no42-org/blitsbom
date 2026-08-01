@@ -1077,3 +1077,42 @@ describe('SPDX DEPENDENCY_OF direction, anchored to real syft output', () => {
     expect(r.sbom.components.map((c) => c.name)).toEqual(['lib']);
   });
 });
+
+describe('SPDX version clause — NONE is a usable version', () => {
+  it('keeps a golang graph root whose versionInfo is NONE', () => {
+    // `hasNoUsableVersion` accepts absent, empty, NOASSERTION and UNKNOWN, and
+    // deliberately not NONE: NONE asserts "no version exists" rather than
+    // "none was determined", and every accepted value widens what this rule
+    // can delete. That decision was argued in a comment and enforced by
+    // nothing — adding `|| v === 'NONE'` left the entire suite green, the one
+    // mutant no test killed. (review of #182)
+    const go = (id: string, name: string, versionInfo: string) => ({
+      SPDXID: id,
+      name,
+      versionInfo,
+      externalRefs: [
+        {
+          referenceCategory: 'PACKAGE-MANAGER',
+          referenceType: 'purl',
+          referenceLocator: `pkg:golang/example.com/${name}`,
+        },
+      ],
+    });
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'none-version',
+      packages: [go('root', 'root', 'NONE'), go('dep', 'dep', '1.0.0')],
+      relationships: [
+        {
+          spdxElementId: 'dep',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'root',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name).sort()).toEqual(['dep', 'root']);
+  });
+});
