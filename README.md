@@ -145,7 +145,7 @@ SPDX 2.x is a closed line — 2.3 was the last, superseded by 3.0 — so unlike 
 
 *Licenses by Originator* answers "whose terms am I accepting". How much of it is populated depends on your **generator** and on the **ecosystems** in your tree, and neither is something blitsbom can change: it reports what the document says.
 
-**Declared originator.** blitsbom reads the first of `originator`, then `supplier` (SPDX), or `publisher`, `supplier.name`, `manufacturer.name`, `authors[0].name` / `author` (CycloneDX). Whether any are present is the generator's business:
+**Declared originator.** blitsbom reads the first of `originator`, then `supplier` (SPDX), or `publisher`, `supplier.name`, `manufacturer.name`, `authors[0].name` / `author`, then `group` (CycloneDX). Whether any are present is the generator's business:
 
 | Generator | Declares an originator? |
 |-----------|------------------------|
@@ -154,7 +154,7 @@ SPDX 2.x is a closed line — 2.3 was the last, superseded by 3.0 — so unlike 
 | syft, Go scan | No |
 | `@cyclonedx/cyclonedx-npm` | Yes, from each installed `package.json` — roughly two thirds of a typical tree |
 
-**Derived from the package namespace.** When nothing is declared, blitsbom falls back to the purl namespace, which is why most components are attributed even from syft output. This works only where the ecosystem *has* a namespace:
+**Derived from the package namespace.** When nothing is declared, blitsbom falls back to the purl namespace, which is why most components are attributed even from syft output. (A CycloneDX component carrying `group` is attributed from that first, so it is covered even without a purl.) The namespace fallback works only where the ecosystem *has* a namespace:
 
 | Ecosystem | Derived originator | Example |
 |-----------|-------------------|---------|
@@ -163,7 +163,9 @@ SPDX 2.x is a closed line — 2.3 was the last, superseded by 3.0 — so unlike 
 | npm, scoped | the scope | `@angular` |
 | Debian / RPM / Alpine | the distribution | `debian` |
 | **npm, unscoped** | **none** — stays Unknown | `left-pad` has no namespace |
-| **PyPI, Cargo, OCI, generic** | **none** — stays Unknown | purl carries no namespace at all |
+| **PyPI, Cargo, OCI, generic** | **none** — stays Unknown | these purls carry no namespace in practice |
+
+The extraction is structural, not a per-ecosystem table: blitsbom returns whatever namespace the purl carries. The rows above describe what these ecosystems emit in practice, not a restriction blitsbom imposes.
 
 So a Java or Go tree attributes almost completely, a scoped-npm tree partially, and a plain-npm or Python tree may stay largely Unknown no matter which generator produced it. That is the SBOM's limit, not the viewer's.
 
