@@ -102,9 +102,20 @@ function findDocumentRootId(doc: SpdxDocument): string | null {
  * Clause 1 is the per-ecosystem condition this project usually refuses. It is
  * here because the phenomenon *is* ecosystem-specific: `go.mod` has no version
  * field, so syft writes UNKNOWN for a Go main module, while `package.json`
- * requires one. Without it the rule deletes real components — a git
- * devDependency arrives versionless and, if it has a transitive dependency,
- * satisfies 2, 3 and 4.
+ * requires one. Scoping the rule to the ecosystem that actually produces
+ * versionless project roots keeps it from reaching ecosystems where a missing
+ * version means something else.
+ *
+ * A correction, since this comment previously claimed otherwise: the original
+ * justification was that a git devDependency "arrives versionless" and would
+ * be deleted without clause 1. That is not npm's behaviour. Measured against
+ * npm 11: a git dependency is locked with a real version, and a `file:` link
+ * does yield a versionless entry but never acquires a dependant — syft
+ * attaches the dependency edge to the versioned entry — so it is not a
+ * candidate either. The shape that demonstration relied on came from a
+ * hand-written lockfile, not from npm. Clause 1 stands on the Go/npm
+ * asymmetry above, which is verified; it does not stand on a deletion risk
+ * anyone has reproduced. (review of #182)
  *
  * **Only a sole graph root is lifted.** Lifting every match deletes vendored
  * third-party Go modules: a monorepo, a vendored source tree, or any scan that

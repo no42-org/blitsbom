@@ -1078,68 +1078,41 @@ describe('SPDX DEPENDENCY_OF direction, anchored to real syft output', () => {
   });
 });
 
-describe('graph-root lifting — real-output zero-lift guards', () => {
-  /**
-   * Every synthetic fixture in this file encodes the same assumption the
-   * parser does, so none can catch parser and fixture being wrong together.
-   * This reads real generator output instead: making an over-broad rule pass
-   * here means editing a vendored artifact, a visible act rather than a
-   * plausible fix-the-failing-assertion edit. Same argument as the direction
-   * anchor above. (tasks 5.1 / 5.2)
-   *
-   * Choosing the artifact took a correction worth recording. The tasks
-   * originally named this repository's own SBOM and three nl6 packages, on
-   * the grounds that they are top-level graph nodes saved by one clause
-   * alone. They are not: svelte, vitest, nl6-docs and the rest all carry
-   * versions, so the version clause rejects them before the golang clause is
-   * reached. Fixtures built from them killed no mutant — measured, not
-   * assumed. The shape that guards anything is a package that is versionless
-   * AND top-level, and gitdep below is the only real output we have of it.
-   */
-  it('lifts nothing from a real scan containing a versionless npm package', () => {
-    const raw = readFileSync(
-      join(
-        HERE,
-        '..',
-        '..',
-        'samples',
-        'syft',
-        'npm-versionless-git-dep-spdx-2.3.json',
-      ),
-      'utf8',
-    );
-    const result = parseSbomText(raw);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const names = result.sbom.components.map((c) => c.name);
-
-    // gitdep satisfies every clause but the golang one. Drop that clause and
-    // it disappears from a compliance artifact.
-    expect(names).toContain('gitdep');
-    expect(names).toContain('tiny-helper');
-    // Only the DESCRIBES scan target is lifted, by the older #145 rule.
-    expect(names.length).toBe(JSON.parse(raw).packages.length - 1);
-  });
-
-  it('keeps real top-level npm nodes in a mixed Go/npm scan', () => {
-    // nl6 v0.21.0: the Go main module is lifted (asserted above), the npm side
-    // survives. These three are doubly protected — npm and versioned — so this
-    // kills no mutant on its own. It is here because the tasks name them and a
-    // reader should find them in the fixture rather than only in a comment.
-    const raw = readFileSync(
-      join(HERE, '..', '..', 'samples', 'syft', 'nl6-go-graph-root-spdx-2.3.json'),
-      'utf8',
-    );
-    const result = parseSbomText(raw);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const names = result.sbom.components.map((c) => c.name);
-    for (const expected of [
-      '@node-rs/jieba-wasm32-wasi',
-      '@rspack/binding-wasm32-wasi',
-      'nl6-docs',
-    ]) {
-      expect(names).toContain(expected);
-    }
+describe('SPDX version clause — NONE is a usable version', () => {
+  it('keeps a golang graph root whose versionInfo is NONE', () => {
+    // `hasNoUsableVersion` accepts absent, empty, NOASSERTION and UNKNOWN, and
+    // deliberately not NONE: NONE asserts "no version exists" rather than
+    // "none was determined", and every accepted value widens what this rule
+    // can delete. That decision was argued in a comment and enforced by
+    // nothing — adding `|| v === 'NONE'` left the entire suite green, the one
+    // mutant no test killed. (review of #182)
+    const go = (id: string, name: string, versionInfo: string) => ({
+      SPDXID: id,
+      name,
+      versionInfo,
+      externalRefs: [
+        {
+          referenceCategory: 'PACKAGE-MANAGER',
+          referenceType: 'purl',
+          referenceLocator: `pkg:golang/example.com/${name}`,
+        },
+      ],
+    });
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'none-version',
+      packages: [go('root', 'root', 'NONE'), go('dep', 'dep', '1.0.0')],
+      relationships: [
+        {
+          spdxElementId: 'dep',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'root',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name).sort()).toEqual(['dep', 'root']);
   });
 });
