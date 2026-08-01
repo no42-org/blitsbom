@@ -34,7 +34,9 @@ export function normalizeSpdxDocument(doc: SpdxDocument): LoadedSbom {
   const graphRootIds = findGraphRootIds(doc, listed);
   const kept =
     graphRootIds.size > 0
-      ? listed.filter((p) => !graphRootIds.has(p.SPDXID as string))
+      ? listed.filter(
+          (p) => typeof p.SPDXID !== 'string' || !graphRootIds.has(p.SPDXID),
+        )
       : listed;
   const components = kept.map((p) => normalizeSpdxPackage(p, licenseRefMap));
   // normalizeSpdxMetadata reads doc.packages, not the filtered list, so the
@@ -155,11 +157,16 @@ function findGraphRootIds(
   return roots;
 }
 
-/** Purl type is exactly `golang`. A package with no purl never qualifies:
- * without an ecosystem there is no basis for the versionless-root inference. */
+/** Purl type is `golang`. A package with no purl never qualifies: without an
+ * ecosystem there is no basis for the versionless-root inference.
+ *
+ * Case-insensitive because the purl spec defines the type as case-insensitive.
+ * syft writes it lowercase, but a stricter check would silently stop lifting
+ * for a generator that does not — and the failure would look like the bug this
+ * function exists to fix. */
 function isGolangPackage(pkg: SpdxPackage): boolean {
   const purl = extractPurl(pkg);
-  return purl !== null && purl.startsWith('pkg:golang/');
+  return purl !== null && purl.toLowerCase().startsWith('pkg:golang/');
 }
 
 /**

@@ -764,3 +764,63 @@ describe('SPDX graph-root lifting — the gitdep regression (#167)', () => {
     ]);
   });
 });
+
+describe('SPDX graph-root lifting — robustness', () => {
+  it('matches the purl type case-insensitively, per the purl spec', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'mixed-case',
+      packages: [
+        {
+          SPDXID: 'SPDXRef-Root',
+          name: 'root',
+          versionInfo: 'UNKNOWN',
+          externalRefs: [
+            {
+              referenceCategory: 'PACKAGE-MANAGER',
+              referenceType: 'purl',
+              referenceLocator: 'pkg:GoLang/example.com/root',
+            },
+          ],
+        },
+        { SPDXID: 'SPDXRef-Dep', name: 'dep', versionInfo: '1.0.0' },
+      ],
+      relationships: [
+        {
+          spdxElementId: 'SPDXRef-Dep',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'SPDXRef-Root',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name)).toEqual(['dep']);
+  });
+
+  it('does not throw on packages with no SPDXID', () => {
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'no-id',
+      packages: [
+        { name: 'anonymous', versionInfo: 'UNKNOWN' },
+        { SPDXID: 'SPDXRef-Dep', name: 'dep', versionInfo: '1.0.0' },
+      ],
+      relationships: [
+        {
+          spdxElementId: 'SPDXRef-Dep',
+          relationshipType: 'DEPENDENCY_OF',
+          relatedSpdxElement: 'SPDXRef-Missing',
+        },
+      ],
+    };
+    const r = parseSbomText(JSON.stringify(doc));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sbom.components.map((c) => c.name).sort()).toEqual([
+      'anonymous',
+      'dep',
+    ]);
+  });
+});
