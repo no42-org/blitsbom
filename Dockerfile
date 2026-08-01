@@ -28,7 +28,8 @@ RUN npm run build && npm run build:generator
 #
 # Not the default build target: it is defined BEFORE the serving stage so a
 # plain `docker build .` (make docker-build, docker.yml) still produces the
-# serving image. Build this one with `--target report`.
+# serving image. Build this one with `--target report`. The syft stage below
+# is ordered for the same reason.
 FROM node:26-alpine@sha256:e88a35be04478413b7c71c455cd9865de9b9360e1f43456be5951032d7ac1a66 AS report
 # The template the generator embeds into; overridable with --template.
 ENV BLITSBOM_TEMPLATE=/opt/blitsbom/index.html
@@ -39,7 +40,30 @@ WORKDIR /work
 ENTRYPOINT ["node", "/opt/blitsbom/blitsbom-report.mjs"]
 CMD ["--help"]
 
-# Stage 3 (default) — serve the built dist/ from BusyBox httpd.
+# Stage 3 — the SBOM generator used by `make sbom` and the release workflow.
+#
+# It exists here, rather than as a version string in the Makefile or a
+# `syft-version:` input on `anchore/sbom-action`, so the pin is watched: the
+# `docker` Dependabot ecosystem already covers this file, while Dependabot does
+# not parse action inputs, workflow `container:` images, or `docker://` refs.
+# That makes this the only place a syft pin is both explicit and tracked. (#172)
+#
+# Pinned to v1.42.3 — the version `anchore/sbom-action@v0.24.0` shipped when
+# this landed, chosen so the switch to `make sbom` changed how the SBOM is
+# produced and not what it contains.
+#
+# That correspondence is a starting condition, not an invariant. Dependabot
+# will bump this pin, and `docker.yml` bumps the action independently, so the
+# two drift apart by design. Once this moves, `make sbom` no longer reproduces
+# SBOMs published before the bump — see RELEASING.md, "Reproducing the release
+# SBOM". Upgrading is an ordinary reviewed dependency change.
+#
+# Same ordering constraint as the report stage above: defined BEFORE the
+# serving stage so a plain `docker build .` still produces the serving image.
+# Build this one with `--target syft`.
+FROM ghcr.io/anchore/syft:v1.42.3@sha256:5999d209a342e55e9edf70bf8930fb5b86d8f2a783fa401178372c50e21b1d36 AS syft
+
+# Stage 4 (default) — serve the built dist/ from BusyBox httpd.
 # Image is ~150 KB, runs on port 3000 as the unprivileged `static` user.
 FROM lipanski/docker-static-website:2.6.0@sha256:66a530684a934a9b94f65a90f286cba291a7daf4dd7d55dcc17f217915056cd5 AS serve
 COPY --from=build /app/dist .
