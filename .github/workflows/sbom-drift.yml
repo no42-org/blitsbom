@@ -77,12 +77,14 @@ jobs:
       - name: Assert the release still generates its SBOM via make sbom
         run: |
           set -euo pipefail
-          grep -qE '^\s*run: make sbom\s*$' .github/workflows/release.yml || {
+          if ! grep -qE '^[[:space:]]*run: make sbom[[:space:]]*$' .github/workflows/release.yml; then
             echo "::error::release.yml no longer calls 'make sbom' — this gate would be testing a target the release does not use."
-            exit 1; }
-          grep -q 'SYFT_' .github/workflows/release.yml && {
+            exit 1
+          fi
+          if grep -q 'SYFT_' .github/workflows/release.yml; then
             echo "::error::release.yml declares SYFT_* options again; they belong in the Makefile so the SBOM stays reproducible."
-            exit 1; } || true
+            exit 1
+          fi
           echo "OK: the release generates its SBOM via make sbom"
 
       # Deliberately bare, with no OUT override: release.yml relies on the
