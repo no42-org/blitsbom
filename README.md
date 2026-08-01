@@ -246,6 +246,7 @@ make install     # npm install
 make dev         # vite dev server
 make build       # build static dist/
 make report SBOM=bom.json VERSION=2.4.1 OUT=report.html  # generate a CI report
+make sbom            # regenerate the release SBOM of this tree (needs Docker)
 make test        # vitest
 make verify      # lint + tests + network-purity check
 make size-check  # fail if gzipped JS exceeds 60 KB

@@ -3,31 +3,37 @@ name: SBOM drift
 # Catches a generator/parser mismatch before it reaches a release.
 #
 # The release SBOM is generated at *release* time, so nothing in the PR gates
-# exercises it. A bump of `anchore/sbom-action` therefore merges green and
-# first shows up as a published release whose `dist.zip.cdx.json` the viewer
-# shipped beside it cannot open — which is exactly how #171 would have landed
-# (syft 1.46 emits CycloneDX 1.7; the version gate accepted only 1.4-1.6).
+# exercises it. A generator bump therefore merges green and first shows up as
+# a published release whose `dist.zip.cdx.json` the viewer shipped beside it
+# cannot open — which is exactly how #171 would have landed (syft 1.46 emits
+# CycloneDX 1.7; the version gate accepted only 1.4-1.6).
 #
 # `report-smoke.yml` cannot cover this: it feeds the generator a checked-in
 # sample, so the SBOM never varies and no amount of syft drift changes its
-# outcome. This job generates a *fresh* SBOM with the same pinned action the
-# release uses, then asserts the parser accepts it.
+# outcome. This job runs `make sbom` — the same target the release calls — and
+# asserts the parser accepts the result.
 #
-# Scoped to workflow changes on purpose. Since #174 opened the version gate to
-# any CycloneDX 1.x, an action bump can only break the viewer by jumping a
-# major, so this is insurance rather than a routine gate — and the risk arrives
-# specifically as a diff to these files, because Dependabot rewrites every
-# occurrence of the pinned SHA. Running it on every PR would buy nothing and
-# cost a full build.
+# Since the generator moved into `make sbom` (#172) there is no separate
+# invocation to keep in sync: this job and the release run the same recipe
+# against the same digest-pinned syft stage. What is left to catch is a syft
+# bump changing the output in a way the parser rejects.
+#
+# Scoped on purpose rather than run on every PR. Since #174 opened the version
+# gate to any CycloneDX 1.x, a generator bump can only break the viewer by
+# jumping a major, so this is insurance — and the bump arrives specifically as
+# a diff to the files below: the Dockerfile carries the syft pin, the Makefile
+# carries the scan options.
 on:
   pull_request:
     paths:
       - '.github/workflows/**'
       - '.github/dependabot.yml'
-      # The report generator runs inside this image, so a base-image digest
-      # bump from Dependabot's docker ecosystem changes the runtime that
-      # renders every release report.
+      # Carries the digest-pinned syft stage the release SBOM is generated
+      # from, and the report generator's own base image. Dependabot's docker
+      # ecosystem bumps both.
       - 'Dockerfile'
+      # Owns the scan target and the three SYFT_* overrides.
+      - 'Makefile'
   workflow_dispatch:
 
 concurrency:
@@ -58,42 +64,10 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      # Must match the invocation in release.yml — the pinned SHA and every
-      # SYFT_* override — because this job is only meaningful if it exercises
-      # the same generator the release does. Only `output-file` differs. That
-      # correspondence is checked below rather than asserted in a comment.
-      # When Dependabot bumps the action it rewrites both occurrences, which
-      # is what makes this gate fire on the PR that introduces the risk.
-      - name: Generate a fresh SBOM with the release pipeline's generator
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0.24.0
-        env:
-          SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES: "true"
-          SYFT_SELECT_CATALOGERS: "-github-actions"
-          SYFT_FILE_METADATA_SELECTION: "none"
-        with:
-          path: .
-          format: cyclonedx-json
-          output-file: drift-check.cdx.json
-          upload-artifact: false
-          upload-release-assets: false
-
-      - name: Assert this job uses the same generator config as the release
-        run: |
-          set -euo pipefail
-          # Compare the generator invocation in this file against release.yml.
-          # Anchored to the start of a YAML line so the pattern list below
-          # cannot match itself — a bare substring search compares the check
-          # to its own source and always reports a difference.
-          extract() {
-            grep -E "^[[:space:]]*(uses: anchore/sbom-action@|SYFT_[A-Z_]+:)" "$1" \
-              | sed 's/#.*//' | tr -d ' ' | sort -u
-          }
-          if ! diff <(extract .github/workflows/sbom-drift.yml) \
-                    <(extract .github/workflows/release.yml); then
-            echo "::error::the generator invocation differs from release.yml — this gate would exercise a different generator than the release does."
-            exit 1
-          fi
-          echo "OK: generator invocation matches release.yml"
+      # The same target release.yml calls, so this exercises the generator
+      # the release actually uses rather than a copy of its configuration.
+      - name: Generate a fresh SBOM the way the release does
+        run: make sbom OUT=drift-check.cdx.json
 
       # Parse the fresh SBOM through the report generator, which imports the
       # app's own parser, so acceptance here means acceptance in the viewer.

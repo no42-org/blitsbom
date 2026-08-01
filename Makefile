@@ -1,4 +1,4 @@
-.PHONY: help install dev build build-generator report verify test lint format clean preview dist-zip size-check purity-check marketplace-check smoke e2e docker-build docker-run ci
+.PHONY: help install dev build build-generator report sbom verify test lint format clean preview dist-zip size-check purity-check marketplace-check smoke e2e docker-build docker-run ci
 
 help:
 	@echo "blitsbom — Make targets"
@@ -7,6 +7,7 @@ help:
 	@echo "  build           Build static dist/"
 	@echo "  build-generator Build the CI report generator (dist-generator/)"
 	@echo "  report          Generate a report: make report SBOM=bom.json [OUT=report.html VEX=vex.json]"
+	@echo "  sbom            Generate the release SBOM of this tree [OUT=dist.zip.cdx.json]"
 	@echo "  verify          Type-check, lint, run tests, purity + marketplace checks"
 	@echo "  test            Run the unit test suite"
 	@echo "  lint            Type-check and svelte-check"
@@ -80,6 +81,41 @@ e2e:
 dist-zip: build
 	rm -f dist.zip
 	cd dist && zip -r ../dist.zip .
+
+# The SBOM attached to every release. The release workflow calls this target
+# rather than invoking syft itself, so the artifact is reproducible from a
+# clean checkout and the options that make it correct live in one place.
+#
+# Each override exists because a syft default silently produced wrong output:
+#   - dev dependencies: every dependency here is a devDependency (the bundle is
+#     compiled from dev tooling), and syft skips those from package-lock.json,
+#     leaving only the root package (#136)
+#   - github-actions catalogers: they inventory every `uses:` reference, and git
+#     refs carry no licence metadata, so they drowned the report in "Undeclared"
+#   - file metadata: the default emits a licence-less `file` component for
+#     package-lock.json, showing a raw runner path (#139)
+#
+# syft runs from the digest-pinned `syft` stage in the Dockerfile, so the
+# version is explicit and Dependabot proposes updates to it. The scan target is
+# the repository root and is deliberately not configurable — this target
+# reproduces one specific artifact.
+OUT ?= dist.zip.cdx.json
+sbom:
+	@command -v docker >/dev/null 2>&1 || { \
+		echo "make sbom needs Docker: syft runs from the digest-pinned image in the Dockerfile."; \
+		echo "Install Docker, or run syft yourself with the three SYFT_* options documented above this target."; \
+		exit 1; }
+	@case "$(OUT)" in \
+		/*|*..*) echo "OUT must be a path inside the repository: syft writes from a bind mount, so an absolute or escaping path lands in the container and is lost."; exit 1 ;; \
+		esac
+	docker build --quiet --target syft -t blitsbom-syft:local . >/dev/null
+	docker run --rm \
+		-e SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=true \
+		-e SYFT_SELECT_CATALOGERS=-github-actions \
+		-e SYFT_FILE_METADATA_SELECTION=none \
+		-v "$(CURDIR):/work" -w /work \
+		blitsbom-syft:local dir:. -o cyclonedx-json="$(OUT)" -q
+	@echo "wrote $(OUT)"
 
 docker-build:
 	docker build -t blitsbom:latest .
