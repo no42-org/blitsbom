@@ -11,6 +11,12 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    # init and analyze must run the same codeql-action version; separate PRs
+    # leave them mismatched and CodeQL fails with a configuration error (#197).
+    groups:
+      codeql-action:
+        patterns:
+          - github/codeql-action*
     commit-message:
       prefix: 'ci'
       include: scope
