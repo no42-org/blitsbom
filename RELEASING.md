@@ -28,7 +28,7 @@ Notes:
 - **The SBOM is named for the product, not for the archive.** It inventories the npm tree the bundle was compiled from, not the bundle itself, because `dist/` is one inlined `index.html` and scanning it would find nothing. The old `dist.zip.cdx.json` name asserted a subject the file never described. (#222)
 - The report drops `.cdx` because it is a report, not a CycloneDX document.
 
-> Releases before v0.7.2 use the previous names: `dist.zip`, `dist.zip.sha512`, `dist.zip.sigstore`, `dist.zip.cdx.json`, `dist.zip.cdx.html`. The verification commands below apply as written to releases from v0.7.2 onward; for older ones, substitute those names. Attestations are unaffected either way, since `gh attestation verify` matches on digest rather than on the subject's name.
+> Releases before v0.8.0 use the previous names: `dist.zip`, `dist.zip.sha512`, `dist.zip.sigstore`, `dist.zip.cdx.json`, `dist.zip.cdx.html`. The verification commands below apply as written to releases from v0.8.0 onward; for older ones, substitute those names. Attestations are unaffected either way, since `gh attestation verify` matches on digest rather than on the subject's name.
 
 - **A tag push does not publish anything user-visible.** It creates a *draft* release with the artifacts attached. The release becomes public only when you curate the notes and publish it — see [Cutting a release](#cutting-a-release).
 - GHCR's `:rc` tag is overwritten on every push to `main`. Use `:main-<sha>` if you need to pin to a specific commit.
