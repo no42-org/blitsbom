@@ -231,6 +231,14 @@ make sbom          # writes blitsbom-<version>-sbom.cdx.json; needs Docker
 
 The target reads the version from `package.json`, so on a release tag it writes the same filename the release published. No `OUT=` is needed.
 
+`package.json` is also where the document's own subject comes from. `metadata.component` names the product and the version it inventories, rather than the scan directory, so an SBOM that has been detached from its filename still says what it describes (#221):
+
+```json
+"component": { "type": "file", "name": "blitsbom", "version": "0.7.1" }
+```
+
+`type` stays `file`: syft has no option to set it, and reaching `application` would mean rewriting syft's output, which is precisely the post-processing that would break the reproduction claim below.
+
 The result matches the published SBOM in component set, purl set and per-component licence set, differing only in `serialNumber` and `metadata.timestamp`, which are per-run by construction. Verified for v0.6.1 from a clean checkout with no `npm ci` — syft's directory scan reads `package-lock.json`, not `node_modules/`, so an unbuilt tree gives the same inventory.
 
 **This holds only while the syft pin matches the one the release was cut with.** Once Dependabot bumps the `syft` stage, reproducing an older release means checking out that release's `Dockerfile` too — which `git checkout <tag>` does anyway. Nothing gates this claim, so treat a mismatch in `metadata.tools` as the explanation before assuming a real difference.

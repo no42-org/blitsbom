@@ -14,8 +14,16 @@
 # every report. That is the same hazard the `OUT` comment above `sbom`
 # describes, one variable over.
 #
-# Recursively expanded (`=`, not `:=`) so `make help` does not shell out.
-PKG_VERSION = $(shell node -p "require('./package.json').version")
+# Recursively expanded (`=`, not `:=`) so `make help` does not shell out. The
+# `$(error)` fires on expansion, not on parse, so only targets that actually
+# need the version pay for it.
+#
+# Empty must be fatal rather than tolerated. `$(shell)` swallows a failing
+# command and yields "", and every consumer degrades silently on that: the
+# archive becomes `blitsbom-.zip`, and syft drops `metadata.component.version`
+# from the SBOM entirely rather than emitting an empty one — which is the
+# half-identified document #221 exists to prevent, shipped without a warning.
+PKG_VERSION = $(or $(shell node -p "require('./package.json').version" 2>/dev/null),$(error cannot read .version from package.json — is node on PATH and package.json intact?))
 ARTIFACT_PREFIX = blitsbom-$(PKG_VERSION)
 
 help:
@@ -123,6 +131,16 @@ dist-zip: build
 #     refs carry no licence metadata, so they drowned the report in "Undeclared"
 #   - file metadata: the default emits a licence-less `file` component for
 #     package-lock.json, showing a raw runner path (#139)
+#   - source identity: without it `metadata.component` is `{type: file,
+#     name: "."}` — the scan directory — so the document never says which
+#     product or version it inventories. The filename was carrying that alone,
+#     and filenames do not survive being ingested somewhere. It also rendered
+#     as a literal "." in the report's own summary header, directly under a
+#     provenance header that had the name right. (#221)
+#
+# `type` stays `file`: syft has no `--source-type`, and `application` would
+# only be reachable by rewriting syft's output after the fact, which is exactly
+# the post-processing this target exists to avoid.
 #
 # syft runs from the digest-pinned `syft` stage in the Dockerfile, so the
 # version is explicit and Dependabot proposes updates to it. The scan target is
@@ -148,6 +166,11 @@ sbom: MIN_COMPONENTS ?= 50
 # itself — verified. Reading it from the environment means the value is data,
 # never code.
 sbom: export SBOM_OUT = $(OUT)
+# Exported rather than interpolated into the `docker run` text, for the reason
+# given above `SBOM_OUT`: `-e NAME` with no value forwards the variable from
+# the environment by name, so the version never passes through the shell as
+# code. The literal name below is safe to inline; a derived value is not.
+sbom: export SYFT_SOURCE_VERSION = $(PKG_VERSION)
 sbom:
 	@docker info >/dev/null 2>&1 || { \
 		echo "make sbom needs a running Docker daemon: syft runs from the digest-pinned image in the Dockerfile."; \
@@ -165,6 +188,8 @@ sbom:
 			-e SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=true \
 			-e SYFT_SELECT_CATALOGERS=-github-actions \
 			-e SYFT_FILE_METADATA_SELECTION=none \
+			-e SYFT_SOURCE_NAME=blitsbom \
+			-e SYFT_SOURCE_VERSION \
 			-v "$(CURDIR):/work" -w /work \
 			"$$img" dir:. -o cyclonedx-json="$$SBOM_OUT" -q
 	@test -s "$$SBOM_OUT" || { echo "syft reported success but wrote nothing to $$SBOM_OUT."; exit 1; }
