@@ -1,5 +1,23 @@
 .PHONY: help install dev build build-generator report sbom verify test lint format clean preview dist-zip size-check purity-check marketplace-check smoke e2e docker-build docker-run ci
 
+# Every release artifact is named `blitsbom-<version>` plus an extension, so a
+# file downloaded from a release says which product and which version it came
+# from. (#222)
+#
+# `package.json` is the version of record: `marketplace-check` already fails
+# the build when the README's examples disagree with it, and the release bump
+# lands there first.
+#
+# Deliberately not called `VERSION`. The `report` target below takes `VERSION`
+# from the command line and passes it through `$(if $(VERSION),...)`, so a
+# file-scope `VERSION` would always be non-empty and force `--version` onto
+# every report. That is the same hazard the `OUT` comment above `sbom`
+# describes, one variable over.
+#
+# Recursively expanded (`=`, not `:=`) so `make help` does not shell out.
+PKG_VERSION = $(shell node -p "require('./package.json').version")
+ARTIFACT_PREFIX = blitsbom-$(PKG_VERSION)
+
 help:
 	@echo "blitsbom — Make targets"
 	@echo "  install         Install npm dependencies"
@@ -7,7 +25,7 @@ help:
 	@echo "  build           Build static dist/"
 	@echo "  build-generator Build the CI report generator (dist-generator/)"
 	@echo "  report          Generate a report: make report SBOM=bom.json [OUT=report.html VEX=vex.json]"
-	@echo "  sbom            Generate the release SBOM of this tree [OUT=dist.zip.cdx.json]"
+	@echo "  sbom            Generate the release SBOM of this tree [OUT=blitsbom-<version>-sbom.cdx.json]"
 	@echo "  verify          Type-check, lint, run tests, purity + marketplace checks"
 	@echo "  test            Run the unit test suite"
 	@echo "  lint            Type-check and svelte-check"
@@ -18,7 +36,7 @@ help:
 	@echo "  marketplace-check Fail if action.yml or the README's version examples would break the listing"
 	@echo "  smoke           Run the file:// headless-Chromium smoke test"
 	@echo "  e2e             Full file:// end-to-end UX check (upload, filter, export)"
-	@echo "  dist-zip        Build and zip dist/ as dist.zip"
+	@echo "  dist-zip        Build and zip dist/ [OUT=blitsbom-<version>.zip]"
 	@echo "  docker-build    Build the BusyBox-httpd-based Docker image (tag: blitsbom:latest)"
 	@echo "  docker-run      Run the image locally on http://localhost:8080"
 	@echo "  ci              build + build-generator + verify + size-check + smoke + e2e (used by CI)"
@@ -78,9 +96,20 @@ smoke:
 e2e:
 	npm run e2e
 
+# The release bundle. `OUT` is target-specific for the same reason it is on
+# `sbom` below: at file scope it would reach `report`, whose `$(if $(OUT),...)`
+# falls back to the generator's own filename when unset.
+dist-zip: OUT ?= $(ARTIFACT_PREFIX).zip
+# Handed to the recipe through the environment rather than interpolated into
+# the shell text, matching `sbom`: `$(OUT)` inline is expanded by make before
+# the shell sees it, so a value containing backticks would execute. Quoting
+# does not help, since backticks are still live inside double quotes.
+dist-zip: export ZIP_OUT = $(OUT)
 dist-zip: build
-	rm -f dist.zip
-	cd dist && zip -r ../dist.zip .
+	@test -n "$$ZIP_OUT" || { echo "OUT must not be empty."; exit 1; }
+	@rm -f "$$ZIP_OUT"
+	cd dist && zip -r "../$$ZIP_OUT" .
+	@echo "wrote $$ZIP_OUT"
 
 # The SBOM attached to every release. The release workflow calls this target
 # rather than invoking syft itself, so the artifact is reproducible from a
@@ -99,12 +128,13 @@ dist-zip: build
 # version is explicit and Dependabot proposes updates to it. The scan target is
 # the repository root and is deliberately not configurable — this target
 # reproduces one specific artifact.
-# `OUT` is target-specific on purpose. A file-scope `OUT ?=` would also reach
-# the `report` target above, whose `$(if $(OUT),...)` was written to fall back
-# to the generator's own filename when unset — making `make report` write HTML
-# into the release SBOM's name, and `make report SBOM=dist.zip.cdx.json`
-# overwrite the file it just read.
-sbom: OUT ?= dist.zip.cdx.json
+# `OUT` is target-specific on purpose, here and on `dist-zip` above. A
+# file-scope `OUT ?=` would also reach the `report` target, whose
+# `$(if $(OUT),...)` was written to fall back to the generator's own filename
+# when unset — making `make report` write HTML into the release SBOM's name,
+# and `make report SBOM=<the SBOM>` overwrite the file it just read. Two
+# targets now carry a default, so the hazard is likelier, not less.
+sbom: OUT ?= $(ARTIFACT_PREFIX)-sbom.cdx.json
 # Floor on the component count. syft exits 0 on an empty scan, and every
 # override below exists because a silently-wrong result looked plausible: the
 # #136 regression produced a one-component SBOM. syft also ignores
@@ -152,6 +182,13 @@ docker-run:
 
 ci: build build-generator verify size-check smoke e2e
 
+# Globs rather than literals: the artifact names carry the version, so `clean`
+# cannot spell them out for anything but the current checkout. The `dist.zip*`
+# line covers the names used before #222, so a tree that predates the rename is
+# still cleaned; it is removable once no working copy carries them.
 clean:
-	rm -rf dist node_modules dist.zip
-	rm -f dist.zip.cdx.json dist.zip.cdx.html drift-check.cdx.json drift-check.html
+	rm -rf dist node_modules
+	rm -f blitsbom-*.zip blitsbom-*.sha512 blitsbom-*.sigstore
+	rm -f blitsbom-*-sbom.cdx.json blitsbom-*-sbom-report.html
+	rm -f drift-check.cdx.json drift-check.html
+	rm -f dist.zip dist.zip.*

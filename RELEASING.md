@@ -16,13 +16,19 @@ Pre-`1.0.0` we keep the `0.x.y` line and treat **minor** bumps as the breaking-c
 
 | Artifact                                  | Source                          | Pushed by                      |
 |-------------------------------------------|---------------------------------|--------------------------------|
-| `dist.zip` + `dist.zip.sha512` + `dist.zip.sigstore` + `dist.zip.cdx.json` (CycloneDX SBOM) + `dist.zip.cdx.html` (its blitsbom-rendered HTML report) attached to a **draft** GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
-| The same three files on the rolling `preview` prerelease | every green push to `main`      | `.github/workflows/preview.yml` |
+| `blitsbom-X.Y.Z.zip` + `.sha512` + `.sigstore` + `blitsbom-X.Y.Z-sbom.cdx.json` (CycloneDX SBOM) + `blitsbom-X.Y.Z-sbom-report.html` (its blitsbom-rendered HTML report) attached to a **draft** GitHub Release | the `vX.Y.Z` Git tag            | `.github/workflows/release.yml`|
+| `blitsbom-preview.zip` + `.sha512` + `.sigstore` on the rolling `preview` prerelease | every green push to `main`      | `.github/workflows/preview.yml` |
 | `ghcr.io/no42-org/blitsbom:rc` / `:main-<sha>` (cosign-signed, SBOM-attested) | every push to `main`           | `.github/workflows/docker.yml` |
 | `ghcr.io/no42-org/blitsbom:X.Y.Z` / `:X.Y` (cosign-signed, SBOM-attested) | the `vX.Y.Z` Git tag            | `.github/workflows/docker.yml` (`build-and-push` job) |
 | `ghcr.io/no42-org/blitsbom:latest` (re-tag of the released `:X.Y.Z`, same digest, same signature) | **publishing** the draft release | `.github/workflows/release.yml` (`promote-latest` job) dispatches `.github/workflows/docker.yml` |
 
 Notes:
+
+- **Every artifact is named `blitsbom-<version>` plus an extension.** The names come from `package.json`, which is why the release bump PR has to land before the tag: `release.yml` fails the build if the tag and `package.json` disagree, rather than publishing an archive whose name contradicts the release it hangs on.
+- **The SBOM is named for the product, not for the archive.** It inventories the npm tree the bundle was compiled from, not the bundle itself, because `dist/` is one inlined `index.html` and scanning it would find nothing. The old `dist.zip.cdx.json` name asserted a subject the file never described. (#222)
+- The report drops `.cdx` because it is a report, not a CycloneDX document.
+
+> Releases before v0.7.2 use the previous names: `dist.zip`, `dist.zip.sha512`, `dist.zip.sigstore`, `dist.zip.cdx.json`, `dist.zip.cdx.html`. The verification commands below apply as written to releases from v0.7.2 onward; for older ones, substitute those names. Attestations are unaffected either way, since `gh attestation verify` matches on digest rather than on the subject's name.
 
 - **A tag push does not publish anything user-visible.** It creates a *draft* release with the artifacts attached. The release becomes public only when you curate the notes and publish it — see [Cutting a release](#cutting-a-release).
 - GHCR's `:rc` tag is overwritten on every push to `main`. Use `:main-<sha>` if you need to pin to a specific commit.
@@ -95,7 +101,7 @@ git tag -a v0.2.0 -m "v0.2.0"
 git push origin v0.2.0
 ```
 
-Pushing the tag fires `release.yml` (which builds, signs, and creates a **draft** release with `dist.zip` + checksum + Sigstore bundle attached) and `docker.yml` (`:0.2.0`, `:0.2` in GHCR — note: not yet `:latest`). The tag matching glob is `v*.*.*`, so a malformed tag like `v0.3` or `vNEXT` starts nothing at all.
+Pushing the tag fires `release.yml` (which builds, signs, and creates a **draft** release with `blitsbom-0.2.0.zip` + checksum + Sigstore bundle attached) and `docker.yml` (`:0.2.0`, `:0.2` in GHCR — note: not yet `:latest`). The tag matching glob is `v*.*.*`, so a malformed tag like `v0.3` or `vNEXT` starts nothing at all.
 
 **The draft is not created until the tagged image exists.** `release.yml` has an `images` job that waits for `ghcr.io/no42-org/blitsbom:X.Y.Z` to appear in GHCR carrying *both* `linux/amd64` and `linux/arm64`, and the release job depends on it. Two reasons for the strictness:
 
@@ -150,20 +156,21 @@ The version-bump commit's own push to `main` separately fires `docker.yml` for t
 
 After the workflows turn green:
 
-1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `dist.zip`, `dist.zip.sha512`, `dist.zip.sigstore`, `dist.zip.cdx.json` and `dist.zip.cdx.html` are all attached, and that you have curated the notes. The `.cdx.html` file is the release SBOM rendered by this release's own report action and `:report-X.Y.Z` generator image — open it in a browser and confirm it shows the npm tree. Spot-check the checksum and the Sigstore signature:
+1. **GitHub Release** — open <https://github.com/no42-org/blitsbom/releases/latest>; verify `blitsbom-X.Y.Z.zip`, `.sha512`, `.sigstore`, `blitsbom-X.Y.Z-sbom.cdx.json` and `blitsbom-X.Y.Z-sbom-report.html` are all attached, and that you have curated the notes. The report is the release SBOM rendered by this release's own report action and `:report-X.Y.Z` generator image — open it in a browser and confirm it shows the npm tree. Spot-check the checksum and the Sigstore signature:
    ```bash
-   gh release download --pattern 'dist.zip*'
-   sha512sum -c dist.zip.sha512
-   cosign verify-blob dist.zip \
-     --bundle dist.zip.sigstore \
+   V=X.Y.Z
+   gh release download --pattern "blitsbom-${V}*"
+   sha512sum -c "blitsbom-${V}.sha512"
+   cosign verify-blob "blitsbom-${V}.zip" \
+     --bundle "blitsbom-${V}.sigstore" \
      --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/\.github/workflows/release\.yml@refs/tags/v' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com
    ```
 2. **Build provenance** — proves the artifact was built by this repo's workflow from this commit, not assembled elsewhere. The SBOM and its HTML report are covered by the same attestation:
    ```bash
-   gh attestation verify dist.zip --repo no42-org/blitsbom
-   gh attestation verify dist.zip.cdx.json --repo no42-org/blitsbom
-   gh attestation verify dist.zip.cdx.html --repo no42-org/blitsbom
+   gh attestation verify "blitsbom-${V}.zip" --repo no42-org/blitsbom
+   gh attestation verify "blitsbom-${V}-sbom.cdx.json" --repo no42-org/blitsbom
+   gh attestation verify "blitsbom-${V}-sbom-report.html" --repo no42-org/blitsbom
    ```
 3. **GHCR images** — pull and run, sanity-check it loads. The image serves on **port 3000** (BusyBox httpd as the unprivileged `static` user), so map to that, not 80:
    ```bash
@@ -216,11 +223,13 @@ Then cut a new patch version.
 
 ## Reproducing the release SBOM
 
-`dist.zip.cdx.json` is generated by `make sbom`, which `release.yml` calls. To reproduce the artifact published with a release, check out its tag and run:
+`blitsbom-X.Y.Z-sbom.cdx.json` is generated by `make sbom`, which `release.yml` calls. To reproduce the artifact published with a release, check out its tag and run:
 
 ```bash
-make sbom          # writes dist.zip.cdx.json; needs Docker
+make sbom          # writes blitsbom-<version>-sbom.cdx.json; needs Docker
 ```
+
+The target reads the version from `package.json`, so on a release tag it writes the same filename the release published. No `OUT=` is needed.
 
 The result matches the published SBOM in component set, purl set and per-component licence set, differing only in `serialNumber` and `metadata.timestamp`, which are per-run by construction. Verified for v0.6.1 from a clean checkout with no `npm ci` — syft's directory scan reads `package-lock.json`, not `node_modules/`, so an unbuilt tree gives the same inventory.
 

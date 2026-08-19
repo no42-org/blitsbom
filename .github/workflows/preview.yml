@@ -2,7 +2,7 @@ name: Preview Release
 
 # Publishes a rolling `preview` prerelease from main, so unreleased fixes can
 # be tested without building from source. The image side of this is docker.yml's
-# `:rc` tag; this is the same idea for the dist.zip artifact.
+# `:rc` tag; this is the same idea for the release archive.
 #
 # The `preview` release and its tag are recreated on every green build — it is
 # a moving target by design, and always corresponds to the current tip of main.
@@ -58,20 +58,27 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Build dist.zip
-        run: make dist-zip
+      # `OUT` is explicit here because `make dist-zip`'s default carries the
+      # version from package.json, and a preview has no version. On main that
+      # value is the *last released* version while the preview is ahead of it,
+      # so `blitsbom-0.7.1.zip` built from main would claim to be the 0.7.1
+      # release. A stable `preview` name says what this actually is, and keeps
+      # one fetchable URL for people tracking main — the same role the `:rc`
+      # image tag plays. (#222)
+      - name: Build the preview archive
+        run: make dist-zip OUT=blitsbom-preview.zip
 
       - name: Generate SHA-512 checksum
-        run: sha512sum dist.zip > dist.zip.sha512
+        run: sha512sum blitsbom-preview.zip > blitsbom-preview.sha512
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
 
-      - name: Sign dist.zip with cosign (keyless)
+      - name: Sign the preview archive with cosign (keyless)
         run: |
           cosign sign-blob --yes \
-            --bundle dist.zip.sigstore \
-            dist.zip
+            --bundle blitsbom-preview.sigstore \
+            blitsbom-preview.zip
 
       # Delete-then-recreate rather than editing in place: it is the only way
       # to move the `preview` tag onto the new commit, and it keeps the release
@@ -110,8 +117,8 @@ jobs:
           Verify the artifact (cosign v3 or newer):
 
           \`\`\`bash
-          cosign verify-blob dist.zip \\
-            --bundle dist.zip.sigstore \\
+          cosign verify-blob blitsbom-preview.zip \\
+            --bundle blitsbom-preview.sigstore \\
             --certificate-identity-regexp '^https://github\.com/${GH_REPO}/\.github/workflows/preview\.yml@refs/heads/main$' \\
             --certificate-oidc-issuer https://token.actions.githubusercontent.com
           \`\`\`
@@ -122,6 +129,6 @@ jobs:
             --target "$SHA" \
             --title "Preview (main@${SHORT})" \
             --notes-file notes.md \
-            dist.zip dist.zip.sha512 dist.zip.sigstore
+            blitsbom-preview.zip blitsbom-preview.sha512 blitsbom-preview.sigstore
 
           echo "Preview refreshed at ${SHORT}" >> "$GITHUB_STEP_SUMMARY"

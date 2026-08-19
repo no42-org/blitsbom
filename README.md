@@ -15,17 +15,24 @@ A zero-install viewer for [CycloneDX](https://cyclonedx.org/) and [SPDX](https:/
 The fastest way to run blitsbom in your own environment.
 
 ```plain
-# Grab the latest release artifact + checksum
+# Grab the release artifact + checksum
 mkdir blitsbom && cd blitsbom
-curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip
-curl -fLO https://github.com/no42-org/blitsbom/releases/latest/download/dist.zip.sha512
+curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.7.1/blitsbom-0.7.1.zip
+curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.7.1/blitsbom-0.7.1.sha512
 
 # Verify integrity (exits non-zero if the bundle was tampered with)
-sha512sum -c dist.zip.sha512
+sha512sum -c blitsbom-0.7.1.sha512
+```
+
+Scripting it? `gh` resolves the current release itself, so nothing needs editing when a new one lands:
+
+```plain
+gh release download --repo no42-org/blitsbom --pattern 'blitsbom-*.zip' --pattern 'blitsbom-*.sha512'
+sha512sum -c blitsbom-*.sha512
 ```
 
 ```plain
-unzip dist.zip
+unzip blitsbom-*.zip
 open index.html      # macOS
 xdg-open index.html  # Linux
 ```
@@ -251,7 +258,7 @@ make test        # vitest
 make verify      # lint + tests + network-purity check
 make size-check  # fail if gzipped JS exceeds 60 KB
 make smoke       # headless Chromium loading dist/index.html via file://
-make dist-zip    # build and zip dist/ as dist.zip for self-hosters
+make dist-zip    # build and zip dist/ as blitsbom-<version>.zip for self-hosters
 ```
 
 CI invokes `make` targets, never the underlying npm scripts directly, so the developer and CI commands stay in sync.
@@ -259,8 +266,8 @@ CI invokes `make` targets, never the underlying npm scripts directly, so the dev
 ## Deployment
 
 - Pushing to `main` triggers `.github/workflows/docker.yml`, which builds and pushes `ghcr.io/no42-org/blitsbom:rc` (and `:main-<short-sha>`).
-- Pushing a tag matching `v*` triggers `.github/workflows/release.yml` (produces `dist.zip` + `dist.zip.sha512` and attaches them to the GitHub Release) and `.github/workflows/docker.yml` (publishes `:X.Y.Z` and `:X.Y` to GHCR — not yet `:latest`).
-- `release.yml` is triggered by the `v*` tag push: in a single job it builds the bundle, attaches `dist.zip` + checksum + Sigstore bundle to a freshly-created GitHub Release (`make_latest: legacy` defers to GitHub's Latest-release algorithm), and — when the tag is not a prerelease — its final step calls `gh workflow run docker.yml --ref <tag> -f promote_tag=X.Y.Z` to dispatch the `promote-latest` job. That job re-tags the already-pushed `:X.Y.Z` image as `:latest` — no rebuild, same digest, same cosign signature. (We use `workflow_dispatch` rather than the `release: [released]` event because GitHub suppresses downstream events triggered by GITHUB_TOKEN; `workflow_dispatch` is the documented exception.)
+- Pushing a tag matching `v*` triggers `.github/workflows/release.yml` (produces `blitsbom-X.Y.Z.zip` + `blitsbom-X.Y.Z.sha512` and attaches them to the GitHub Release) and `.github/workflows/docker.yml` (publishes `:X.Y.Z` and `:X.Y` to GHCR — not yet `:latest`).
+- `release.yml` is triggered by the `v*` tag push: in a single job it builds the bundle, attaches the archive + checksum + Sigstore bundle to a freshly-created GitHub Release (`make_latest: legacy` defers to GitHub's Latest-release algorithm), and — when the tag is not a prerelease — its final step calls `gh workflow run docker.yml --ref <tag> -f promote_tag=X.Y.Z` to dispatch the `promote-latest` job. That job re-tags the already-pushed `:X.Y.Z` image as `:latest` — no rebuild, same digest, same cosign signature. (We use `workflow_dispatch` rather than the `release: [released]` event because GitHub suppresses downstream events triggered by GITHUB_TOKEN; `workflow_dispatch` is the documented exception.)
 
 All third-party Actions are pinned to immutable commit SHAs and kept current by Dependabot.
 
