@@ -59,6 +59,20 @@ const README_VERSION_PATTERNS = [
   { label: 'action ref', re: new RegExp(`(?<![\\w/])@v${V}`, 'g') },
   { label: 'generator image', re: new RegExp(`:report-${V}`, 'g') },
   { label: 'serving image', re: new RegExp(`blitsbom:${V}`, 'g') },
+  // The quick start's download URL and artifact names. Release artifacts carry
+  // the version since #222, and `releases/latest/download/<name>` resolves only
+  // an exact filename, so no constant URL survives — the quick start names one
+  // specific release and has to move with it, exactly as the action ref does.
+  //
+  // The `gh release download --pattern 'blitsbom-*.zip'` variant printed beside
+  // it is version-free on purpose, and must stay unmatched: `*` is not a
+  // version, so neither pattern fires on it. A checker that demanded a version
+  // there would wedge every release bump.
+  { label: 'release download URL', re: new RegExp(`releases/download/v${V}/`, 'g') },
+  // Extensions are enumerated rather than left open. `blitsbom-${V}[-.]` would
+  // let the prerelease suffix swallow part of a compound name like
+  // `blitsbom-1.2.3-sbom.cdx.json` and report a version of `1.2.3-sbom.cdx`.
+  { label: 'release artifact', re: new RegExp(`blitsbom-${V}\\.(?:zip|sha512|sigstore)`, 'g') },
 ];
 
 // Blockquotes carry migration notes — "Moved in v0.6.0", "pins to @v0.5.0 keep

@@ -198,41 +198,83 @@ jobs:
       - name: Install dependencies
         run: make install
 
+      # Computed before anything is built, because every artifact name now
+      # carries the version (#222).
+      #
+      # Two sources state that version and they must agree. The release is
+      # keyed on the tag, while `make dist-zip` and `make sbom` derive their
+      # filenames from `package.json`. A release bump PR that moved the tag but
+      # not `package.json` would otherwise publish `blitsbom-0.7.1.zip` under
+      # tag `v0.7.2`, and every later step would keep working on the wrong
+      # name. Failing here costs one red release run; failing silently ships a
+      # mislabelled artifact.
+      - name: Compute version from tag
+        id: ver
+        env:
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG_NAME#v}"
+          # Anchored full-SemVer match, the same shape the prerelease detection
+          # applies further down. Checked here as well so no filename is ever
+          # built from a malformed tag.
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::TAG_NAME '${TAG_NAME}' is not a valid SemVer tag (expected vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD])"
+            exit 1
+          fi
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$version" != "$pkg" ]; then
+            echo "::error::tag says ${version} but package.json says ${pkg}. The release bump PR must set package.json to match the tag: artifact filenames are derived from it."
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "prefix=blitsbom-${version}" >> "$GITHUB_OUTPUT"
+
       # No verify/size-check step here: the `gates` job above already ran the
       # full `make ci`, and this job cannot start unless it passed. This job
       # only needs to reproduce the artifact — gate jobs run on separate
       # runners and share no filesystem, so dist/ has to be rebuilt.
-      # `dist-zip` depends on `build`, so it is a single step.
-      - name: Build dist.zip
+      # `dist-zip` depends on `build`, so it is a single step. It names its own
+      # output from `package.json`, which the step above proved matches the tag.
+      - name: Build the release archive
         run: make dist-zip
 
-      # Emit "<sha512>  dist.zip" — the canonical sha512sum --check format
-      # so reviewers can verify with `sha512sum -c dist.zip.sha512`.
+      # Emit "<sha512>  blitsbom-<version>.zip" — the canonical sha512sum
+      # --check format, so a reviewer can verify with `sha512sum -c`. The
+      # subject name lives inside the file, which is why the checksum's own
+      # name does not repeat the `.zip`.
       - name: Generate SHA-512 checksum
-        run: sha512sum dist.zip > dist.zip.sha512
+        env:
+          PREFIX: ${{ steps.ver.outputs.prefix }}
+        run: sha512sum "${PREFIX}.zip" > "${PREFIX}.sha512"
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
 
       # Keyless blob signing: Sigstore exchanges the workflow's OIDC token
       # for a short-lived Fulcio cert, records the signing event in Rekor,
-      # and writes a single `dist.zip.sigstore` bundle (signature + cert
-      # chain + transparency-log inclusion proof). Verify with:
-      #   cosign verify-blob dist.zip --bundle dist.zip.sigstore \
+      # and writes a single `.sigstore` bundle (signature + cert chain +
+      # transparency-log inclusion proof). Verify with:
+      #   cosign verify-blob blitsbom-<version>.zip \
+      #     --bundle blitsbom-<version>.sigstore \
       #     --certificate-identity-regexp '^https://github\.com/no42-org/blitsbom/' \
       #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
-      - name: Sign dist.zip with cosign (keyless)
+      - name: Sign the release archive with cosign (keyless)
+        env:
+          PREFIX: ${{ steps.ver.outputs.prefix }}
         run: |
           cosign sign-blob --yes \
-            --bundle dist.zip.sigstore \
-            dist.zip
+            --bundle "${PREFIX}.sigstore" \
+            "${PREFIX}.zip"
 
       # An SBOM of the image already ships as an attestation on the container,
-      # but the primary artifact for the zero-install path is dist.zip, and it
-      # had none. syft scans the repo (package-lock.json) rather than the built
-      # bundle: dist/ is a single inlined index.html, so scanning it would find
-      # nothing — the meaningful inventory is the npm tree the bundle was
-      # compiled from.
+      # but the primary artifact for the zero-install path is the release
+      # archive, and it had none. syft scans the repo (package-lock.json)
+      # rather than the built bundle: dist/ is a single inlined index.html, so
+      # scanning it would find nothing — the meaningful inventory is the npm
+      # tree the bundle was compiled from. That is why the SBOM is named for
+      # the product rather than for the archive: it does not describe the
+      # archive. (#222)
       #
       # `make sbom` owns the scan target, the output path and the three syft
       # overrides that make the inventory correct (#136, #139), and runs syft
@@ -243,38 +285,40 @@ jobs:
       - name: Generate CycloneDX SBOM of the source tree
         run: make sbom
 
-      # Human-viewable rendering of dist.zip.cdx.json, produced by this repo's
-      # own report action. `uses: ./` resolves to the tagged commit, so
-      # each release dogfoods exactly the action version it ships, and the
+      # Human-viewable rendering of the SBOM, produced by this repo's own
+      # report action. `uses: ./` resolves to the tagged commit, so each
+      # release dogfoods exactly the action version it ships, and the
       # generator image is pinned to the matching :report-VERSION tag — the
       # `images` job has already waited for that tag to exist in GHCR before
       # this job started.
-      - name: Compute version from tag
-        id: ver
-        env:
-          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
-        run: echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
-
+      #
+      # The output drops `.cdx`: this is a report, not a CycloneDX document,
+      # and blitsbom renders SPDX just as happily. The name is the action's own
+      # default `sbom-report.html` with the product and version in front of it.
       - name: Render HTML report of the SBOM
         uses: ./
         with:
-          sbom: dist.zip.cdx.json
-          output: dist.zip.cdx.html
+          sbom: ${{ steps.ver.outputs.prefix }}-sbom.cdx.json
+          output: ${{ steps.ver.outputs.prefix }}-sbom-report.html
           version: ${{ steps.ver.outputs.version }}
           image: ghcr.io/${{ github.repository }}:report-${{ steps.ver.outputs.version }}
 
       # SLSA build provenance, verifiable with:
-      #   gh attestation verify dist.zip --repo no42-org/blitsbom
+      #   gh attestation verify blitsbom-<version>.zip --repo no42-org/blitsbom
       # Listing the SBOM and its HTML report as further subjects means one
       # attestation covers all three, rather than derived files arriving as
       # unvouched-for neighbours of a signed artifact.
-      - name: Attest build provenance for dist.zip + SBOM + report
+      #
+      # Renaming the subjects does not invalidate anything already published:
+      # `gh attestation verify` matches on digest, and the subject name is
+      # recorded alongside it rather than used as the lookup key.
+      - name: Attest build provenance for the archive + SBOM + report
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
           subject-path: |
-            dist.zip
-            dist.zip.cdx.json
-            dist.zip.cdx.html
+            ${{ steps.ver.outputs.prefix }}.zip
+            ${{ steps.ver.outputs.prefix }}-sbom.cdx.json
+            ${{ steps.ver.outputs.prefix }}-sbom-report.html
 
       # Detect prerelease from the tag suffix. Anything matching
       # `vX.Y.Z-<alphanumeric>` (e.g. v1.0.0-rc.1, v0.2.0-beta.3) is published
@@ -311,15 +355,20 @@ jobs:
       # is "Latest" using its built-in semver date logic — so a hotfix tag
       # pushed against an older minor line won't clobber the Latest badge of
       # a newer tag.
-      - name: Attach dist.zip + checksum + cosign bundle to draft release
+      # `fail_on_unmatched_files: true` is load-bearing since #222: the build
+      # steps derive their filenames from package.json and this list derives
+      # its own from the tag, so a disagreement fails the release here rather
+      # than publishing a partial one. The version cross-check at the top of
+      # the job should make that unreachable; this is the backstop.
+      - name: Attach archive + checksum + cosign bundle to draft release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
         with:
           files: |
-            dist.zip
-            dist.zip.sha512
-            dist.zip.sigstore
-            dist.zip.cdx.json
-            dist.zip.cdx.html
+            ${{ steps.ver.outputs.prefix }}.zip
+            ${{ steps.ver.outputs.prefix }}.sha512
+            ${{ steps.ver.outputs.prefix }}.sigstore
+            ${{ steps.ver.outputs.prefix }}-sbom.cdx.json
+            ${{ steps.ver.outputs.prefix }}-sbom-report.html
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true

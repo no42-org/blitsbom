@@ -234,6 +234,9 @@ describe('findStaleReadmeVersions', () => {
       ['image defaults to :report-0.6.0', 'generator image'],
       ['docker run ghcr.io/no42-org/blitsbom:0.1.0', 'serving image'],
       ['ghcr.io/no42-org/blitsbom:report-0.4.0 \\', 'generator image'],
+      ['curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.6.0/x', 'release download URL'],
+      ['unzip blitsbom-0.6.0.zip', 'release artifact'],
+      ['sha512sum -c blitsbom-0.6.0.sha512', 'release artifact'],
     ])('%s', (line, label) => {
       const r = stale(line);
       expect(r).toHaveLength(1);
@@ -248,8 +251,38 @@ describe('findStaleReadmeVersions', () => {
       'image defaults to :report-0.6.1',
       'docker run ghcr.io/no42-org/blitsbom:0.6.1',
       '| `@v0.6.1` | `:report-0.6.1` |',
+      'curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.6.1/blitsbom-0.6.1.zip',
+      'sha512sum -c blitsbom-0.6.1.sha512',
     ])('%s', (line) => {
       expect(stale(line)).toEqual([]);
+    });
+  });
+
+  // The quick start pairs a versioned `curl` with a version-free `gh release
+  // download`, which resolves the current release itself. The glob is the one
+  // thing that must never be version-checked: demanding a version there would
+  // fail the build on every release bump, for a line that is correct forever.
+  describe('version-free download commands', () => {
+    it.each([
+      "gh release download --repo no42-org/blitsbom --pattern 'blitsbom-*.zip'",
+      "gh release download --pattern 'blitsbom-*.sha512'",
+      'unzip blitsbom-*.zip',
+      'sha512sum -c blitsbom-*.sha512',
+    ])('%s is not flagged', (line) => {
+      expect(stale(line)).toEqual([]);
+    });
+  });
+
+  // `blitsbom-<version>-sbom.cdx.json` is a compound name: a loose pattern
+  // lets the prerelease suffix swallow `-sbom.cdx` and report a nonsense
+  // version. Extensions are enumerated to prevent that.
+  describe('compound artifact names', () => {
+    it('does not misread the SBOM name as a prerelease version', () => {
+      expect(stale('blitsbom-0.6.1-sbom.cdx.json')).toEqual([]);
+    });
+
+    it('does not misread the report name either', () => {
+      expect(stale('blitsbom-0.6.1-sbom-report.html')).toEqual([]);
     });
   });
 
