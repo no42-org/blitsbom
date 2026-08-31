@@ -17,11 +17,11 @@ The fastest way to run blitsbom in your own environment.
 ```plain
 # Grab the release artifact + checksum
 mkdir blitsbom && cd blitsbom
-curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.8.0/blitsbom-0.8.0.zip
-curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.8.0/blitsbom-0.8.0.sha512
+curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.8.1/blitsbom-0.8.1.zip
+curl -fLO https://github.com/no42-org/blitsbom/releases/download/v0.8.1/blitsbom-0.8.1.sha512
 
 # Verify integrity (exits non-zero if the bundle was tampered with)
-sha512sum -c blitsbom-0.8.0.sha512
+sha512sum -c blitsbom-0.8.1.sha512
 ```
 
 Scripting it? `gh` resolves the current release itself, so nothing needs editing when a new one lands:
@@ -46,7 +46,7 @@ It runs straight from a `file://` URL with no server. The bundle includes everyt
 docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:latest
 
 # A specific version
-docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:0.8.0
+docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:0.8.1
 
 # Bleeding-edge build from main (release-candidate)
 docker run --rm -p 8080:3000 ghcr.io/no42-org/blitsbom:rc
@@ -75,11 +75,11 @@ Turn an SBOM into a **single self-contained HTML file** you can attach to a rele
 ### In a GitHub Actions workflow
 
 ```yaml
-- uses: no42-org/blitsbom@v0.8.0
+- uses: no42-org/blitsbom@v0.8.1
   id: sbom-report
   with:
     sbom: bom.json          # path to your CycloneDX or SPDX SBOM
-    # image defaults to :report-0.8.0, matching the action tag
+    # image defaults to :report-0.8.1, matching the action tag
     # version/project/commit/build-url default from the workflow context
 - uses: actions/upload-artifact@v4
   with:
@@ -91,7 +91,7 @@ Pin the action however your policy requires — `image` defaults to the generato
 
 | Action ref | Generator image |
 |---|---|
-| `@v0.8.0` — a release tag | `:report-0.8.0` |
+| `@v0.8.1` — a release tag | `:report-0.8.1` |
 | a commit SHA, e.g. Dependabot's pin | `:report-<that commit's version>` |
 | `@main` or another branch | `:report-rc`, the generator built from `main` — the matching pair for a ref that tracks `main` |
 | anything else, or a version that cannot be read | `:report-rc` |
@@ -108,7 +108,7 @@ Two limits worth knowing. A SHA pinned to a commit *between* releases resolves t
 
 ```bash
 # A specific release (reproducible)
-docker run --rm -v "$PWD:/work" ghcr.io/no42-org/blitsbom:report-0.8.0 \
+docker run --rm -v "$PWD:/work" ghcr.io/no42-org/blitsbom:report-0.8.1 \
   /work/bom.json --project acme-platform --version 2.4.1 \
   --output /work/acme-platform-2.4.1-sbom.html
 
