@@ -61,7 +61,7 @@ CMD ["--help"]
 # Same ordering constraint as the report stage above: defined BEFORE the
 # serving stage so a plain `docker build .` still produces the serving image.
 # Build this one with `--target syft`.
-FROM ghcr.io/anchore/syft:v1.51.0@sha256:678bfa565b60f747aac0f8e964fe5588a24445b8d0a480e91f6efd70020dfbb0 AS syft
+FROM ghcr.io/anchore/syft:v1.51.1@sha256:95fe0835e5bebc6f8b1f8acef68d47d63d594ef4c0f25c097ff853b23cbac74c AS syft
 
 # Stage 4 (default) — serve the built dist/ from BusyBox httpd.
 # Image is ~150 KB, runs on port 3000 as the unprivileged `static` user.
