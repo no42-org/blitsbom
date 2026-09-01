@@ -1,9 +1,13 @@
 name: Gates
 
 # The single definition of "is this tree good?". Called by ci.yml (every PR
-# and push to main), release.yml (before publishing a tag) and docker.yml
-# (before pushing an image), so a release can never publish through a weaker
-# bar than the one PRs are held to.
+# and push to main), preview.yml, release.yml (before publishing a tag) and
+# docker.yml (before pushing an image), so a release can never publish through
+# a weaker bar than the one PRs are held to.
+#
+# On a tag ref it also answers "is this tree good *for this tag*" — see the
+# version job. That belongs here rather than in one caller precisely because a
+# tag push starts both release.yml and docker.yml.
 #
 # Callers reference this as `./.github/workflows/gates.yml`, which resolves to
 # the calling commit — no SHA pin needed or possible.
@@ -14,6 +18,62 @@ permissions:
   contents: read
 
 jobs:
+  # A tag release is keyed on the tag, but every artifact name and the image's
+  # own `org.opencontainers.image.version` label come from package.json, so the
+  # two have to agree. This check lives here rather than only in release.yml
+  # because a tag push starts *two* workflows and this one gates both.
+  #
+  # In #241 the v0.8.2 tag was pushed on a tree still saying 0.8.1. release.yml
+  # refused to create the draft, but docker.yml — which had no such check — had
+  # already pushed :0.8.2 and the floating :0.8, cosign-signed and attested,
+  # built from the 0.8.1 tree. Guarding only the release half left the half
+  # consumers actually pull unprotected.
+  #
+  # Skipped for branch refs, where there is no tag to reconcile: ci.yml and
+  # preview.yml call this workflow too. A skipped job does not fail its
+  # dependents, so those callers are unaffected.
+  version:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    # Reads two strings off disk. A minute is already a hang detector.
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # No setup-node: `jq` is preinstalled on the runner and reading one field
+      # out of package.json does not justify provisioning a toolchain. Keeping
+      # the job to a checkout plus a string compare is the point — it has to
+      # fail before docker.yml starts building, not after.
+      - name: Tag must match package.json
+        env:
+          # github.ref_name, not the caller's inputs: for `workflow_call` the
+          # github context is the caller's, and both tag-triggered callers are
+          # reached by a tag push. release.yml's own inline check still covers
+          # its workflow_dispatch + inputs.tag path.
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG_NAME#v}"
+          # Anchored full SemVer, the same shape release.yml applies. docker.yml
+          # triggers on the broader `v*`, so a malformed tag like `v0.3` reaches
+          # this check; rejecting it here beats failing several minutes into a
+          # build on metadata-action's empty-tag-list guard.
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag '${TAG_NAME}' is not a valid SemVer tag (expected vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD])"
+            exit 1
+          fi
+          pkg="$(jq -r .version package.json)"
+          if [ "$version" != "$pkg" ]; then
+            echo "::error::tag says ${version} but package.json says ${pkg}. The release bump PR must land before the tag: artifact filenames and the image version label are derived from package.json."
+            exit 1
+          fi
+          echo "✅ tag ${TAG_NAME} matches package.json ${pkg}"
+
   verify:
     runs-on: ubuntu-24.04
     # `make ci` runs build + verify + size-check + smoke + e2e; the e2e pass
