@@ -1,7 +1,7 @@
 {
   "name": "blitsbom",
   "private": true,
-  "version": "0.8.1",
+  "version": "0.8.2",
   "type": "module",
   "license": "MIT",
   "description": "Zero-install CycloneDX and SPDX SBOM viewer — runs in your browser.",
