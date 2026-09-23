@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Ronny Trommer <ronny@no42.org>
+ * SPDX-License-Identifier: MIT
+ */
+
 import { describe, expect, it } from 'vitest';
 import {
   classifyLicense,
@@ -102,8 +107,52 @@ describe('classifyLicense — name aliases', () => {
 
   it('strips "with <exception>" suffix', () => {
     expect(
-      classifyLicense({ kind: 'name', value: 'GPLv2+ with classpath' }),
+      classifyLicense({ kind: 'name', value: 'GPLv2+ with autoconf exception' }),
     ).toBe('strong-copyleft');
+  });
+
+  it('classifies GPL with the Classpath exception as copyleft (#261)', () => {
+    for (const value of [
+      'GPLv2+ with classpath',
+      'GPL-2.0-only WITH Classpath-exception-2.0',
+      'GNU General Public License (GPL), version 2, with the Classpath exception',
+      'LicenseRef-GPL2-w--CPE',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value }), value).toBe('copyleft');
+    }
+    expect(
+      classifyLicense({
+        kind: 'expression',
+        value: 'GPL-2.0-only WITH Classpath-exception-2.0',
+      }),
+    ).toBe('copyleft');
+  });
+
+  it('maps the Eclipse Distribution License to BSD-3-Clause (#261)', () => {
+    for (const value of [
+      'EDL-1.0',
+      'LicenseRef-EDL-1.0',
+      'Eclipse Distribution License - v 1.0',
+      'LicenseRef-Eclipse-Distribution-License---v-1.0',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value }), value).toBe('permissive');
+    }
+  });
+
+  it('unwraps syft-slugged LicenseRef names (#261)', () => {
+    expect(
+      classifyLicense({
+        kind: 'expression',
+        value:
+          'LicenseRef-Eclipse-Distribution-License---v-1.0 AND LicenseRef-Eclipse-Public-License---v-2.0',
+      }),
+    ).toBe('copyleft');
+    expect(
+      classifyLicense({
+        kind: 'expression',
+        value: 'LicenseRef-EDL-1.0 AND LicenseRef-EPL-2.0 AND LicenseRef-GPL2-w--CPE',
+      }),
+    ).toBe('copyleft');
   });
 });
 
@@ -142,6 +191,35 @@ describe('classifyLicense — URLs', () => {
         value: 'https://glassfish.dev.java.net/public/CDDLv1.0.html',
       }),
     ).toBe('copyleft');
+  });
+
+  it('recognizes the current opensource.org/license/<id> URL form (#261)', () => {
+    expect(
+      classifyLicense({ kind: 'name', value: 'https://opensource.org/license/mit' }),
+    ).toBe('permissive');
+    expect(
+      classifyLicense({ kind: 'name', value: 'https://opensource.org/license/bsd-3-clause' }),
+    ).toBe('permissive');
+  });
+
+  it('falls back to the url field when the value is unrecognized (#261)', () => {
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'Some vendor name for EDL',
+        url: 'http://www.eclipse.org/org/documents/edl-v10.php',
+      }),
+    ).toBe('permissive');
+  });
+
+  it('does not let the url override a recognized value', () => {
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'GPL-3.0',
+        url: 'https://opensource.org/licenses/MIT',
+      }),
+    ).toBe('strong-copyleft');
   });
 
   it('does not mis-classify an embedded canonical host as the host itself', () => {
