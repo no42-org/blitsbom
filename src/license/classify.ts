@@ -1,3 +1,8 @@
+/*
+ * Copyright 2026 Ronny Trommer <ronny@no42.org>
+ * SPDX-License-Identifier: MIT
+ */
+
 // SPDX-id → license category lookup.
 //
 // AUTHORITY: Free Software Foundation license list at
@@ -124,6 +129,9 @@ const TABLE: Record<string, LicenseCategory> = {
   'CDDL-1.1': 'copyleft',
   'EUPL-1.1': 'copyleft',
   'EUPL-1.2': 'copyleft',
+  // Deprecated SPDX id, kept as the canonical key for any GPL carrying the
+  // Classpath exception: linking code is not bound by the GPL. (#261)
+  'GPL-2.0-with-classpath-exception': 'copyleft',
 
   // Strong / project-level copyleft.
   'GPL-2.0': 'strong-copyleft',
@@ -185,6 +193,7 @@ const NAME_ALIASES: Record<string, string> = {
   'gplv3+': 'GPL-3.0-or-later',
   agplv3: 'AGPL-3.0',
   'agplv3+': 'AGPL-3.0-or-later',
+  'gpl2-w--cpe': 'GPL-2.0-with-classpath-exception', // syft LicenseRef slug
 
   // LGPL family
   lgpl: 'LGPL-3.0-or-later',
@@ -214,6 +223,11 @@ const NAME_ALIASES: Record<string, string> = {
   'eclipse public license': 'EPL-2.0',
   'eclipse public license 2.0': 'EPL-2.0',
   'eclipse public license, version 2.0': 'EPL-2.0',
+  'eclipse-public-license---v-2.0': 'EPL-2.0', // syft LicenseRef slug
+  // EDL 1.0 is the BSD-3-Clause text under another name.
+  'edl-1.0': 'BSD-3-Clause',
+  'eclipse distribution license - v 1.0': 'BSD-3-Clause',
+  'eclipse-distribution-license---v-1.0': 'BSD-3-Clause', // syft LicenseRef slug
 
   // CDDL
   cddl: 'CDDL-1.0',
@@ -273,7 +287,12 @@ function cleanValue(raw: string): string {
   v = v.replace(/;\s*link\s*=.*$/i, '').trim();
   // Strip surrounding quotes.
   v = v.replace(/^["']|["']$/g, '').trim();
-  // Strip "with <exception>" tail — we don't differentiate by exception in v1.
+  // The Classpath exception moves a GPL down to copyleft, so it must be
+  // recognized before the exception tail is stripped below. (#261)
+  if (/classpath/i.test(v) && /\bgpl|general public license/i.test(v)) {
+    return 'GPL-2.0-with-classpath-exception';
+  }
+  // Strip any other "with <exception>" tail; those don't change the category.
   v = v.replace(/\s+with\s+.*$/i, '').trim();
   // Strip a "LicenseRef-" prefix when followed by a recognizable SPDX id;
   // some tools encode the actual id inside the ref name.
@@ -304,9 +323,11 @@ function lookupToken(rawToken: string): LicenseCategory | null {
   const aliasId = NAME_ALIASES[cleaned.toLowerCase()];
   if (aliasId && TABLE[aliasId]) return TABLE[aliasId]!;
 
-  // URL pattern.
+  // URL pattern. OSI moved from /licenses/<id> to /license/<id>; fold the
+  // new form onto the old so the host-anchored patterns cover both. (#261)
+  const url = cleaned.replace('opensource.org/license/', 'opensource.org/licenses/');
   for (const [re, id] of URL_PATTERNS) {
-    if (re.test(cleaned)) return TABLE[id] ?? 'unrecognized';
+    if (re.test(url)) return TABLE[id] ?? 'unrecognized';
   }
 
   // Bare "Public Domain"-style names.
@@ -380,7 +401,12 @@ export function classifyLicense(
   if (/\s+(AND|OR)\s+/i.test(cleaned)) {
     return classifyExpression(cleaned);
   }
-  return lookupToken(cleaned) ?? 'unrecognized';
+  // Fall back to the license URL when the name alone is not enough. (#261)
+  return (
+    lookupToken(cleaned) ??
+    (license.url ? lookupToken(license.url) : null) ??
+    'unrecognized'
+  );
 }
 
 /**
