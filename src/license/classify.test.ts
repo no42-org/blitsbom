@@ -200,6 +200,9 @@ describe('classifyLicense — URLs', () => {
     expect(
       classifyLicense({ kind: 'name', value: 'https://opensource.org/license/bsd-3-clause' }),
     ).toBe('permissive');
+    expect(
+      classifyLicense({ kind: 'name', value: 'https://evil.com/opensource.org/license/mit' }),
+    ).toBe('unrecognized');
   });
 
   it('falls back to the url field when the value is unrecognized (#261)', () => {

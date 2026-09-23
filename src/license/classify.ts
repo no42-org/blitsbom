@@ -253,11 +253,11 @@ const NAME_ALIASES: Record<string, string> = {
 // from being mis-classified.
 const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\/\/(?:[a-z0-9-]+\.)*apache\.org\/licenses\/LICENSE-2\.0/i, 'Apache-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses?\/MIT/i, 'MIT'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses?\/BSD-3-Clause/i, 'BSD-3-Clause'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses?\/BSD-2-Clause/i, 'BSD-2-Clause'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses?\/ISC/i, 'ISC'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses?\/Apache-2\.0/i, 'Apache-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/MIT/i, 'MIT'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-3-Clause/i, 'BSD-3-Clause'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-2-Clause/i, 'BSD-2-Clause'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/ISC/i, 'ISC'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/Apache-2\.0/i, 'Apache-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/agpl/i, 'AGPL-3.0-or-later'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-3\.0/i, 'LGPL-3.0'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-2\.1/i, 'LGPL-2.1'],
@@ -323,9 +323,11 @@ function lookupToken(rawToken: string): LicenseCategory | null {
   const aliasId = NAME_ALIASES[cleaned.toLowerCase()];
   if (aliasId && TABLE[aliasId]) return TABLE[aliasId]!;
 
-  // URL pattern.
+  // URL pattern. OSI moved from /licenses/<id> to /license/<id>; fold the
+  // new form onto the old so the host-anchored patterns cover both. (#261)
+  const url = cleaned.replace('opensource.org/license/', 'opensource.org/licenses/');
   for (const [re, id] of URL_PATTERNS) {
-    if (re.test(cleaned)) return TABLE[id] ?? 'unrecognized';
+    if (re.test(url)) return TABLE[id] ?? 'unrecognized';
   }
 
   // Bare "Public Domain"-style names.
