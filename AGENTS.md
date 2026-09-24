@@ -14,6 +14,7 @@ make test         # vitest run
 make dev          # Vite dev server
 make report SBOM=bom.json [VERSION=x OUT=report.html VEX=vex.json]  # CI HTML report
 make sbom         # the release SBOM of this tree (needs Docker) [OUT=blitsbom-<version>-sbom.cdx.json]
+make release-tag VERSION=X.Y.Z  # tag + push the merged release bump, refuses any other commit
 ```
 
 The **CI report generator** (`src/generator/`) is a second Vite build

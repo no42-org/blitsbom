@@ -97,9 +97,22 @@ git checkout main
 git pull --ff-only            # fast-forward onto the squashed bump commit
 
 # Create the annotated tag on the merged commit and push it.
-git tag -a v0.2.0 -m "v0.2.0"
-git push origin v0.2.0
+make release-tag VERSION=0.2.0
 ```
+
+Do not run `git tag` and `git push` by hand.
+`make release-tag` fetches origin and refuses, listing every failed check, unless:
+
+- `VERSION` is SemVer without a leading `v`.
+- `HEAD` is `origin/main`.
+- The `HEAD` subject is `chore(release): v0.2.0`, with or without the `(#NNN)` squash suffix.
+- `package.json` at `HEAD` (the commit, not the working tree) says `0.2.0`.
+- `v0.2.0` exists neither locally nor on origin.
+
+Only then does it create the annotated tag and push that one tag.
+If the push fails, it deletes the local tag again, so a rerun starts clean.
+
+`v0.8.1` to `v0.8.4` were each tagged by hand on a Dependabot merge that happened to be `main` HEAD, and each needed a manual repair (#231, #239, #263, #265). The CI version gate catches that case too, but only after the tag is public.
 
 Pushing the tag fires `release.yml` (which builds, signs, and creates a **draft** release with `blitsbom-0.2.0.zip` + checksum + Sigstore bundle attached) and `docker.yml` (`:0.2.0`, `:0.2` in GHCR — note: not yet `:latest`). The tag matching glob is `v*.*.*`, so a malformed tag like `v0.3` or `vNEXT` starts nothing at all.
 
@@ -219,7 +232,30 @@ gh release delete v0.2.0 --yes --cleanup-tag
 # Optionally clean up the GHCR tag manually via the package settings.
 ```
 
+Deleting a `v*` tag needs admin rights, because of the tag ruleset below.
 Then cut a new patch version.
+
+## Protected release tags
+
+The `release tags` ruleset covers `refs/tags/v*`.
+It blocks tag updates, force-pushes and deletions, so a published tag cannot move under anyone who pinned to it.
+Tag creation is not restricted. `make release-tag` guards that.
+
+Repository admins bypass the ruleset.
+Use the bypass only for a tag that has no published release: re-pointing an orphan tag at the merged bump commit after a failed release run (#231, #239, #263), or deleting it.
+Never move a tag whose release is published. Cut a new patch version instead.
+
+The ruleset is defined in [`.github/rulesets/release-tags.json`](.github/rulesets/release-tags.json).
+GitHub does not read that file, so a change to it has to be applied by hand:
+
+```bash
+# Create it (first time, or after it was deleted).
+gh api repos/no42-org/blitsbom/rulesets --method POST --input .github/rulesets/release-tags.json
+
+# Update it in place.
+id=$(gh api repos/no42-org/blitsbom/rulesets --jq '.[] | select(.name == "release tags") | .id')
+gh api "repos/no42-org/blitsbom/rulesets/$id" --method PUT --input .github/rulesets/release-tags.json
+```
 
 ## Reproducing the release SBOM
 
