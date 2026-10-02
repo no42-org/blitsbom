@@ -33,6 +33,23 @@ on:
 permissions:
   contents: read
 
+# Serialize per ref, and never cancel: build-and-push pushes images, signs the
+# digest, and attests an SBOM. A cancellation between the push and the
+# signature leaves an unsigned image in GHCR.
+#
+# The group is run-level, not on build-and-push. GitHub keeps one pending
+# member per group and a newer arrival replaces it. A job joins when its
+# `needs` finish, so whichever push's gates finished last won, and `:rc` could
+# end on an older commit than main (#275). A run joins when it is created,
+# which follows push order, so the newest push is the one left pending.
+#
+# Promote dispatches get their own group: release.yml dispatches them on the
+# tag ref while that tag's build may still run, and they must neither wait
+# behind it nor cancel it.
+concurrency:
+  group: docker-${{ github.ref }}-${{ inputs.promote_tag && 'promote' || 'build' }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -60,12 +77,6 @@ jobs:
     # QEMU-emulated linux/arm64 builds are slow; 60 min leaves headroom on a
     # cold GHA cache while still bounding a hung build.
     timeout-minutes: 60
-    # Serialize per ref, and never cancel: this job pushes images, signs the
-    # digest, and attests an SBOM. A cancellation between the push and the
-    # signature leaves an unsigned image in GHCR.
-    concurrency:
-      group: docker-build-${{ github.ref }}
-      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
