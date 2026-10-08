@@ -1,0 +1,7 @@
+# Read by OSV-Scanner, which the Scorecard Vulnerabilities check runs.
+# Each entry expires, so the next scan after `ignoreUntil` re-raises it.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-04-08
+reason = "braces <=3.0.3 stack exhaustion on deeply nested patterns. No fixed release exists. Reached only via vite-plugin-singlefile -> micromatch at build time, and only for the plugin's inlinePattern option, which vite.config.ts does not set. No untrusted input reaches braces, and nothing of it ships in dist/."
