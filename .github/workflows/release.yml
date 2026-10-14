@@ -190,7 +190,7 @@ jobs:
       # artifacts would let a poisoned cache entry reach a release.
       # `npm ci` from scratch costs ~20s — cheap insurance on a tag build.
       - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 26
           package-manager-cache: false
