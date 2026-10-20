@@ -492,3 +492,71 @@ describe('classifyLicense — OSGi Bundle-License values (#308)', () => {
     }
   });
 });
+
+describe('classifyLicense — ScanCode LicenseDB ids (#307)', () => {
+  const expr = (value: string) =>
+    classifyLicense({ kind: 'expression', value });
+
+  it('classifies SPDX ids from RHEL RPM expressions', () => {
+    expect(expr('MIT AND X11')).toBe('permissive');
+    expect(expr('GPL-3.0-or-later AND GFDL-1.3-only')).toBe('strong-copyleft');
+    expect(classifyLicense({ kind: 'id', value: 'OFL-1.1' })).toBe('copyleft');
+    expect(classifyLicense({ kind: 'id', value: 'curl' })).toBe('permissive');
+  });
+
+  it('classifies the Fedora public-domain refs', () => {
+    expect(expr('MIT AND LicenseRef-Fedora-Public-Domain')).toBe('permissive');
+    for (const value of [
+      'LicenseRef-Fedora-Public-Domain',
+      'LicenseRef-Not-Copyrightable',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value })).toBe('public-domain');
+    }
+  });
+
+  it('leaves non-SPDX tokens unrecognized', () => {
+    for (const value of ['sprintf', 'CC-BY']) {
+      expect(classifyLicense({ kind: 'name', value })).toBe('unrecognized');
+    }
+  });
+
+  it('matches SPDX ids case-insensitively', () => {
+    expect(expr('gpl-2.0-or-later AND mit AND bsd-3-clause')).toBe(
+      'strong-copyleft',
+    );
+    expect(expr('licenseref-fedora-public-domain')).toBe('public-domain');
+  });
+
+  it('does not classify ScanCode aliases that are not SPDX ids', () => {
+    // "GPL 2.0" must not leave junk keys behind; LicenseRef-LICENSE is a
+    // placeholder, not a proprietary license.
+    for (const value of ['2.0', '2.0+', 'LicenseRef-LICENSE', 'LicenseRef-Commercial']) {
+      expect(classifyLicense({ kind: 'name', value })).toBe('unrecognized');
+    }
+  });
+
+  it('pins the ESA-PL copyleft variants ScanCode lists as permissive', () => {
+    expect(classifyLicense({ kind: 'id', value: 'ESA-PL-strong-copyleft-2.4' })).toBe(
+      'strong-copyleft',
+    );
+    expect(classifyLicense({ kind: 'id', value: 'ESA-PL-weak-copyleft-2.4' })).toBe(
+      'copyleft',
+    );
+  });
+
+  it('unwraps LicenseRef-<id> for ScanCode and lowercase ids', () => {
+    expect(classifyLicense({ kind: 'name', value: 'LicenseRef-X11' })).toBe('permissive');
+    expect(classifyLicense({ kind: 'name', value: 'LicenseRef-mit' })).toBe('permissive');
+  });
+
+  it('keeps the FSF placement where ScanCode disagrees', () => {
+    // ScanCode: 0BSD permissive, Artistic-2.0 copyleft.
+    expect(classifyLicense({ kind: 'id', value: '0BSD' })).toBe('public-domain');
+    expect(classifyLicense({ kind: 'id', value: 'Artistic-2.0' })).toBe(
+      'permissive',
+    );
+    expect(classifyLicense({ kind: 'id', value: 'artistic-2.0' })).toBe(
+      'permissive',
+    );
+  });
+});

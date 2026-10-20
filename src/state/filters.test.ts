@@ -12,6 +12,8 @@ import {
   computeOriginatorBreakdown,
   topOriginatorIds,
   ORIGINATOR_UNKNOWN,
+  isLicensable,
+  countExcluded,
 } from './filters';
 import type { Component } from '../types';
 
@@ -340,5 +342,46 @@ describe('file components (syft image SBOMs, #306)', () => {
       const filters = { ...emptyFilters(), originators: new Set([id]) };
       expect(applyFilters(alpine, filters, top)).toHaveLength(count);
     }
+  });
+});
+
+describe('RPM signing keys (#307)', () => {
+  const key = (n: number) =>
+    lib('gpg-pubkey', {
+      version: `${n}`,
+      purl: `pkg:rpm/redhat/gpg-pubkey@${n}?distro=rhel-10.2`,
+      licenses: [{ kind: 'name', value: 'pubkey' }],
+    });
+  const sbom: Component[] = [
+    lib('bash', { originator: 'Red Hat', licenses: [{ kind: 'id', value: 'GPL-3.0-or-later' }] }),
+    key(1),
+    key(2),
+    key(3),
+    lib('gpg-pubkey', { purl: 'pkg:npm/gpg-pubkey@1.0.0' }),
+  ];
+
+  it('leaves signing keys out of both breakdowns', () => {
+    const counts = Object.fromEntries(
+      computeCategoryBreakdown(sbom).map((r) => [r.category, r.count]),
+    );
+    expect(counts).toEqual({ 'strong-copyleft': 1, permissive: 1 });
+    expect(
+      computeOriginatorBreakdown(sbom).reduce((s, r) => s + r.count, 0),
+    ).toBe(2);
+  });
+
+  it('keeps an npm package of the same name', () => {
+    expect(isLicensable(sbom[4]!)).toBe(true);
+    expect(isLicensable(sbom[1]!)).toBe(false);
+  });
+
+  it('category=unrecognized matches no signing key', () => {
+    const filters = { ...emptyFilters(), categories: new Set(['unrecognized']) };
+    expect(applyFilters(sbom, filters as never)).toEqual([]);
+  });
+
+  it('counts files and signing keys separately', () => {
+    const file = lib('/etc/x', { type: 'file', licenses: [] });
+    expect(countExcluded([...sbom, file, file])).toEqual({ files: 2, keys: 3 });
   });
 });

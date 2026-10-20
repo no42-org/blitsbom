@@ -9,11 +9,11 @@
 
   interface Props {
     breakdown: CategoryBreakdownEntry[];
-    /** `file` components left out of the chart (see isLicensable). */
-    excludedFileCount?: number;
+    /** What the chart leaves out (see isLicensable), or null. */
+    excludedNote?: string | null;
   }
 
-  let { breakdown, excludedFileCount = 0 }: Props = $props();
+  let { breakdown, excludedNote = null }: Props = $props();
 
   // Pin bar order to CATEGORY_METADATA so the chart stays stable as
   // filters change. Drop empty buckets so we don't render zero-width bars.
@@ -37,7 +37,7 @@
   }
 </script>
 
-{#if total > 0 || excludedFileCount > 0}
+{#if total > 0 || excludedNote}
   <section class="chart" aria-label="License breakdown by category">
     <h2 class="chart__heading">
       Licenses by Category
@@ -69,12 +69,8 @@
         </li>
       {/each}
     </ul>
-    {#if excludedFileCount > 0}
-      <p class="chart__note">
-        {excludedFileCount.toLocaleString()} file {excludedFileCount === 1
-          ? 'component'
-          : 'components'} not counted.
-      </p>
+    {#if excludedNote}
+      <p class="chart__note">{excludedNote}</p>
     {/if}
   </section>
 {/if}

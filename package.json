@@ -18,7 +18,8 @@
     "purity-check": "node scripts/purity-check.mjs",
     "marketplace-check": "node scripts/marketplace-check.mjs",
     "smoke": "node scripts/file-smoke.mjs",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "license-table": "node scripts/scancode-categories.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",

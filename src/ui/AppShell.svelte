@@ -122,11 +122,11 @@
       <div class="donut-row" class:donut-row--three={store.hasVex}>
         <LicenseDonut
           breakdown={store.categoryBreakdownAll}
-          excludedFileCount={store.excludedFileCount}
+          excludedNote={store.excludedNote}
         />
         <OriginatorDonut
           breakdown={store.originatorBreakdownAll}
-          excludedFileCount={store.excludedFileCount}
+          excludedNote={store.excludedNote}
         />
         {#if store.hasVex}
           <SeverityDonut breakdown={store.vulnsBySeverityBreakdownAll} />

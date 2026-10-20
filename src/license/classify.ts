@@ -16,6 +16,13 @@
 // split for a viewer audience that includes legal/procurement, not just
 // engineers.
 //
+// SECOND AUTHORITY: ScanCode LicenseDB at
+//   https://scancode-licensedb.aboutcode.org/
+// The FSF does not classify most of the SPDX License List (X11, HPND, curl,
+// the GFDL family, ...). For an SPDX id that TABLE does not hold, the
+// category comes from ScanCode, via the generated ./scancode.ts. A TABLE
+// entry always wins. (#307)
+//
 // Beyond the canonical SPDX-id lookup (TABLE), this module also handles the
 // messy real-world inputs found in CycloneDX and SPDX SBOMs:
 //   - free-form name aliases (GPLv2+, ASL 2.0, "Apache License Version 2.0")
@@ -24,6 +31,7 @@
 //   - OpenNMS-tooling artifacts ("BSD-3-Clause;link=https://…")
 
 import type { License, LicenseCategory } from '../types';
+import { SCANCODE_IDS } from './scancode';
 
 interface CategoryMeta {
   id: LicenseCategory;
@@ -145,6 +153,17 @@ const TABLE: Record<string, LicenseCategory> = {
   'AGPL-3.0-or-later': 'strong-copyleft',
 };
 
+// SPDX ids are case-insensitive, so both tables are looked up lowercased.
+const TABLE_LC = new Map(
+  Object.entries(TABLE).map(([id, cat]) => [id.toLowerCase(), cat]),
+);
+const SCANCODE = new Map<string, LicenseCategory>();
+for (const [cat, ids] of Object.entries(SCANCODE_IDS)) {
+  for (const id of ids.split(' ')) {
+    SCANCODE.set(id.toLowerCase(), cat as LicenseCategory);
+  }
+}
+
 /**
  * Severity ordering used for compound expression resolution.
  * `unrecognized` ranks just below `proprietary` — when an OR clause mixes a
@@ -241,6 +260,8 @@ const NAME_ALIASES: Record<string, string> = {
   // Misc
   python: 'Python-2.0',
   'public domain': 'CC0-1.0',
+  // Fedora's ref for content that has no copyright; not in ScanCode. (#307)
+  'licenseref-not-copyrightable': 'CC0-1.0',
   'the mit license': 'MIT',
   'mit license': 'MIT',
 };
@@ -353,7 +374,8 @@ function cleanValue(raw: string): string {
   const refMatch = v.match(/^LicenseRef-+(.+)$/);
   if (refMatch && refMatch[1]) {
     const inner = refMatch[1].trim();
-    if (TABLE[inner] || NAME_ALIASES[inner.toLowerCase()]) {
+    const lower = inner.toLowerCase();
+    if (TABLE_LC.has(lower) || SCANCODE.has(lower) || NAME_ALIASES[lower]) {
       v = inner;
     }
   }
@@ -370,12 +392,19 @@ function lookupToken(rawToken: string): LicenseCategory | null {
   if (!cleaned) return null;
   if (cleaned === 'NOASSERTION') return 'undeclared';
 
-  // Direct SPDX id.
-  if (TABLE[cleaned]) return TABLE[cleaned]!;
+  // Direct SPDX id, FSF table first.
+  const lower = cleaned.toLowerCase();
+  const fsf = TABLE_LC.get(lower);
+  if (fsf) return fsf;
 
   // Alias (case-insensitive).
-  const aliasId = NAME_ALIASES[cleaned.toLowerCase()];
-  if (aliasId && TABLE[aliasId]) return TABLE[aliasId]!;
+  const aliasId = NAME_ALIASES[lower]?.toLowerCase();
+  const aliasCat = aliasId && (TABLE_LC.get(aliasId) ?? SCANCODE.get(aliasId));
+  if (aliasCat) return aliasCat;
+
+  // Any other SPDX id, per ScanCode.
+  const scancode = SCANCODE.get(lower);
+  if (scancode) return scancode;
 
   // URL pattern. OSI moved from /licenses/<id> to /license/<id>; fold the
   // new form onto the old so the host-anchored patterns cover both. (#261)

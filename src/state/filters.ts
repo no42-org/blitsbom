@@ -122,15 +122,51 @@ function matchesSeverity(
 
 const EMPTY_SET: ReadonlySet<string> = new Set();
 
+/** An unlicensed `file` component: syft lists every package-owned file of
+ * a container image this way, with hashes but no license or supplier. */
+function isUnlicensedFile(c: Component): boolean {
+  return c.type === 'file' && c.licenses.length === 0;
+}
+
+/** An RPM signing key. RHEL images carry them as `gpg-pubkey` packages
+ * with the license `pubkey`; they are keys, not software. (#307) */
+function isSigningKey(c: Component): boolean {
+  return c.name === 'gpg-pubkey' && (c.purl?.startsWith('pkg:rpm/') ?? false);
+}
+
 /**
- * False for `file` components that declare no license: syft lists every
- * package-owned file of a container image this way, with hashes but no
- * license or supplier. The license and originator charts skip them so they
- * don't read as thousands of Undeclared / Unknown entries (#306). They stay
- * in the table. A file that does declare a license is counted.
+ * False for unlicensed files and RPM signing keys. The license and
+ * originator charts skip them so they don't read as thousands of
+ * Undeclared / Unknown entries (#306). They stay in the table.
  */
 export function isLicensable(c: Component): boolean {
-  return c.type !== 'file' || c.licenses.length > 0;
+  return !isUnlicensedFile(c) && !isSigningKey(c);
+}
+
+export interface ExcludedCounts {
+  files: number;
+  keys: number;
+}
+
+export function countExcluded(components: readonly Component[]): ExcludedCounts {
+  const out = { files: 0, keys: 0 };
+  for (const c of components) {
+    if (isUnlicensedFile(c)) out.files += 1;
+    else if (isSigningKey(c)) out.keys += 1;
+  }
+  return out;
+}
+
+/** The charts' note on what they leave out, or null when nothing is. */
+export function formatExcludedNote({ files, keys }: ExcludedCounts): string | null {
+  const parts: string[] = [];
+  if (files > 0) {
+    parts.push(`${files.toLocaleString()} file ${files === 1 ? 'component' : 'components'}`);
+  }
+  if (keys > 0) {
+    parts.push(`${keys.toLocaleString()} signing ${keys === 1 ? 'key' : 'keys'}`);
+  }
+  return parts.length > 0 ? `${parts.join(' and ')} not counted.` : null;
 }
 
 export const ORIGINATOR_OTHER = '__originator_other__';

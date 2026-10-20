@@ -15,7 +15,8 @@ import {
   computeLicenseBreakdown,
   computeOriginatorBreakdown,
   computeVulnsBySeverityBreakdown,
-  isLicensable,
+  countExcluded,
+  formatExcludedNote,
   distinctScopes,
   distinctTypes,
   licensesInCategory,
@@ -135,12 +136,8 @@ class SbomStore {
 
   categoryBreakdownAll = $derived(computeCategoryBreakdown(this.components));
 
-  /** `file` components the license and originator charts leave out. */
-  excludedFileCount = $derived.by(() => {
-    let n = 0;
-    for (const c of this.components) if (!isLicensable(c)) n += 1;
-    return n;
-  });
+  /** What the license and originator charts leave out (see isLicensable). */
+  excludedNote = $derived(formatExcludedNote(countExcluded(this.components)));
   categoryBreakdownFiltered = $derived(
     computeCategoryBreakdown(this.filteredComponents),
   );
