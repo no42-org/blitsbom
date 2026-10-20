@@ -394,3 +394,101 @@ describe('classifyLicense — common URLs and names (#309)', () => {
     ).toBe('unrecognized');
   });
 });
+
+describe('classifyLicense — OSGi Bundle-License values (#308)', () => {
+  const cases: Array<[string, string]> = [
+    [
+      'Apache-2.0;description="This program and the accompanying materials are made available under the terms of the Apache License, Version 2.0."',
+      'permissive',
+    ],
+    [
+      'Revised BSD;link="https://github.com/mwiede/jsch/blob/master/LICENSE.txt",Revised BSD;link="https://github.com/mwiede/jsch/blob/master/LICENSE.JZlib.txt",ISC',
+      'permissive',
+    ],
+    [
+      'https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.txt, https://www.gnu.org/software/classpath/license.html',
+      'copyleft',
+    ],
+    [
+      'https://projects.eclipse.org/license/epl-2.0, https://projects.eclipse.org/license/secondary-gpl-2.0-cp',
+      'copyleft',
+    ],
+    [
+      'http://repository.jboss.org/licenses/cddl.txt, http://repository.jboss.org/licenses/gpl-2.0-ce.txt',
+      'copyleft',
+    ],
+    [
+      'http://opensource.org/licenses/apache2.0.php; link="http://www.apache.org/licenses/LICENSE-2.0"; description="Apache License, Version 2.0"',
+      'permissive',
+    ],
+    ['MIT, GPL-3.0', 'strong-copyleft'],
+    ['MIT, Some Vendor EULA', 'unrecognized'],
+    // A URL pattern matches a substring, so the whole list must not be
+    // looked up as one URL.
+    [
+      'https://opensource.org/licenses/MIT, https://www.gnu.org/licenses/gpl-3.0',
+      'strong-copyleft',
+    ],
+    // Stripping the first entry's attributes must not swallow the rest.
+    ['MIT;link="https://example.com/MIT", GPL-3.0', 'strong-copyleft'],
+    ['Apache-2.0;bundle-license:=directive', 'permissive'],
+  ];
+  for (const [value, category] of cases) {
+    it(`classifies ${value.slice(0, 60)} as ${category}`, () => {
+      expect(classifyLicense({ kind: 'name', value })).toBe(category);
+    });
+  }
+
+  // Lists that matched one URL as a substring before the split (#308).
+  it('classifies URL lists from the OpenNMS images', () => {
+    const lists: Array<[string, string]> = [
+      [
+        'http://www.apache.org/licenses/LICENSE-2.0, https://www.eclipse.org/org/documents/epl-v10.php',
+        'copyleft',
+      ],
+      [
+        'http://www.mozilla.org/MPL/MPL-1.1.html, http://www.gnu.org/licenses/lgpl-2.1.html, https://www.apache.org/licenses/LICENSE-2.0',
+        'copyleft',
+      ],
+      [
+        'https://www.eclipse.org/legal/epl-2.0/, http://www.gnu.org/copyleft/gpl.html, http://www.gnu.org/licenses/lgpl.html',
+        'strong-copyleft',
+      ],
+    ];
+    for (const [value, category] of lists) {
+      expect(classifyLicense({ kind: 'name', value })).toBe(category);
+    }
+  });
+
+  it('classifies an unsplittable value whole, url fallback included', () => {
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'MIT, Some Vendor EULA',
+        url: 'https://opensource.org/licenses/MIT',
+      }),
+    ).toBe('permissive');
+  });
+
+  it('falls back to the url when a comma splits a name into fragments', () => {
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'GNU Lesser/Library Public License, Version 3.0',
+        url: 'http://www.gnu.org/licenses/lgpl-3.0.txt',
+      }),
+    ).toBe('copyleft');
+  });
+
+  it('does not split a name that contains a comma', () => {
+    for (const value of [
+      'Apache License, Version 2.0',
+      'The Apache Software License, Version 2.0',
+      'Apache License, Version 2.0;link="https://www.apache.org/licenses/LICENSE-2.0"',
+      // An unquoted attribute value with a comma leaves a fragment.
+      'MIT;link=https://example.com/lic?a,b',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value })).toBe('permissive');
+    }
+  });
+});

@@ -219,6 +219,7 @@ const NAME_ALIASES: Record<string, string> = {
   // SPDX id directly.
   bsd: 'BSD-3-Clause',
   'bsd license': 'BSD-3-Clause',
+  'revised bsd': 'BSD-3-Clause',
   'the bsd license': 'BSD-3-Clause',
 
   // Eclipse
@@ -261,10 +262,16 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-2-Clause/i, 'BSD-2-Clause'],
   [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/ISC/i, 'ISC'],
   [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/Apache-2\.0/i, 'Apache-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/apache2\.0\.php/i, 'Apache-2.0'],
   // OSI's legacy page, which redirects to BSD-2-Clause.
   [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/bsd-license\.php/i, 'BSD-2-Clause'],
   [/\/\/(?:[a-z0-9-]+\.)*creativecommons\.org\/publicdomain\/zero\/1\.0/i, 'CC0-1.0'],
   [/\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/apache-2\.0/i, 'Apache-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/cddl/i, 'CDDL-1.0'],
+  // "ce" and "cp" both name the Classpath exception.
+  [/\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/gpl-2\.0-ce/i, 'GPL-2.0-with-classpath-exception'],
+  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/license\/secondary-gpl-2\.0-cp/i, 'GPL-2.0-with-classpath-exception'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/software\/classpath\/license/i, 'GPL-2.0-with-classpath-exception'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/agpl/i, 'AGPL-3.0-or-later'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-3\.0/i, 'LGPL-3.0'],
   // GNU keeps the 2.x texts under old-licenses/. Only the versioned patterns
@@ -276,9 +283,16 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl-3\.0/i, 'GPL-3.0'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?gpl-2\.0/i, 'GPL-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl/i, 'GPL-3.0-or-later'],
+  // gnu.org/copyleft/ pages describe the current GPL and LGPL.
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/copyleft\/lesser/i, 'LGPL-3.0-or-later'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/copyleft\/gpl/i, 'GPL-3.0-or-later'],
   [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/2\.0/i, 'MPL-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/1\.1/i, 'MPL-1.1'],
+  [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/MPL-1\.1/i, 'MPL-1.1'],
   [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-2\.0/i, 'EPL-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/epl-2\.0/i, 'EPL-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/epl-v10/i, 'EPL-1.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/license\/epl-2\.0/i, 'EPL-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-v10/i, 'EPL-1.0'],
   [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl/i, 'EPL-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/edl-v10/i, 'BSD-3-Clause'],
@@ -290,6 +304,31 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\/\/(?:[a-z0-9-]+\.)*oss\.oracle\.com\/licenses\/CDDL\+GPL-1\.1/i, 'CDDL-1.1'],
 ];
 
+/** The first OSGi attribute or directive of a header entry, and everything
+ * after it. */
+const ATTRIBUTE = /;\s*[A-Za-z][\w.-]*\s*:?=.*$/s;
+
+/**
+ * Split an OSGi `Bundle-License` list at commas outside double quotes. A
+ * `description="Apache License, Version 2.0"` attribute holds a comma that
+ * is not a separator.
+ */
+function splitEntries(value: string): string[] {
+  const out: string[] = [];
+  let start = 0;
+  let quoted = false;
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i];
+    if (ch === '"') quoted = !quoted;
+    else if (ch === ',' && !quoted) {
+      out.push(value.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(value.slice(start));
+  return out.map((e) => e.trim()).filter(Boolean);
+}
+
 /**
  * Strip OpenNMS / CycloneDX tooling artifacts and surrounding quotes,
  * returning a canonical token suitable for downstream lookup.
@@ -297,8 +336,9 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 function cleanValue(raw: string): string {
   if (!raw) return '';
   let v = raw.trim();
-  // Strip OpenNMS ";link=…" suffix.
-  v = v.replace(/;\s*link\s*=.*$/i, '').trim();
+  // Strip OSGi attributes and directives (";link=…", ";description=…",
+  // ";name:=…"). OpenNMS tooling emits the ";link=" form too. (#308)
+  v = v.replace(ATTRIBUTE, '').trim();
   // Strip surrounding quotes.
   v = v.replace(/^["']|["']$/g, '').trim();
   // The Classpath exception moves a GPL down to copyleft, so it must be
@@ -388,6 +428,16 @@ function classifyExpression(expr: string): LicenseCategory {
   return lookupToken(clean) ?? 'unrecognized';
 }
 
+/** One list entry, without the url fallback. Null when not recognized. */
+function classifyEntry(entry: string): LicenseCategory | null {
+  const cleaned = cleanValue(entry);
+  if (/\s+(AND|OR)\s+/i.test(cleaned)) {
+    const cat = classifyExpression(cleaned);
+    return cat === 'unrecognized' ? null : cat;
+  }
+  return lookupToken(cleaned);
+}
+
 /**
  * Classify a license into one of seven categories.
  *
@@ -406,6 +456,18 @@ export function classifyLicense(
 
   if (license.kind === 'expression') {
     return classifyExpression(value);
+  }
+
+  // An OSGi Bundle-License list: every entry applies, so the most
+  // restrictive one decides. Split only when every entry is recognized on
+  // its own; a comma inside a name ("Apache License, Version 2.0") leaves a
+  // fragment that is not, and the value is then classified whole. (#308)
+  const entries = splitEntries(value);
+  if (entries.length > 1) {
+    const cats = entries.map(classifyEntry);
+    if (cats.every((c): c is LicenseCategory => c !== null)) {
+      return maxCategory(cats);
+    }
   }
 
   // kind: 'id' or 'name'. Some "id" values from CycloneDX aren't real SPDX
