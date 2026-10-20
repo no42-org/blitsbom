@@ -421,16 +421,17 @@ describe('classifyLicense — OSGi Bundle-License values (#308)', () => {
       'http://opensource.org/licenses/apache2.0.php; link="http://www.apache.org/licenses/LICENSE-2.0"; description="Apache License, Version 2.0"',
       'permissive',
     ],
-    ['MIT, GPL-3.0', 'strong-copyleft'],
+    // The entries are alternatives, as for a Maven <licenses> list.
+    ['MIT, GPL-3.0', 'permissive'],
     ['MIT, Some Vendor EULA', 'unrecognized'],
     // A URL pattern matches a substring, so the whole list must not be
     // looked up as one URL.
     [
-      'https://opensource.org/licenses/MIT, https://www.gnu.org/licenses/gpl-3.0',
-      'strong-copyleft',
+      'https://www.gnu.org/licenses/gpl-3.0, https://www.eclipse.org/legal/epl-2.0',
+      'copyleft',
     ],
     // Stripping the first entry's attributes must not swallow the rest.
-    ['MIT;link="https://example.com/MIT", GPL-3.0', 'strong-copyleft'],
+    ['GPL-3.0;link="https://example.com/GPL", MIT', 'permissive'],
     ['Apache-2.0;bundle-license:=directive', 'permissive'],
   ];
   for (const [value, category] of cases) {
@@ -444,15 +445,15 @@ describe('classifyLicense — OSGi Bundle-License values (#308)', () => {
     const lists: Array<[string, string]> = [
       [
         'http://www.apache.org/licenses/LICENSE-2.0, https://www.eclipse.org/org/documents/epl-v10.php',
-        'copyleft',
+        'permissive',
       ],
       [
         'http://www.mozilla.org/MPL/MPL-1.1.html, http://www.gnu.org/licenses/lgpl-2.1.html, https://www.apache.org/licenses/LICENSE-2.0',
-        'copyleft',
+        'permissive',
       ],
       [
         'https://www.eclipse.org/legal/epl-2.0/, http://www.gnu.org/copyleft/gpl.html, http://www.gnu.org/licenses/lgpl.html',
-        'strong-copyleft',
+        'copyleft',
       ],
     ];
     for (const [value, category] of lists) {

@@ -487,15 +487,18 @@ export function classifyLicense(
     return classifyExpression(value);
   }
 
-  // An OSGi Bundle-License list: every entry applies, so the most
-  // restrictive one decides. Split only when every entry is recognized on
-  // its own; a comma inside a name ("Apache License, Version 2.0") leaves a
-  // fragment that is not, and the value is then classified whole. (#308)
+  // A license list (OSGi Bundle-License, or a Maven <licenses> list joined
+  // by syft): the entries are alternatives, so the least restrictive one
+  // decides. The Maven model: "If multiple licenses are listed, it is
+  // assumed that the user can select any of them, not that they must
+  // accept all." Split only when every entry is recognized on its own; a
+  // comma inside a name ("Apache License, Version 2.0") leaves a fragment
+  // that is not, and the value is then classified whole. (#308)
   const entries = splitEntries(value);
   if (entries.length > 1) {
     const cats = entries.map(classifyEntry);
     if (cats.every((c): c is LicenseCategory => c !== null)) {
-      return maxCategory(cats);
+      return minCategory(cats);
     }
   }
 
