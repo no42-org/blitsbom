@@ -1,3 +1,7 @@
+/*
+ * Copyright 2026 Ronny Trommer <ronny@no42.org>
+ * SPDX-License-Identifier: MIT
+ */
 import type {
   Component,
   License,
@@ -64,7 +68,10 @@ export function applyFilters(
   showSuppressed = false,
 ): Component[] {
   const q = filters.query.trim().toLowerCase();
+  const byLicensing = filters.categories.size > 0 || filters.originators.size > 0;
   return components.filter((c) => {
+    // Keeps a donut slice's count equal to the rows its filter produces.
+    if (byLicensing && !isLicensable(c)) return false;
     if (filters.licenses.size > 0) {
       const matched = c.licenses.some((l) => filters.licenses.has(l.value));
       if (!matched) return false;
@@ -114,6 +121,17 @@ function matchesSeverity(
 }
 
 const EMPTY_SET: ReadonlySet<string> = new Set();
+
+/**
+ * False for `file` components that declare no license: syft lists every
+ * package-owned file of a container image this way, with hashes but no
+ * license or supplier. The license and originator charts skip them so they
+ * don't read as thousands of Undeclared / Unknown entries (#306). They stay
+ * in the table. A file that does declare a license is counted.
+ */
+export function isLicensable(c: Component): boolean {
+  return c.type !== 'file' || c.licenses.length > 0;
+}
 
 export const ORIGINATOR_OTHER = '__originator_other__';
 export const ORIGINATOR_UNKNOWN = '__originator_unknown__';
@@ -188,13 +206,15 @@ export interface CategoryBreakdownEntry {
 
 /**
  * Count components per license category. Each component is classified by
- * its first license (see classifyComponent). Empty categories are omitted.
+ * its first license (see classifyComponent). Empty categories are omitted,
+ * and so are non-licensable components (see isLicensable).
  */
 export function computeCategoryBreakdown(
   components: readonly Component[],
 ): CategoryBreakdownEntry[] {
   const counts = new Map<LicenseCategory, number>();
   for (const c of components) {
+    if (!isLicensable(c)) continue;
     const cat = classifyComponent(c.licenses);
     counts.set(cat, (counts.get(cat) ?? 0) + 1);
   }
@@ -212,7 +232,9 @@ export function licensesInCategory(
   category: LicenseCategory,
 ): LicenseBreakdownEntry[] {
   const entries = computeLicenseBreakdown(
-    components.filter((c) => classifyComponent(c.licenses) === category),
+    components.filter(
+      (c) => isLicensable(c) && classifyComponent(c.licenses) === category,
+    ),
   );
   return entries;
 }
@@ -252,6 +274,7 @@ export function computeOriginatorBreakdown(
   const counts = new Map<string, number>();
   let unknown = 0;
   for (const c of components) {
+    if (!isLicensable(c)) continue;
     if (c.originator === null) {
       unknown += 1;
     } else {

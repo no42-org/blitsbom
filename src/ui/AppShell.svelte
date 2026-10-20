@@ -1,3 +1,7 @@
+<!--
+  Copyright 2026 Ronny Trommer <ronny@no42.org>
+  SPDX-License-Identifier: MIT
+-->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { store } from '../state/store.svelte';
@@ -116,8 +120,14 @@
         originatorCount={store.distinctOriginatorCount}
       />
       <div class="donut-row" class:donut-row--three={store.hasVex}>
-        <LicenseDonut breakdown={store.categoryBreakdownAll} />
-        <OriginatorDonut breakdown={store.originatorBreakdownAll} />
+        <LicenseDonut
+          breakdown={store.categoryBreakdownAll}
+          excludedFileCount={store.excludedFileCount}
+        />
+        <OriginatorDonut
+          breakdown={store.originatorBreakdownAll}
+          excludedFileCount={store.excludedFileCount}
+        />
         {#if store.hasVex}
           <SeverityDonut breakdown={store.vulnsBySeverityBreakdownAll} />
         {/if}

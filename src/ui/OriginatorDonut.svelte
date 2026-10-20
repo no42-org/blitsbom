@@ -1,15 +1,22 @@
+<!--
+  Copyright 2026 Ronny Trommer <ronny@no42.org>
+  SPDX-License-Identifier: MIT
+-->
 <script lang="ts">
   import type { OriginatorBreakdownEntry } from '../state/filters';
   import { store } from '../state/store.svelte';
 
   interface Props {
     breakdown: OriginatorBreakdownEntry[];
+    /** `file` components left out of the chart (see isLicensable). */
+    excludedFileCount?: number;
     heading?: string;
     ariaLabel?: string;
   }
 
   let {
     breakdown,
+    excludedFileCount = 0,
     heading = 'Licenses by Originator',
     ariaLabel,
   }: Props = $props();
@@ -59,7 +66,7 @@
   }
 </script>
 
-{#if total > 0}
+{#if total > 0 || excludedFileCount > 0}
   <section class="chart" aria-label={ariaLabel ?? heading}>
     <h2 class="chart__heading">
       {heading}
@@ -96,6 +103,13 @@
       Where the SBOM declares no originator, the package namespace is used
       instead (for example a Maven groupId).
     </p>
+    {#if excludedFileCount > 0}
+      <p class="chart__note">
+        {excludedFileCount.toLocaleString()} file {excludedFileCount === 1
+          ? 'component'
+          : 'components'} not counted.
+      </p>
+    {/if}
   </section>
 {/if}
 

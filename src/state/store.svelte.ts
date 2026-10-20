@@ -1,3 +1,7 @@
+/*
+ * Copyright 2026 Ronny Trommer <ronny@no42.org>
+ * SPDX-License-Identifier: MIT
+ */
 import type {
   Component,
   LoadedSbom,
@@ -11,6 +15,7 @@ import {
   computeLicenseBreakdown,
   computeOriginatorBreakdown,
   computeVulnsBySeverityBreakdown,
+  isLicensable,
   distinctScopes,
   distinctTypes,
   licensesInCategory,
@@ -129,6 +134,13 @@ class SbomStore {
   });
 
   categoryBreakdownAll = $derived(computeCategoryBreakdown(this.components));
+
+  /** `file` components the license and originator charts leave out. */
+  excludedFileCount = $derived.by(() => {
+    let n = 0;
+    for (const c of this.components) if (!isLicensable(c)) n += 1;
+    return n;
+  });
   categoryBreakdownFiltered = $derived(
     computeCategoryBreakdown(this.filteredComponents),
   );

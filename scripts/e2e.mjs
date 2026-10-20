@@ -34,6 +34,14 @@ const FIXTURES = [
     expectsPermissive: true,
   },
   {
+    // syft 1.55 scan of the alpine:3.20 image: 14 packages, 77 package-owned
+    // `file` components and the OS component (#306).
+    name: 'CycloneDX image (syft, alpine:3.20)',
+    file: join(SYFT_SAMPLES, 'alpine-3.20-cdx-1.7.json'),
+    expectedCount: 92,
+    expectsPermissive: true,
+  },
+  {
     name: 'SPDX synthetic',
     file: join(SAMPLES, 'spdx-synthetic.json'),
     expectedCount: 3,
@@ -190,6 +198,48 @@ for (const fixture of FIXTURES) {
   }
   console.log(`  CSV: ${csv.length} bytes, ${lineCount} non-blank lines`);
 }
+
+// File components (#306): the license and originator charts leave out the
+// 77 `file` components and say so; Undeclared is only the OS component, and
+// its filter yields as many rows as the bar shows.
+console.log(`\n--- File components (syft, alpine:3.20) ---`);
+await page.goto(url, { waitUntil: 'load' });
+await page.waitForSelector('.drop-zone');
+await page.setInputFiles(
+  'input[type=file]',
+  join(SYFT_SAMPLES, 'alpine-3.20-cdx-1.7.json'),
+);
+await page.waitForSelector('.summary-header', { timeout: 60_000 });
+const fileNotes = await page
+  .locator('.chart__note', { hasText: '77 file components not counted.' })
+  .count();
+if (fileNotes !== 2) {
+  fail(`file components: expected 2 exclusion notes, got ${fileNotes}`);
+}
+const undeclaredBar = page.locator('.bar', { hasText: 'Undeclared' }).first();
+const undeclaredCount = Number(
+  (await undeclaredBar.locator('.bar__count').textContent())?.trim(),
+);
+if (undeclaredCount !== 1) {
+  fail(`file components: expected Undeclared = 1, got ${undeclaredCount}`);
+}
+await undeclaredBar.click();
+await page.waitForFunction(() => location.search.includes('category=undeclared'));
+// The URL updates before the table re-renders, so wait for the row count.
+await page
+  .waitForFunction(
+    (n) => document.querySelectorAll('tbody tr').length === n,
+    undeclaredCount,
+    { timeout: 10_000 },
+  )
+  .catch(() => {});
+const undeclaredRows = await page.locator('tbody tr').count();
+if (undeclaredRows !== undeclaredCount) {
+  fail(
+    `file components: Undeclared bar shows ${undeclaredCount}, filter gave ${undeclaredRows} rows`,
+  );
+}
+console.log(`  notes: ${fileNotes}, Undeclared: ${undeclaredCount} = ${undeclaredRows} rows (ok)`);
 
 // VEX flow — load the small CycloneDX SBOM, then drop the synthetic VEX
 // fixture. Verify: vuln tile appears, severity column populated, severity

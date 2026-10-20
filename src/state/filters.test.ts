@@ -1,3 +1,7 @@
+/*
+ * Copyright 2026 Ronny Trommer <ronny@no42.org>
+ * SPDX-License-Identifier: MIT
+ */
 import { describe, expect, it } from 'vitest';
 import {
   applyFilters,
@@ -5,6 +9,9 @@ import {
   computeCategoryBreakdown,
   licensesInCategory,
   emptyFilters,
+  computeOriginatorBreakdown,
+  topOriginatorIds,
+  ORIGINATOR_UNKNOWN,
 } from './filters';
 import type { Component } from '../types';
 
@@ -234,5 +241,104 @@ describe('licensesInCategory', () => {
     const result = licensesInCategory(components, 'permissive');
     expect(result.map((r) => r.license).sort()).toEqual(['Apache-2.0', 'MIT']);
     expect(result.find((r) => r.license === 'Apache-2.0')!.count).toBe(2);
+  });
+});
+
+describe('file components (syft image SBOMs, #306)', () => {
+  // Mirrors alpine:3.20 scanned by syft: every package declares a license,
+  // package-owned files carry none, and the OS component asserts none.
+  const alpine: Component[] = [
+    ...Array.from({ length: 14 }, (_, i) =>
+      lib(`pkg-${i}`, {
+        originator: 'Natanael Copa',
+        licenses: [{ kind: 'id', value: 'MIT' }],
+      }),
+    ),
+    ...Array.from({ length: 77 }, (_, i) =>
+      lib(`/etc/file-${i}`, { type: 'file', scope: null, licenses: [] }),
+    ),
+    lib('alpine', { type: 'operating-system', scope: null, licenses: [] }),
+  ];
+
+  it('leaves files out of the category breakdown', () => {
+    const counts = Object.fromEntries(
+      computeCategoryBreakdown(alpine).map((r) => [r.category, r.count]),
+    );
+    expect(counts).toEqual({ permissive: 14, undeclared: 1 });
+  });
+
+  it('leaves files out of the originator breakdown', () => {
+    const result = computeOriginatorBreakdown(alpine);
+    expect(result.reduce((s, r) => s + r.count, 0)).toBe(15);
+    expect(result.find((r) => r.id === ORIGINATOR_UNKNOWN)!.count).toBe(1);
+  });
+
+  it('leaves files out of the drill-down', () => {
+    expect(licensesInCategory(alpine, 'undeclared')).toEqual([]);
+    expect(licensesInCategory(alpine, 'permissive')).toEqual([
+      { license: 'MIT', count: 14, kind: 'id' },
+    ]);
+  });
+
+  it('category=undeclared matches only the OS component', () => {
+    const filters = { ...emptyFilters(), categories: new Set(['undeclared']) };
+    expect(
+      applyFilters(alpine, filters as never).map((c) => c.type),
+    ).toEqual(['operating-system']);
+  });
+
+  it('Unknown originator matches no file', () => {
+    const filters = {
+      ...emptyFilters(),
+      originators: new Set([ORIGINATOR_UNKNOWN]),
+    };
+    expect(applyFilters(alpine, filters).map((c) => c.type)).toEqual([
+      'operating-system',
+    ]);
+  });
+
+  it('type=file still lists every file', () => {
+    const filters = { ...emptyFilters(), types: new Set(['file']) };
+    expect(applyFilters(alpine, filters)).toHaveLength(77);
+  });
+
+  it('type=file combined with a category matches nothing', () => {
+    const filters = {
+      ...emptyFilters(),
+      types: new Set(['file']),
+      categories: new Set(['undeclared']),
+    };
+    expect(applyFilters(alpine, filters as never)).toEqual([]);
+  });
+
+  it('counts a file that declares a license', () => {
+    const licensedFile = lib('/usr/bin/script', {
+      type: 'file',
+      licenses: [{ kind: 'id', value: 'MIT' }],
+    });
+    const counts = Object.fromEntries(
+      computeCategoryBreakdown([...alpine, licensedFile]).map((r) => [
+        r.category,
+        r.count,
+      ]),
+    );
+    expect(counts).toEqual({ permissive: 15, undeclared: 1 });
+    const filters = { ...emptyFilters(), categories: new Set(['permissive']) };
+    expect(
+      applyFilters([...alpine, licensedFile], filters as never),
+    ).toHaveLength(15);
+  });
+
+  it('every slice count equals the rows its filter produces', () => {
+    for (const { category, count } of computeCategoryBreakdown(alpine)) {
+      const filters = { ...emptyFilters(), categories: new Set([category]) };
+      expect(applyFilters(alpine, filters)).toHaveLength(count);
+    }
+    const originators = computeOriginatorBreakdown(alpine);
+    const top = topOriginatorIds(originators);
+    for (const { id, count } of originators) {
+      const filters = { ...emptyFilters(), originators: new Set([id]) };
+      expect(applyFilters(alpine, filters, top)).toHaveLength(count);
+    }
   });
 });
