@@ -348,3 +348,49 @@ describe('CATEGORY_METADATA', () => {
     }
   });
 });
+
+describe('classifyLicense — common URLs and names (#309)', () => {
+  const cases: Array<[string, string]> = [
+    ['http://www.opensource.org/licenses/bsd-license.php', 'permissive'],
+    ['https://creativecommons.org/publicdomain/zero/1.0/', 'public-domain'],
+    ['https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html', 'copyleft'],
+    ['https://www.gnu.org/licenses/old-licenses/lgpl-2.0.html', 'copyleft'],
+    ['https://www.gnu.org/licenses/old-licenses/gpl-2.0.html', 'strong-copyleft'],
+    ['https://oss.oracle.com/licenses/CDDL+GPL-1.1', 'copyleft'],
+    ['http://repository.jboss.org/licenses/apache-2.0.txt', 'permissive'],
+    ['https://repository.jboss.org/licenses/apache-2.0.txt', 'permissive'],
+    ['CDDL 1.1', 'copyleft'],
+    ['The BSD License', 'permissive'],
+    ['Apache License 2.0', 'permissive'],
+  ];
+  for (const [value, category] of cases) {
+    it(`classifies ${value} as ${category}`, () => {
+      expect(classifyLicense({ kind: 'name', value })).toBe(category);
+    });
+  }
+
+  it('classifies a new URL through the url fallback', () => {
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'CDDL+GPL License',
+        url: 'https://oss.oracle.com/licenses/CDDL+GPL-1.1',
+      }),
+    ).toBe('copyleft');
+  });
+
+  it('leaves a project-specific URL unrecognized', () => {
+    expect(
+      classifyLicense({ kind: 'name', value: 'https://jsoup.org/license' }),
+    ).toBe('unrecognized');
+  });
+
+  it('does not match a canonical host embedded in another path', () => {
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'https://evil.example/creativecommons.org/publicdomain/zero/1.0/',
+      }),
+    ).toBe('unrecognized');
+  });
+});

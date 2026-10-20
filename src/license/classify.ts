@@ -177,6 +177,7 @@ const NAME_ALIASES: Record<string, string> = {
   'apache 2.0': 'Apache-2.0',
   'apache-2': 'Apache-2.0',
   'apache license': 'Apache-2.0',
+  'apache license 2.0': 'Apache-2.0',
   'apache license v2.0': 'Apache-2.0',
   'apache license version 2.0': 'Apache-2.0',
   'apache license, version 2.0': 'Apache-2.0',
@@ -218,6 +219,7 @@ const NAME_ALIASES: Record<string, string> = {
   // SPDX id directly.
   bsd: 'BSD-3-Clause',
   'bsd license': 'BSD-3-Clause',
+  'the bsd license': 'BSD-3-Clause',
 
   // Eclipse
   'eclipse public license': 'EPL-2.0',
@@ -232,6 +234,7 @@ const NAME_ALIASES: Record<string, string> = {
   // CDDL
   cddl: 'CDDL-1.0',
   'cddl 1.0': 'CDDL-1.0',
+  'cddl 1.1': 'CDDL-1.1',
   'common development and distribution license': 'CDDL-1.0',
 
   // Misc
@@ -258,12 +261,20 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-2-Clause/i, 'BSD-2-Clause'],
   [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/ISC/i, 'ISC'],
   [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/Apache-2\.0/i, 'Apache-2.0'],
+  // OSI's legacy page, which redirects to BSD-2-Clause.
+  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/bsd-license\.php/i, 'BSD-2-Clause'],
+  [/\/\/(?:[a-z0-9-]+\.)*creativecommons\.org\/publicdomain\/zero\/1\.0/i, 'CC0-1.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/apache-2\.0/i, 'Apache-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/agpl/i, 'AGPL-3.0-or-later'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-3\.0/i, 'LGPL-3.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-2\.1/i, 'LGPL-2.1'],
+  // GNU keeps the 2.x texts under old-licenses/. Only the versioned patterns
+  // accept it: the bare gpl/lgpl catch-alls would map old-licenses/gpl-1.0
+  // to GPL-3.0-or-later.
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?lgpl-2\.1/i, 'LGPL-2.1'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?lgpl-2\.0/i, 'LGPL-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl/i, 'LGPL-3.0-or-later'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl-3\.0/i, 'GPL-3.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl-2\.0/i, 'GPL-2.0'],
+  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?gpl-2\.0/i, 'GPL-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl/i, 'GPL-3.0-or-later'],
   [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/2\.0/i, 'MPL-2.0'],
   [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/1\.1/i, 'MPL-1.1'],
@@ -274,6 +285,9 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\/\/(?:[a-z0-9-]+\.)*glassfish\.dev\.java\.net/i, 'CDDL-1.0'],
   [/\/\/(?:[a-z0-9-]+\.)*glassfish\.java\.net/i, 'CDDL-1.0'],
   [/\/\/(?:[a-z0-9-]+\.)*sun\.com\/cddl/i, 'CDDL-1.0'],
+  // CDDL-1.1 OR GPL-2.0 with the Classpath exception. Both options are
+  // copyleft, so the CDDL id stands for the pair.
+  [/\/\/(?:[a-z0-9-]+\.)*oss\.oracle\.com\/licenses\/CDDL\+GPL-1\.1/i, 'CDDL-1.1'],
 ];
 
 /**
