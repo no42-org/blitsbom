@@ -545,6 +545,30 @@ describe('classifyLicense — ScanCode LicenseDB ids (#307)', () => {
     );
   });
 
+  it('pins the HPND export-notice variants ScanCode lists as Free Restricted (#316)', () => {
+    for (const value of [
+      'HPND-export-US',
+      'HPND-export-US-acknowledgement',
+      'HPND-UC-export-US',
+    ]) {
+      expect(classifyLicense({ kind: 'id', value })).toBe('permissive');
+    }
+  });
+
+  it('classifies krb5-libs from RHEL 10.2 as permissive (#316)', () => {
+    expect(
+      expr(
+        'Brian-Gladman-2-Clause AND BSD-2-Clause AND (BSD-2-Clause OR GPL-2.0-or-later) AND BSD-2-Clause-first-lines AND BSD-3-Clause AND BSD-4-Clause AND CMU-Mach-nodoc AND FSFULLRWD AND HPND AND HPND-export2-US AND HPND-export-US AND HPND-export-US-acknowledgement AND HPND-export-US-modify AND ISC AND MIT AND MIT-CMU AND OLDAP-2.8 AND OpenVision',
+      ),
+    ).toBe('permissive');
+  });
+
+  it('keeps the other Free Restricted ids proprietary', () => {
+    for (const value of ['BSD-3-Clause-No-Military-License', 'Hippocratic-2.1']) {
+      expect(classifyLicense({ kind: 'id', value })).toBe('proprietary');
+    }
+  });
+
   it('unwraps LicenseRef-<id> for ScanCode and lowercase ids', () => {
     expect(classifyLicense({ kind: 'name', value: 'LicenseRef-X11' })).toBe('permissive');
     expect(classifyLicense({ kind: 'name', value: 'LicenseRef-mit' })).toBe('permissive');

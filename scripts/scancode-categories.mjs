@@ -39,6 +39,13 @@ const CATEGORY = {
 const OVERRIDES = {
   "ESA-PL-strong-copyleft-2.4": "strong-copyleft",
   "ESA-PL-weak-copyleft-2.4": "copyleft",
+  // Free Restricted in ScanCode, but each is HPND plus a US export-control
+  // notice. The notice restates law and withholds no right, and ScanCode
+  // lists the siblings HPND-export2-US and HPND-export-US-modify as
+  // Permissive (#316).
+  "HPND-export-US": "permissive",
+  "HPND-export-US-acknowledgement": "permissive",
+  "HPND-UC-export-US": "permissive",
 };
 
 // SPDX id syntax. Rejects ScanCode aliases with spaces ("GPL 2.0"), which
