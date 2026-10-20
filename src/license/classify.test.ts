@@ -241,6 +241,21 @@ describe('classifyLicense — URLs', () => {
         value: 'https://evilapache.org/licenses/LICENSE-2.0',
       }),
     ).toBe('unrecognized');
+    // `//` alone is no boundary: it can appear later in another host's URL.
+    for (const value of [
+      'https://evil.com/?u=//apache.org/licenses/LICENSE-2.0',
+      'https://evil.com/x//www.gnu.org/licenses/gpl',
+      'evil.com//www.apache.org/licenses/LICENSE-2.0',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value })).toBe('unrecognized');
+    }
+    // A URL wrapped in text, as freemarker declares it, still counts.
+    for (const value of [
+      'Apache License, Version 2.0; see: http://www.apache.org/licenses/LICENSE-2.0.txt',
+      '//www.apache.org/licenses/LICENSE-2.0',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value })).toBe('permissive');
+    }
   });
 });
 

@@ -272,57 +272,60 @@ const NAME_ALIASES: Record<string, string> = {
  * patterns should appear before generic ones (e.g., gnu.org/licenses/lgpl-3.0
  * before gnu.org/licenses/lgpl).
  */
-// Host-anchored patterns: each entry requires `//` (scheme separator) plus an
-// optional subdomain chain before the canonical host. This blocks
-// prefix-injection inputs like `evil.com/apache.org/licenses/LICENSE-2.0`
-// from being mis-classified.
+// Host-anchored patterns: each entry requires the URL to start with an
+// http(s) or protocol-relative `//`, then an optional subdomain chain, then
+// the canonical host. This blocks prefix-injection inputs like
+// `evil.com/apache.org/licenses/LICENSE-2.0` and `evil.com/?u=//apache.org/…`
+// from being mis-classified. They are tested against URL_TOKEN matches,
+// never against the whole value.
+const URL_TOKEN = /(?<!\S)(?:https?:)?\/\/\S+/g;
 const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/\/\/(?:[a-z0-9-]+\.)*apache\.org\/licenses\/LICENSE-2\.0/i, 'Apache-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/MIT/i, 'MIT'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-3-Clause/i, 'BSD-3-Clause'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-2-Clause/i, 'BSD-2-Clause'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/ISC/i, 'ISC'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/Apache-2\.0/i, 'Apache-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/apache2\.0\.php/i, 'Apache-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*apache\.org\/licenses\/LICENSE-2\.0/i, 'Apache-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/MIT/i, 'MIT'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-3-Clause/i, 'BSD-3-Clause'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/BSD-2-Clause/i, 'BSD-2-Clause'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/ISC/i, 'ISC'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/Apache-2\.0/i, 'Apache-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/apache2\.0\.php/i, 'Apache-2.0'],
   // OSI's legacy page, which redirects to BSD-2-Clause.
-  [/\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/bsd-license\.php/i, 'BSD-2-Clause'],
-  [/\/\/(?:[a-z0-9-]+\.)*creativecommons\.org\/publicdomain\/zero\/1\.0/i, 'CC0-1.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/apache-2\.0/i, 'Apache-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/cddl/i, 'CDDL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/bsd-license\.php/i, 'BSD-2-Clause'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*creativecommons\.org\/publicdomain\/zero\/1\.0/i, 'CC0-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/apache-2\.0/i, 'Apache-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/cddl/i, 'CDDL-1.0'],
   // "ce" and "cp" both name the Classpath exception.
-  [/\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/gpl-2\.0-ce/i, 'GPL-2.0-with-classpath-exception'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/license\/secondary-gpl-2\.0-cp/i, 'GPL-2.0-with-classpath-exception'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/software\/classpath\/license/i, 'GPL-2.0-with-classpath-exception'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/agpl/i, 'AGPL-3.0-or-later'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-3\.0/i, 'LGPL-3.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*repository\.jboss\.org\/licenses\/gpl-2\.0-ce/i, 'GPL-2.0-with-classpath-exception'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/license\/secondary-gpl-2\.0-cp/i, 'GPL-2.0-with-classpath-exception'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/software\/classpath\/license/i, 'GPL-2.0-with-classpath-exception'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/agpl/i, 'AGPL-3.0-or-later'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl-3\.0/i, 'LGPL-3.0'],
   // GNU keeps the 2.x texts under old-licenses/. Only the versioned patterns
   // accept it: the bare gpl/lgpl catch-alls would map old-licenses/gpl-1.0
   // to GPL-3.0-or-later.
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?lgpl-2\.1/i, 'LGPL-2.1'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?lgpl-2\.0/i, 'LGPL-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl/i, 'LGPL-3.0-or-later'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl-3\.0/i, 'GPL-3.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?gpl-2\.0/i, 'GPL-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl/i, 'GPL-3.0-or-later'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?lgpl-2\.1/i, 'LGPL-2.1'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?lgpl-2\.0/i, 'LGPL-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/lgpl/i, 'LGPL-3.0-or-later'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl-3\.0/i, 'GPL-3.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/(?:old-licenses\/)?gpl-2\.0/i, 'GPL-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/licenses\/gpl/i, 'GPL-3.0-or-later'],
   // gnu.org/copyleft/ pages describe the current GPL and LGPL.
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/copyleft\/lesser/i, 'LGPL-3.0-or-later'],
-  [/\/\/(?:[a-z0-9-]+\.)*gnu\.org\/copyleft\/gpl/i, 'GPL-3.0-or-later'],
-  [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/2\.0/i, 'MPL-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/1\.1/i, 'MPL-1.1'],
-  [/\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/MPL-1\.1/i, 'MPL-1.1'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-2\.0/i, 'EPL-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/epl-2\.0/i, 'EPL-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/epl-v10/i, 'EPL-1.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/license\/epl-2\.0/i, 'EPL-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-v10/i, 'EPL-1.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl/i, 'EPL-2.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/edl-v10/i, 'BSD-3-Clause'],
-  [/\/\/(?:[a-z0-9-]+\.)*glassfish\.dev\.java\.net/i, 'CDDL-1.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*glassfish\.java\.net/i, 'CDDL-1.0'],
-  [/\/\/(?:[a-z0-9-]+\.)*sun\.com\/cddl/i, 'CDDL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/copyleft\/lesser/i, 'LGPL-3.0-or-later'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*gnu\.org\/copyleft\/gpl/i, 'GPL-3.0-or-later'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/2\.0/i, 'MPL-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/1\.1/i, 'MPL-1.1'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*mozilla\.org\/MPL\/MPL-1\.1/i, 'MPL-1.1'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-2\.0/i, 'EPL-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/epl-2\.0/i, 'EPL-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/epl-v10/i, 'EPL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/license\/epl-2\.0/i, 'EPL-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-v10/i, 'EPL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl/i, 'EPL-2.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/edl-v10/i, 'BSD-3-Clause'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*glassfish\.dev\.java\.net/i, 'CDDL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*glassfish\.java\.net/i, 'CDDL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*sun\.com\/cddl/i, 'CDDL-1.0'],
   // CDDL-1.1 OR GPL-2.0 with the Classpath exception. Both options are
   // copyleft, so the CDDL id stands for the pair.
-  [/\/\/(?:[a-z0-9-]+\.)*oss\.oracle\.com\/licenses\/CDDL\+GPL-1\.1/i, 'CDDL-1.1'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*oss\.oracle\.com\/licenses\/CDDL\+GPL-1\.1/i, 'CDDL-1.1'],
 ];
 
 /** The first OSGi attribute or directive of a header entry, and everything
@@ -408,9 +411,13 @@ function lookupToken(rawToken: string): LicenseCategory | null {
 
   // URL pattern. OSI moved from /licenses/<id> to /license/<id>; fold the
   // new form onto the old so the host-anchored patterns cover both. (#261)
-  const url = cleaned.replace('opensource.org/license/', 'opensource.org/licenses/');
-  for (const [re, id] of URL_PATTERNS) {
-    if (re.test(url)) return TABLE[id] ?? 'unrecognized';
+  // Each URL token is matched on its own, so a value may wrap the URL in
+  // text ("Apache License, Version 2.0; see: http://…").
+  const text = cleaned.replace('opensource.org/license/', 'opensource.org/licenses/');
+  for (const url of text.match(URL_TOKEN) ?? []) {
+    for (const [re, id] of URL_PATTERNS) {
+      if (re.test(url)) return TABLE[id] ?? 'unrecognized';
+    }
   }
 
   // Bare "Public Domain"-style names.
