@@ -320,8 +320,8 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl-v10/i, 'EPL-1.0'],
   [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/legal\/epl/i, 'EPL-2.0'],
   [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*eclipse\.org\/org\/documents\/edl-v10/i, 'BSD-3-Clause'],
-  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*glassfish\.dev\.java\.net/i, 'CDDL-1.0'],
-  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*glassfish\.java\.net/i, 'CDDL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*glassfish\.dev\.java\.net(?:\/|$)/i, 'CDDL-1.0'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*glassfish\.java\.net(?:\/|$)/i, 'CDDL-1.0'],
   [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*sun\.com\/cddl/i, 'CDDL-1.0'],
   // CDDL-1.1 OR GPL-2.0 with the Classpath exception. Both options are
   // copyleft, so the CDDL id stands for the pair.

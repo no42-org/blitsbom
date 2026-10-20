@@ -191,6 +191,16 @@ describe('classifyLicense — URLs', () => {
         value: 'https://glassfish.dev.java.net/public/CDDLv1.0.html',
       }),
     ).toBe('copyleft');
+    expect(classifyLicense({ kind: 'name', value: 'https://glassfish.java.net' })).toBe(
+      'copyleft',
+    );
+    // The pattern names a host, so a longer hostname must not match it.
+    for (const value of [
+      'https://glassfish.java.net.evil.com/CDDL',
+      'https://glassfish.dev.java.net-evil.com/CDDL',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value })).toBe('unrecognized');
+    }
   });
 
   it('recognizes the current opensource.org/license/<id> URL form (#261)', () => {
