@@ -266,6 +266,13 @@ await page.waitForSelector('.summary-header', { timeout: 60_000 });
 const linkedCount = await componentCount();
 if (linkedCount !== 92) fail(`show files: ?files=show gave ${linkedCount} components`);
 console.log(`  hidden: 15, shown: ${shownCount}, via link: ${linkedCount} (ok)`);
+// "Load another file" drops the view state from the URL too.
+page.once('dialog', (d) => d.accept());
+await page.locator('button', { hasText: 'Load another file' }).click();
+await page.waitForSelector('.drop-zone');
+const afterReset = await page.evaluate(() => location.search);
+if (afterReset !== '') fail(`reset: URL kept "${afterReset}"`);
+console.log(`  reset clears URL (ok)`);
 
 // VEX flow — load the small CycloneDX SBOM, then drop the synthetic VEX
 // fixture. Verify: vuln tile appears, severity column populated, severity

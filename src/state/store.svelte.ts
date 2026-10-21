@@ -238,6 +238,7 @@ class SbomStore {
     this.showFiles = false;
     this.vexDrilldownKey = null;
     this.vexDrilldownSeverity = null;
+    this.syncToUrl();
   }
 
   /** Replace the loaded SBOM with a VEX-merged version. The merged
