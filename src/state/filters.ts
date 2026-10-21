@@ -23,6 +23,9 @@ export interface FilterState {
   /** Severity filter values. `none` is a pseudo-severity that matches
    * components with zero live (visible-by-default) vulnerabilities. */
   severities: ReadonlySet<Severity>;
+  /** Show unlicensed `file` components. A view preference, not a facet:
+   * it does not count as an active filter. */
+  showFiles: boolean;
 }
 
 export function emptyFilters(): FilterState {
@@ -34,6 +37,7 @@ export function emptyFilters(): FilterState {
     categories: new Set(),
     originators: new Set(),
     severities: new Set(),
+    showFiles: false,
   };
 }
 
@@ -69,7 +73,10 @@ export function applyFilters(
 ): Component[] {
   const q = filters.query.trim().toLowerCase();
   const byLicensing = filters.categories.size > 0 || filters.originators.size > 0;
+  // Selecting the `file` type shows them, or that facet would be empty.
+  const hideFiles = !filters.showFiles && !filters.types.has('file');
   return components.filter((c) => {
+    if (hideFiles && isUnlicensedFile(c)) return false;
     // Keeps a donut slice's count equal to the rows its filter produces.
     if (byLicensing && !isLicensable(c)) return false;
     if (filters.licenses.size > 0) {

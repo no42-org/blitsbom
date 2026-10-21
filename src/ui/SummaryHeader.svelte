@@ -74,6 +74,18 @@
             {store.showSuppressed ? 'Hide' : 'Show'} suppressed ({store.suppressedVulnCount})
           </button>
         {/if}
+        {#if store.excluded.files > 0}
+          <button
+            type="button"
+            class="suppressed-toggle"
+            class:suppressed-toggle--active={store.showFiles}
+            onclick={() => store.toggleFiles()}
+            aria-pressed={store.showFiles}
+            title="Toggle visibility of file components that declare no license"
+          >
+            {store.showFiles ? 'Hide' : 'Show'} files ({store.excluded.files.toLocaleString()})
+          </button>
+        {/if}
       </div>
     </div>
     {#if sbom.vexMetadata}

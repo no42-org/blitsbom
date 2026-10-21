@@ -42,6 +42,7 @@ describe('URL serialization', () => {
       categories: new Set(['permissive' as LicenseCategory]),
       originators: new Set(['The Apache Software Foundation']),
       severities: new Set<Severity>(['high', 'critical']),
+      showFiles: false,
     };
     const params = filtersToSearchParams(original);
     const restored = searchParamsToFilters(params);
@@ -66,6 +67,17 @@ describe('URL serialization', () => {
       new URLSearchParams('category=permissive&category=bogus'),
     );
     expect([...restored.categories]).toEqual(['permissive']);
+  });
+
+  it('round-trips showFiles as files=show', () => {
+    const params = filtersToSearchParams({ ...emptyFilters(), showFiles: true });
+    expect(params.toString()).toBe('files=show');
+    expect(searchParamsToFilters(params).showFiles).toBe(true);
+  });
+
+  it('hides files when files= is absent or another value', () => {
+    expect(searchParamsToFilters(new URLSearchParams('')).showFiles).toBe(false);
+    expect(searchParamsToFilters(new URLSearchParams('files=1')).showFiles).toBe(false);
   });
 
   it('parses an empty search string as empty filters', () => {

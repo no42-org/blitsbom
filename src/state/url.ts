@@ -8,6 +8,7 @@ const PARAM_TYPE = 'type';
 const PARAM_CATEGORY = 'category';
 const PARAM_ORIGINATOR = 'originator';
 const PARAM_SEVERITY = 'severity';
+const PARAM_FILES = 'files';
 
 const VALID_CATEGORIES: ReadonlySet<LicenseCategory> = new Set<LicenseCategory>([
   'undeclared',
@@ -42,6 +43,7 @@ export function filtersToSearchParams(filters: FilterState): URLSearchParams {
   for (const v of [...filters.severities].sort()) {
     params.append(PARAM_SEVERITY, v);
   }
+  if (filters.showFiles) params.set(PARAM_FILES, 'show');
   return params;
 }
 
@@ -67,6 +69,7 @@ export function searchParamsToFilters(params: URLSearchParams): FilterState {
     categories,
     originators: new Set(params.getAll(PARAM_ORIGINATOR)),
     severities,
+    showFiles: params.get(PARAM_FILES) === 'show',
   };
 }
 

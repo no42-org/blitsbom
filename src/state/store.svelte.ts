@@ -63,6 +63,9 @@ class SbomStore {
   /** When true, suppressed VEX entries (status `not_affected` etc.)
    * are included in counts, badges, and severity filtering. */
   showSuppressed = $state(false);
+  /** When true, unlicensed `file` components are listed in the table, the
+   * count and the CSV. Mirrored in the URL; kept by clearFilters. */
+  showFiles = $state(false);
   /** Component currently expanded in the vulnerability drilldown panel,
    * or null when no row is expanded. Tracked by purl/bomRef/name fallback
    * so a re-merge that creates fresh component objects keeps the panel
@@ -105,6 +108,7 @@ class SbomStore {
         categories: this.categoryFilters,
         originators: this.originatorFilters,
         severities: this.severityFilters,
+        showFiles: this.showFiles,
       },
       this.topOriginatorIdSet,
       this.showSuppressed,
@@ -137,7 +141,8 @@ class SbomStore {
   categoryBreakdownAll = $derived(computeCategoryBreakdown(this.components));
 
   /** What the license and originator charts leave out (see isLicensable). */
-  excludedNote = $derived(formatExcludedNote(countExcluded(this.components)));
+  excluded = $derived(countExcluded(this.components));
+  excludedNote = $derived(formatExcludedNote(this.excluded));
   categoryBreakdownFiltered = $derived(
     computeCategoryBreakdown(this.filteredComponents),
   );
@@ -228,6 +233,7 @@ class SbomStore {
     this.originatorFilters = new Set();
     this.severityFilters = new Set();
     this.showSuppressed = false;
+    this.showFiles = false;
     this.vexDrilldownKey = null;
     this.vexDrilldownSeverity = null;
   }
@@ -307,6 +313,11 @@ class SbomStore {
     this.showSuppressed = !this.showSuppressed;
   }
 
+  toggleFiles(): void {
+    this.showFiles = !this.showFiles;
+    this.syncToUrl();
+  }
+
   /** Compose a stable key for a component the user opened in the vuln
    * drilldown. Falls back through purlCanonical → bomRef → name+version. */
   static componentKey(c: Component): string {
@@ -371,6 +382,7 @@ class SbomStore {
     this.categoryFilters = new Set(f.categories);
     this.originatorFilters = new Set(f.originators);
     this.severityFilters = new Set(f.severities);
+    this.showFiles = f.showFiles;
   }
 
   syncToUrl(): void {
@@ -383,6 +395,7 @@ class SbomStore {
       categories: this.categoryFilters,
       originators: this.originatorFilters,
       severities: this.severityFilters,
+      showFiles: this.showFiles,
     });
     const next = `${window.location.pathname}${qs}${window.location.hash}`;
     if (next !== window.location.pathname + window.location.search + window.location.hash) {

@@ -14,6 +14,7 @@ import {
   ORIGINATOR_UNKNOWN,
   isLicensable,
   countExcluded,
+  hasActiveFilters,
 } from './filters';
 import type { Component } from '../types';
 
@@ -297,6 +298,29 @@ describe('file components (syft image SBOMs, #306)', () => {
     expect(applyFilters(alpine, filters).map((c) => c.type)).toEqual([
       'operating-system',
     ]);
+  });
+
+  it('hides unlicensed files by default', () => {
+    expect(applyFilters(alpine, emptyFilters())).toHaveLength(15);
+  });
+
+  it('lists every component with showFiles', () => {
+    const filters = { ...emptyFilters(), showFiles: true };
+    expect(applyFilters(alpine, filters)).toHaveLength(92);
+  });
+
+  it('always lists a file that declares a license', () => {
+    const licensedFile = lib('/usr/bin/script', {
+      type: 'file',
+      licenses: [{ kind: 'id', value: 'MIT' }],
+    });
+    expect(
+      applyFilters([...alpine, licensedFile], emptyFilters()).map((c) => c.name),
+    ).toContain('/usr/bin/script');
+  });
+
+  it('showFiles is not an active filter', () => {
+    expect(hasActiveFilters({ ...emptyFilters(), showFiles: true })).toBe(false);
   });
 
   it('type=file still lists every file', () => {

@@ -35,10 +35,11 @@ const FIXTURES = [
   },
   {
     // syft 1.55 scan of the alpine:3.20 image: 14 packages, 77 package-owned
-    // `file` components and the OS component (#306).
+    // `file` components and the OS component (#306). The files are hidden
+    // until "Show files" is on.
     name: 'CycloneDX image (syft, alpine:3.20)',
     file: join(SYFT_SAMPLES, 'alpine-3.20-cdx-1.7.json'),
-    expectedCount: 92,
+    expectedCount: 15,
     expectsPermissive: true,
   },
   {
@@ -240,6 +241,31 @@ if (undeclaredRows !== undeclaredCount) {
   );
 }
 console.log(`  notes: ${fileNotes}, Undeclared: ${undeclaredCount} = ${undeclaredRows} rows (ok)`);
+
+// "Show files" brings the 77 hidden files back and lands in the URL; a link
+// carrying files=show opens with them shown.
+const componentCount = async () =>
+  Number(
+    (
+      await page.textContent('.summary-header__stats .stat:nth-child(1) .stat__value')
+    )?.trim(),
+  );
+await page.goto(url, { waitUntil: 'load' });
+await page.waitForSelector('.drop-zone');
+await page.setInputFiles('input[type=file]', join(SYFT_SAMPLES, 'alpine-3.20-cdx-1.7.json'));
+await page.waitForSelector('.summary-header', { timeout: 60_000 });
+if ((await componentCount()) !== 15) fail(`show files: expected 15 components hidden-by-default`);
+await page.locator('button', { hasText: 'Show files (77)' }).click();
+await page.waitForFunction(() => location.search.includes('files=show'));
+const shownCount = await componentCount();
+if (shownCount !== 92) fail(`show files: expected 92 components, got ${shownCount}`);
+await page.goto(`${url}?files=show`, { waitUntil: 'load' });
+await page.waitForSelector('.drop-zone');
+await page.setInputFiles('input[type=file]', join(SYFT_SAMPLES, 'alpine-3.20-cdx-1.7.json'));
+await page.waitForSelector('.summary-header', { timeout: 60_000 });
+const linkedCount = await componentCount();
+if (linkedCount !== 92) fail(`show files: ?files=show gave ${linkedCount} components`);
+console.log(`  hidden: 15, shown: ${shownCount}, via link: ${linkedCount} (ok)`);
 
 // VEX flow — load the small CycloneDX SBOM, then drop the synthetic VEX
 // fixture. Verify: vuln tile appears, severity column populated, severity
