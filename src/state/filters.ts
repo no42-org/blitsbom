@@ -76,7 +76,7 @@ export function applyFilters(
   // Selecting the `file` type shows them, or that facet would be empty.
   const hideFiles = !filters.showFiles && !filters.types.has('file');
   return components.filter((c) => {
-    if (hideFiles && isUnlicensedFile(c)) return false;
+    if (hideFiles && isHiddenFile(c)) return false;
     // Keeps a donut slice's count equal to the rows its filter produces.
     if (byLicensing && !isLicensable(c)) return false;
     if (filters.licenses.size > 0) {
@@ -133,6 +133,19 @@ const EMPTY_SET: ReadonlySet<string> = new Set();
  * a container image this way, with hashes but no license or supplier. */
 function isUnlicensedFile(c: Component): boolean {
   return c.type === 'file' && c.licenses.length === 0;
+}
+
+/** An unlicensed file that the table hides unless files are shown. A file
+ * with a VEX vulnerability stays listed, so every vulnerability the
+ * severity chart counts has a row. (#327) */
+function isHiddenFile(c: Component): boolean {
+  return isUnlicensedFile(c) && c.vulnerabilities.length === 0;
+}
+
+export function countHiddenFiles(components: readonly Component[]): number {
+  let n = 0;
+  for (const c of components) if (isHiddenFile(c)) n += 1;
+  return n;
 }
 
 /** An RPM signing key. RHEL images carry them as `gpg-pubkey` packages

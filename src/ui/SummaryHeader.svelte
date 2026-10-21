@@ -75,7 +75,7 @@
           </button>
         {/if}
         <!-- A `file` type filter already shows them; the toggle would do nothing. -->
-        {#if store.excluded.files > 0 && !store.typeFilters.has('file')}
+        {#if store.hiddenFileCount > 0 && !store.typeFilters.has('file')}
           <button
             type="button"
             class="suppressed-toggle"
@@ -84,7 +84,7 @@
             aria-pressed={store.showFiles}
             title="Toggle visibility of file components that declare no license"
           >
-            {store.showFiles ? 'Hide' : 'Show'} files ({store.excluded.files.toLocaleString()})
+            {store.showFiles ? 'Hide' : 'Show'} files ({store.hiddenFileCount.toLocaleString()})
           </button>
         {/if}
       </div>

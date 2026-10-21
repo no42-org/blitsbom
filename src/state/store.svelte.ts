@@ -16,6 +16,7 @@ import {
   computeOriginatorBreakdown,
   computeVulnsBySeverityBreakdown,
   countExcluded,
+  countHiddenFiles,
   formatExcludedNote,
   distinctScopes,
   distinctTypes,
@@ -141,8 +142,9 @@ class SbomStore {
   categoryBreakdownAll = $derived(computeCategoryBreakdown(this.components));
 
   /** What the license and originator charts leave out (see isLicensable). */
-  excluded = $derived(countExcluded(this.components));
-  excludedNote = $derived(formatExcludedNote(this.excluded));
+  excludedNote = $derived(formatExcludedNote(countExcluded(this.components)));
+  /** Files the table hides unless "Show files" is on. */
+  hiddenFileCount = $derived(countHiddenFiles(this.components));
   categoryBreakdownFiltered = $derived(
     computeCategoryBreakdown(this.filteredComponents),
   );
