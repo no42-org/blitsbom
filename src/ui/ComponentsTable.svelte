@@ -386,6 +386,14 @@
                     </button>
                   </span>
                 {/each}
+                {#if c.licensesInherited}
+                  <span
+                    class="inherited muted"
+                    title="No license declared. Inherited from another component with the same purl."
+                  >
+                    inherited
+                  </span>
+                {/if}
               {/if}
             </td>
             <td>
@@ -707,6 +715,11 @@
   }
   .muted {
     color: var(--color-ink-400);
+  }
+  .inherited {
+    margin-left: 0.25rem;
+    font-size: 0.75rem;
+    font-style: italic;
   }
   .empty {
     padding: 3rem 1rem;

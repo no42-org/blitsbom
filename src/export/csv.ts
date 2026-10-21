@@ -24,6 +24,9 @@ export const CSV_COLUMNS = [
   'VulnStatus',
   'VulnUrl',
   'VulnDescription',
+  // Last, so existing column positions stay put. "yes" when the License
+  // column was copied from a component with the same purl. (#323)
+  'LicenseInherited',
 ] as const;
 
 const CRLF = '\r\n';
@@ -44,6 +47,7 @@ export function buildCsv(components: readonly Component[]): string {
   const rows: string[] = [CSV_COLUMNS.map(escape).join(',')];
   const EMPTY_VULN_FIELDS = ['', '', '', '', '', '', ''];
   for (const c of components) {
+    const inherited = c.licensesInherited ? 'yes' : '';
     const compFields: string[] = [
       c.name,
       c.group ?? '',
@@ -58,7 +62,7 @@ export function buildCsv(components: readonly Component[]): string {
       c.bomRef ?? '',
     ];
     if (c.vulnerabilities.length === 0) {
-      rows.push([...compFields, ...EMPTY_VULN_FIELDS].map(escape).join(','));
+      rows.push([...compFields, ...EMPTY_VULN_FIELDS, inherited].map(escape).join(','));
     } else {
       for (const v of c.vulnerabilities) {
         rows.push(
@@ -71,6 +75,7 @@ export function buildCsv(components: readonly Component[]): string {
             v.status ?? '',
             v.url ?? '',
             v.description ?? '',
+            inherited,
           ]
             .map(escape)
             .join(','),

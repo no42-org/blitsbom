@@ -2,6 +2,7 @@ import { detectFormat } from './format-detect';
 import { isCdxBom, normalizeCdxBom } from './cyclonedx';
 import { isSpdxDocument, normalizeSpdxDocument } from './spdx';
 import { applyVexToSbom } from './vex';
+import { inheritTwinLicenses } from './licenseInherit';
 import {
   CDX_SUPPORTED_RANGE,
   type CdxBom,
@@ -41,6 +42,7 @@ export function parseSbomText(text: string): LoadResult {
   if (format === 'cyclonedx') {
     if (isCdxBom(value)) {
       const sbom = normalizeCdxBom(value);
+      inheritTwinLicenses(sbom.components);
       // Embedded-vulns flow: when a primary CDX has both components and a
       // non-empty vulnerabilities[] array, run the VEX merge against the
       // freshly-built SBOM so vulnerabilities attach to components.
@@ -68,7 +70,9 @@ export function parseSbomText(text: string): LoadResult {
 
   if (format === 'spdx') {
     if (isSpdxDocument(value)) {
-      return { ok: true, sbom: normalizeSpdxDocument(value) };
+      const sbom = normalizeSpdxDocument(value);
+      inheritTwinLicenses(sbom.components);
+      return { ok: true, sbom };
     }
     return { ok: false, error: 'SPDX document failed structural validation.' };
   }

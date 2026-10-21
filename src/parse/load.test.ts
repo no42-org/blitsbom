@@ -195,6 +195,45 @@ describe('parseSbomText — format detection', () => {
   });
 });
 
+describe('parseSbomText — license inherited from a purl twin (#323)', () => {
+  it('inherits a CycloneDX twin license', () => {
+    const purl = 'pkg:maven/org.example/lib@1.0';
+    const bom = {
+      bomFormat: 'CycloneDX',
+      specVersion: '1.6',
+      components: [
+        { type: 'library', name: 'lib', version: '1.0', purl },
+        { type: 'library', name: 'lib', version: '1.0', purl, licenses: [{ license: { id: 'MIT' } }] },
+      ],
+    };
+    const result = parseSbomText(JSON.stringify(bom));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const [nested] = result.sbom.components;
+    expect(nested!.licenses).toEqual([{ kind: 'id', value: 'MIT' }]);
+    expect(nested!.licensesInherited).toBe(true);
+  });
+
+  it('inherits an SPDX twin license over NOASSERTION', () => {
+    const ref = (purl: string) => [
+      { referenceCategory: 'PACKAGE-MANAGER', referenceType: 'purl', referenceLocator: purl },
+    ];
+    const purl = 'pkg:maven/org.example/lib@1.0';
+    const doc = {
+      spdxVersion: 'SPDX-2.3',
+      name: 'tiny',
+      packages: [
+        { SPDXID: 'SPDXRef-a', name: 'lib', versionInfo: '1.0', licenseDeclared: 'NOASSERTION', externalRefs: ref(purl) },
+        { SPDXID: 'SPDXRef-b', name: 'lib', versionInfo: '1.0', licenseDeclared: 'Apache-2.0', externalRefs: ref(purl) },
+      ],
+    };
+    const result = parseSbomText(JSON.stringify(doc));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.sbom.components[0]!.licensesInherited).toBe(true);
+  });
+});
+
 describe('parseDroppedFile — VEX detection and embedded vulns', () => {
   function loadFirst(): LoadedSbom {
     const r = parseSbomText(readSample('prometheus-remote-writer.json'));

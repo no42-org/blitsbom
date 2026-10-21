@@ -48,6 +48,16 @@ describe('buildCsv', () => {
     expect(csv).toContain('"line1\nline2"');
   });
 
+  it('marks an inherited license (#323)', () => {
+    const csv = buildCsv([
+      lib({ licenses: [{ kind: 'id', value: 'MIT' }], licensesInherited: true }),
+    ]);
+    const [header, row] = csv.split('\r\n');
+    expect(header!.endsWith(',LicenseInherited')).toBe(true);
+    expect(row).toContain(',MIT,');
+    expect(row!.endsWith(',yes')).toBe(true);
+  });
+
   it('joins multiple licenses with semicolon-space', () => {
     const csv = buildCsv([
       lib({

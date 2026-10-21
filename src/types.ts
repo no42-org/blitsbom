@@ -267,6 +267,9 @@ export interface Component {
   /** CycloneDX `bom-ref` if present; secondary key for VEX joins. */
   bomRef: string | null;
   licenses: License[];
+  /** True when `licenses` was copied from a component with the same purl,
+   * because this one declares none (see `inheritTwinLicenses`). */
+  licensesInherited?: true;
   /** Vulnerabilities attached to this component via a loaded VEX. Empty
    * by default; never null. Populated only when a VEX has been loaded. */
   vulnerabilities: Vulnerability[];
