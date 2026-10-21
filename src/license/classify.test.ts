@@ -610,3 +610,34 @@ describe('classifyLicense — ScanCode LicenseDB ids (#307)', () => {
     );
   });
 });
+
+describe('classifyLicense — spelling variants and OSI URLs (#321)', () => {
+  const cases: Array<[string, string]> = [
+    ['The GNU Lesser General Public License', 'copyleft'],
+    ['BSD licence', 'permissive'],
+    ['The Apache Software Licence, Version 2.0', 'permissive'],
+    ['https://www.opensource.org/licenses/LGPL-2.1', 'copyleft'],
+    ['https://opensource.org/license/EPL-2.0', 'copyleft'],
+    ['https://opensource.org/licenses/GPL-3.0', 'strong-copyleft'],
+    ['https://opensource.org/licenses/not-a-license', 'unrecognized'],
+    ['https://evil.example/opensource.org/licenses/LGPL-2.1', 'unrecognized'],
+  ];
+  for (const [value, category] of cases) {
+    it(`classifies ${value} as ${category}`, () => {
+      expect(classifyLicense({ kind: 'name', value })).toBe(category);
+    });
+  }
+
+  it('classifies an OSI url naming any known SPDX id through the url fallback', () => {
+    expect(
+      classifyLicense({ kind: 'name', value: 'x', url: 'https://www.opensource.org/licenses/LGPL-2.1' }),
+    ).toBe('copyleft');
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'GNU Library General Public License v2.1 or later',
+        url: 'https://www.opensource.org/licenses/LGPL-2.1',
+      }),
+    ).toBe('copyleft');
+  });
+});

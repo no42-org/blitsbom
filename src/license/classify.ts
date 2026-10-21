@@ -328,6 +328,9 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*oss\.oracle\.com\/licenses\/CDDL\+GPL-1\.1/i, 'CDDL-1.1'],
 ];
 
+/** The path segment of an OSI license page, host-anchored like URL_PATTERNS. */
+const OSI_ID = /^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*opensource\.org\/licenses\/([^/?#]+)/i;
+
 /** The first OSGi attribute or directive of a header entry, and everything
  * after it. */
 const ATTRIBUTE = /;\s*[A-Za-z][\w.-]*\s*:?=.*$/s;
@@ -400,8 +403,10 @@ function lookupToken(rawToken: string): LicenseCategory | null {
   const fsf = TABLE_LC.get(lower);
   if (fsf) return fsf;
 
-  // Alias (case-insensitive).
-  const aliasId = NAME_ALIASES[lower]?.toLowerCase();
+  // Alias (case-insensitive). Retry without a leading "The" and with the
+  // British "licence", both common in Maven parent POMs. (#321)
+  const folded = lower.replace(/^the\s+/, '').replace(/\blicence\b/g, 'license');
+  const aliasId = (NAME_ALIASES[lower] ?? NAME_ALIASES[folded])?.toLowerCase();
   const aliasCat = aliasId && (TABLE_LC.get(aliasId) ?? SCANCODE.get(aliasId));
   if (aliasCat) return aliasCat;
 
@@ -418,6 +423,10 @@ function lookupToken(rawToken: string): LicenseCategory | null {
     for (const [re, id] of URL_PATTERNS) {
       if (re.test(url)) return TABLE[id] ?? 'unrecognized';
     }
+    // Any other OSI page is named by its SPDX id. (#321)
+    const osiId = url.match(OSI_ID)?.[1]?.toLowerCase();
+    const osiCat = osiId && (TABLE_LC.get(osiId) ?? SCANCODE.get(osiId));
+    if (osiCat) return osiCat;
   }
 
   // Bare "Public Domain"-style names.
@@ -514,7 +523,10 @@ export function classifyLicense(
   // If the cleaned value still contains AND/OR, treat it as an expression.
   const cleaned = cleanValue(value);
   if (/\s+(AND|OR)\s+/i.test(cleaned)) {
-    return classifyExpression(cleaned);
+    const cat = classifyExpression(cleaned);
+    // A name like "... v2.1 or later" only looks like an expression. (#321)
+    if (cat !== 'unrecognized' || !license.url) return cat;
+    return lookupToken(license.url) ?? cat;
   }
   // Fall back to the license URL when the name alone is not enough. (#261)
   return (
