@@ -404,9 +404,67 @@ describe('classifyLicense — common URLs and names (#309)', () => {
     ).toBe('copyleft');
   });
 
+  it('classifies a listed project license page (#322)', () => {
+    const cases: Array<[string, string]> = [
+      ['https://github.com/javaee/activation/blob/master/LICENSE.txt', 'copyleft'],
+      ['https://github.com/javaee/javax.annotation/blob/master/LICENSE', 'copyleft'],
+      ['https://github.com/stleary/JSON-java/blob/master/LICENSE', 'public-domain'],
+      ['https://jsoup.org/license', 'permissive'],
+      ['https://raw.githubusercontent.com/jaxen-xpath/jaxen/master/LICENSE.txt', 'permissive'],
+      ['https://github.com/xetorthio/jedis/raw/master/LICENSE.txt', 'permissive'],
+      ['https://github.com/mwiede/jsch/blob/master/LICENSE.txt', 'permissive'],
+      ['https://github.com/mwiede/jsch/blob/master/LICENSE.JZlib.txt', 'permissive'],
+      ['https://github.com/mwiede/jsch/blob/master/LICENSE.jBCrypt.txt', 'permissive'],
+      ['https://www.apache.org/Vaadin-ConfirmDialog/LICENSE-2.0.txt', 'permissive'],
+    ];
+    for (const [value, cat] of cases) {
+      expect(classifyLicense({ kind: 'name', value }), value).toBe(cat);
+    }
+  });
+
   it('leaves a project-specific URL unrecognized', () => {
+    for (const value of [
+      'https://github.com/stleary/some-other-repo/blob/master/LICENSE',
+      'https://github.com/stleary/JSON-java/blob/20180813/LICENSE',
+      'https://github.com/javaee/activation/blob/master/LICENSE-thirdparty.txt',
+      'https://github.com/mwiede/jsch/blob/master/LICENSE.GPL.txt',
+      'https://jsoup.org/license-archive',
+    ]) {
+      expect(classifyLicense({ kind: 'name', value }), value).toBe('unrecognized');
+    }
+  });
+
+  it('classifies a listed project page given as the license url (#322)', () => {
     expect(
-      classifyLicense({ kind: 'name', value: 'https://jsoup.org/license' }),
+      classifyLicense({
+        kind: 'name',
+        value: 'JSON-java License',
+        url: 'https://github.com/stleary/JSON-java/blob/master/LICENSE',
+      }),
+    ).toBe('public-domain');
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'Jaxen License',
+        url: 'https://raw.githubusercontent.com/jaxen-xpath/jaxen/master/LICENSE.txt',
+      }),
+    ).toBe('permissive');
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'MIT',
+        url: 'https://github.com/xetorthio/jedis/blob/master/LICENSE.txt',
+      }),
+    ).toBe('permissive');
+  });
+
+  it('leaves the Atomikos licensing page unrecognized (#322)', () => {
+    expect(
+      classifyLicense({
+        kind: 'name',
+        value: 'Atomikos Multiple Licensing Scheme',
+        url: 'http://www.atomikos.com/Main/WhichLicenseApplies',
+      }),
     ).toBe('unrecognized');
   });
 

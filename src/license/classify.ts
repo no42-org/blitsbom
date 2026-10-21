@@ -326,6 +326,27 @@ const URL_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   // CDDL-1.1 OR GPL-2.0 with the Classpath exception. Both options are
   // copyleft, so the CDDL id stands for the pair.
   [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*oss\.oracle\.com\/licenses\/CDDL\+GPL-1\.1/i, 'CDDL-1.1'],
+  // Project license pages, each checked against the text it links. The
+  // path names the repository and the exact file, so another project on
+  // the same host, or another file, stays unrecognized. GitHub serves a
+  // file under both blob/ and raw/. (#322)
+  // javax.activation, javax.annotation-api: CDDL-1.1 OR GPL-2.0 with the
+  // Classpath exception, as for Oracle above.
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*github\.com\/javaee\/activation\/(?:blob|raw)\/master\/LICENSE\.txt(?:[?#]|$)/i, 'CDDL-1.1'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*github\.com\/javaee\/javax\.annotation\/(?:blob|raw)\/master\/LICENSE(?:[?#]|$)/i, 'CDDL-1.1'],
+  // JSON-java: Public Domain since 2022. Older tags hold the JSON License,
+  // so only master matches.
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*github\.com\/stleary\/JSON-java\/(?:blob|raw)\/master\/LICENSE(?:[?#]|$)/i, 'CC0-1.0'],
+  // jsoup, jedis: MIT.
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*jsoup\.org\/license\/?(?:[?#]|$)/i, 'MIT'],
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*github\.com\/xetorthio\/jedis\/(?:blob|raw)\/master\/LICENSE\.txt(?:[?#]|$)/i, 'MIT'],
+  // jaxen: BSD-3-Clause.
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*raw\.githubusercontent\.com\/jaxen-xpath\/jaxen\/master\/LICENSE\.txt(?:[?#]|$)/i, 'BSD-3-Clause'],
+  // jsch: LICENSE.txt and LICENSE.JZlib.txt are BSD-3-Clause,
+  // LICENSE.jBCrypt.txt is ISC. All permissive.
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*github\.com\/mwiede\/jsch\/(?:blob|raw)\/master\/LICENSE(?:\.JZlib|\.jBCrypt)?\.txt(?:[?#]|$)/i, 'BSD-3-Clause'],
+  // Vaadin ConfirmDialog add-on: a copy of the Apache License 2.0.
+  [/^(?:https?:)?\/\/(?:[a-z0-9-]+\.)*apache\.org\/Vaadin-ConfirmDialog\/LICENSE-2\.0\.txt(?:[?#]|$)/i, 'Apache-2.0'],
 ];
 
 /** The path segment of an OSI license page, host-anchored like URL_PATTERNS. */
