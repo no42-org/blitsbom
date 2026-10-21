@@ -74,7 +74,8 @@
             {store.showSuppressed ? 'Hide' : 'Show'} suppressed ({store.suppressedVulnCount})
           </button>
         {/if}
-        {#if store.excluded.files > 0}
+        <!-- A `file` type filter already shows them; the toggle would do nothing. -->
+        {#if store.excluded.files > 0 && !store.typeFilters.has('file')}
           <button
             type="button"
             class="suppressed-toggle"
