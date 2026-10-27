@@ -11,3 +11,8 @@ rules:
       # re-runs, which we would have to reimplement (and keep correct) in
       # shell. Revisit if the action becomes unmaintained.
       - release.yml
+  self-repository:
+    # zizmor 1.31 suggests the `$/` self-repository syntax for `uses: ./`.
+    # Declined for now: actionlint rejects `$/` as an invalid reference, and
+    # both linters gate the same job. Revisit once actionlint supports it.
+    disable: true
