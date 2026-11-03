@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/no42-org/blitsbom/main/assets/logo-wordmark.svg" alt="blitsbom" width="192" height="44">
 
-[![CI](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/no42-org/blitsbom?sort=semver&logo=github)](https://github.com/no42-org/blitsbom/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![CI](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/no42-org/blitsbom/actions/workflows/ci.yml) [![Latest release](https://img.shields.io/github/v/release/no42-org/blitsbom?sort=semver&logo=github)](https://github.com/no42-org/blitsbom/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13722/badge)](https://www.bestpractices.dev/projects/13722)
 
 A zero-install viewer for [CycloneDX](https://cyclonedx.org/) and [SPDX](https://spdx.dev/) SBOM files. Drop a `bom.json`, get a clean searchable view of your dependencies, hand it to legal as a CSV or PDF.
 
